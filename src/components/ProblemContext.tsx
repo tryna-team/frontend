@@ -1,6 +1,5 @@
 import { CheckCircle2, Clock3, ListTodo, MessageSquareText } from "lucide-react"
 import { motion } from "motion/react"
-import AssetImage from "@/components/AssetImage"
 import {
   Card,
   CardContent,
@@ -42,21 +41,16 @@ export default function ProblemContext() {
           variants={staggerContainer}
           className="grid gap-4"
         >
-          <AssetImage
-            src="/assets/landing/problem-context.png"
-            alt="일정과 챙길 일이 흩어진 문제 상황 이미지"
-            className="max-h-[520px] rounded-[28px] border object-cover soft-shadow"
-            fallback={<ProblemFallback />}
-          />
+          <ProblemGraphic />
         </motion.div>
       </div>
     </section>
   )
 }
 
-function ProblemFallback() {
+function ProblemGraphic() {
   return (
-    <motion.div variants={staggerContainer} className="grid gap-4">
+    <motion.div variants={staggerContainer}>
       <Card className="overflow-hidden border-white bg-white/90 soft-shadow">
         <CardHeader className="border-b bg-[#fbfbfa]">
           <div className="flex items-center justify-between gap-4">
@@ -73,7 +67,7 @@ function ProblemFallback() {
         </CardHeader>
         <CardContent className="space-y-4 p-5">
           {problemCards.map((card, index) => {
-            const Icon = icons[index]
+            const Icon = icons[index] ?? CheckCircle2
 
             return (
               <motion.div
