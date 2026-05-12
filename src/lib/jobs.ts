@@ -49,6 +49,8 @@ export const jobPosts = [
         },
       ],
     },
+    applyLink:
+      "https://docs.google.com/forms/d/e/1FAIpQLSeT99YHo8ceHwXEcHoHFK9MDng3VsyVO_Fggy-4sp9EGCjOpQ/viewform?usp=dialog",
   },
   {
     id: "backend-developer",
@@ -74,6 +76,8 @@ export const jobPosts = [
         },
       ],
     },
+    applyLink:
+      "https://docs.google.com/forms/d/e/1FAIpQLScc2w3zjx6BeyAgH_X6EqbYnft16W7u5JSn_VefDKXuuvbKUg/viewform?usp=dialog",
   },
 ]
 
