@@ -1,5 +1,6 @@
 import { ExternalLink } from "lucide-react"
 import { Link, useParams } from "react-router-dom"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { externalApplyLink, externalApplyLinkProps } from "@/lib/constants"
@@ -9,8 +10,9 @@ import { usePageMeta } from "@/lib/usePageMeta"
 export default function JobDetailPage() {
   const { jobId } = useParams()
   const job = getJobPost(jobId)
+  const isClosed = job?.status === "closed"
   const jobApplyLink = job?.applyLink || externalApplyLink
-  const hasExternalApplyLink = Boolean(jobApplyLink)
+  const hasExternalApplyLink = !isClosed && Boolean(jobApplyLink)
   const jobApplyLinkProps =
     jobApplyLink.startsWith("http://") || jobApplyLink.startsWith("https://")
       ? { target: "_blank", rel: "noreferrer" }
@@ -49,6 +51,14 @@ export default function JobDetailPage() {
     <section className="section-padding bg-background">
       <div className="section-shell">
         <div className="max-w-[760px]">
+          {isClosed && (
+            <Badge
+              variant="outline"
+              className="mb-5 border-slate-200 bg-slate-50 text-slate-500"
+            >
+              모집 종료
+            </Badge>
+          )}
           <h1 className="text-4xl font-semibold leading-tight tracking-normal text-foreground sm:text-5xl">
             {job.title}
           </h1>
@@ -90,19 +100,24 @@ export default function JobDetailPage() {
 
           <aside className="lg:sticky lg:top-28">
             <div className="space-y-3">
-              <Button
-                asChild
-                className="h-14 w-full rounded-[8px] bg-sky-500 text-base font-semibold text-white hover:bg-sky-600"
-              >
-                <a
-                  href={hasExternalApplyLink ? jobApplyLink : "#"}
-                  aria-disabled={!hasExternalApplyLink}
-                  {...jobApplyLinkProps}
+              {hasExternalApplyLink ? (
+                <Button
+                  asChild
+                  className="h-14 w-full rounded-[8px] bg-sky-500 text-base font-semibold text-white hover:bg-sky-600"
                 >
-                  {hasExternalApplyLink ? "지원하기" : "지원 안내 준비 중"}
-                  {hasExternalApplyLink && <ExternalLink className="size-4" />}
-                </a>
-              </Button>
+                  <a href={jobApplyLink} {...jobApplyLinkProps}>
+                    지원하기
+                    <ExternalLink className="size-4" />
+                  </a>
+                </Button>
+              ) : (
+                <Button
+                  disabled
+                  className="h-14 w-full rounded-[8px] bg-sky-500 text-base font-semibold text-white hover:bg-sky-500"
+                >
+                  {isClosed ? "모집 종료" : "지원 안내 준비 중"}
+                </Button>
+              )}
               <Button asChild variant="outline" className="w-full">
                 <Link to="/apply">목록으로 돌아가기</Link>
               </Button>

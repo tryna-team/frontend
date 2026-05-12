@@ -2,6 +2,7 @@ export const jobPosts = [
   {
     id: "product-designer",
     title: "Product Designer",
+    status: "closed",
     description:
       "사용자의 작은 불편과 놓침을 줄이는 제품 경험을 만듭니다.",
     detail: {
@@ -16,7 +17,7 @@ export const jobPosts = [
           items: [
             "홈, 일정 생성, 일정 편집 등 핵심 화면 UX를 직접 설계하며 실제 서비스의 사용자 경험을 만들어볼 수 있어요",
             "일정 생성 → 제안 → 실행으로 이어지는 전체 사용자 흐름과 인터랙션 구조를 설계하는 경험을 할 수 있어요",
-            "개발자와 협업하며 구현 가능한 UI, 디자인 시스템, 컴포넌트를 함께 설계하는 경험을 할 수 있어요",          
+            "개발자와 협업하며 구현 가능한 UI, 디자인 시스템, 컴포넌트를 함께 설계하는 경험을 할 수 있어요",
           ],
         },
       ],
@@ -27,6 +28,7 @@ export const jobPosts = [
   {
     id: "frontend-developer",
     title: "Frontend Developer",
+    status: "open",
     description:
       "일정과 챙길 일이 자연스럽게 이어지는 웹 제품 경험을 구현합니다.",
     detail: {
@@ -51,6 +53,7 @@ export const jobPosts = [
   {
     id: "backend-developer",
     title: "Backend Developer",
+    status: "open",
     description:
       "일정, 할 일, 준비물이 안정적으로 연결되는 제품 기반을 설계합니다.",
     detail: {
@@ -73,6 +76,8 @@ export const jobPosts = [
     },
   },
 ]
+
+export const openJobPosts = jobPosts.filter((job) => job.status === "open")
 
 export function getJobPost(jobId: string | undefined) {
   return jobPosts.find((job) => job.id === jobId)

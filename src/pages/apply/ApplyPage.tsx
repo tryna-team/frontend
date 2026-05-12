@@ -1,12 +1,13 @@
 import { ArrowRight } from "lucide-react"
 import { motion } from "motion/react"
 import { Link } from "react-router-dom"
-import { jobPosts } from "@/lib/jobs"
+import { Badge } from "@/components/ui/badge"
+import { jobPosts, openJobPosts } from "@/lib/jobs"
 import { fadeUp, staggerContainer } from "@/lib/motion"
 import { usePageMeta } from "@/lib/usePageMeta"
 
 export default function ApplyPage() {
-  const openPositionCount = jobPosts.length
+  const openPositionCount = openJobPosts.length
 
   usePageMeta(
     "tryna - 지원",
@@ -45,8 +46,18 @@ export default function ApplyPage() {
                 to={`/apply/${job.id}`}
                 className="flex min-h-24 items-center justify-between gap-4 rounded-[22px] border bg-white p-6 text-foreground transition hover:-translate-y-1 hover:shadow-sm"
               >
-                <span className="text-xl font-semibold tracking-normal">
-                  {job.title}
+                <span className="flex flex-wrap items-center gap-3">
+                  <span className="text-xl font-semibold tracking-normal">
+                    {job.title}
+                  </span>
+                  {job.status === "closed" && (
+                    <Badge
+                      variant="outline"
+                      className="border-slate-200 bg-slate-50 text-slate-500"
+                    >
+                      모집 종료
+                    </Badge>
+                  )}
                 </span>
                 <ArrowRight className="size-5 shrink-0" />
               </Link>
