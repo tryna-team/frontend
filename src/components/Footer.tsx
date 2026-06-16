@@ -2,9 +2,9 @@ import { Camera, Code2, Mail } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 
 const footerLinks = [
-  { label: "Instagram", href: "https://www.instagram.com/harrys.jun/", icon: Camera },
+  { label: "Instagram", href: "https://www.instagram.com/tryna.studio/", icon: Camera },
   { label: "GitHub", href: "", icon: Code2 },
-  { label: "Contact", href: "mailto:harrysgeminis@gmail.com", icon: Mail },
+  { label: "Contact", href: "mailto:tryingtotryna@gmail.com", icon: Mail },
 ]
 
 export default function Footer() {
