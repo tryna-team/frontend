@@ -1,12 +1,12 @@
-import { ImageIcon } from "lucide-react"
 import { motion } from "motion/react"
 import AssetImage from "@/components/AssetImage"
 import { Card } from "@/components/ui/card"
+import { productPreviewImages } from "@/lib/constants"
 import { fadeUp } from "@/lib/motion"
 
 export default function ProductPreview() {
   return (
-    <section className="bg-[#F6F7F8] section-padding">
+    <section className="bg-[#F7F8F7] section-padding">
       <div className="section-shell">
         <motion.div
           className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-center"
@@ -25,25 +25,31 @@ export default function ProductPreview() {
             </p>
           </div>
 
-          <Card className="min-h-[320px] overflow-hidden border-0 bg-white soft-shadow sm:min-h-[430px]">
-            <AssetImage
-              src="/assets/landing/hero-wireframe-mockup.png"
-              alt="tryna 와이어프레임 목업"
-              className="h-full min-h-[320px] object-contain p-4 sm:min-h-[430px] sm:p-8"
-              fallback={
-                <div className="flex min-h-[320px] flex-col items-center justify-center bg-white p-8 text-center sm:min-h-[430px]">
-                  <div className="inline-flex size-14 items-center justify-center rounded-full bg-secondary text-muted-foreground">
-                    <ImageIcon className="size-6" />
-                  </div>
-                  <p className="mt-5 text-xl font-semibold text-foreground">
-                    와이어프레임 이미지 준비 중
-                  </p>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    직접 제작한 화면 시안이 들어갈 예정입니다.
-                  </p>
-                </div>
-              }
-            />
+          <Card className="overflow-hidden border-0 bg-white soft-shadow">
+            <div className="relative min-h-[360px] overflow-hidden bg-[#F3FAF6] px-5 py-8 sm:min-h-[520px] sm:px-10 sm:py-12">
+              <div className="absolute inset-x-0 top-0 h-28 bg-white/70" />
+              <div className="relative mx-auto grid max-w-[760px] grid-cols-2 items-end gap-4 sm:grid-cols-4 sm:gap-5">
+                {productPreviewImages.map((image, index) => (
+                  <motion.div
+                    key={image.src}
+                    className="min-w-0"
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.35 }}
+                    transition={{ delay: index * 0.08, duration: 0.45 }}
+                  >
+                    <AssetImage
+                      src={image.src}
+                      alt={image.alt}
+                      className="mx-auto h-auto w-full max-w-[160px] object-contain drop-shadow-[0_18px_28px_rgba(16,24,40,0.12)] sm:max-w-[190px]"
+                      fallback={
+                        <div className="aspect-[908/1816] w-full max-w-[160px] rounded-[30px] bg-white sm:max-w-[190px]" />
+                      }
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
           </Card>
         </motion.div>
       </div>

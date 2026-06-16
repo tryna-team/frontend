@@ -8,12 +8,12 @@ import { staggerContainer, fadeUp } from "@/lib/motion"
 import { cn } from "@/lib/utils"
 
 const placeholderColors = [
-  "bg-[#E9F4EF]",
-  "bg-[#F7EFE7]",
-  "bg-[#EEF2F7]",
-  "bg-[#F5F1E8]",
-  "bg-[#F3EEF7]",
-  "bg-[#ECF5F5]",
+  "bg-[#EFFFF7]",
+  "bg-[#F7F8F7]",
+  "bg-[#EEF5F1]",
+  "bg-[#F8F5EF]",
+  "bg-[#F2F3F4]",
+  "bg-[#ECF7F2]",
 ]
 
 export default function LifestyleRail() {

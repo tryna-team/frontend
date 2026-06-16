@@ -12,7 +12,7 @@ export default function NotFoundPage() {
     <section className="section-padding">
       <div className="section-shell">
         <div className="max-w-[560px]">
-          <p className="text-sm font-semibold text-[#4f6f62]">404</p>
+          <p className="text-sm font-semibold text-[#16754D]">404</p>
           <h1 className="mt-5 text-3xl font-semibold leading-tight tracking-normal text-foreground sm:text-4xl">
             페이지를 찾을 수 없습니다
           </h1>

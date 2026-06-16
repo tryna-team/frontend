@@ -34,7 +34,7 @@ export default function Header() {
           aria-label="tryna 홈으로 이동"
         >
           <img
-            src="/assets/logo/logo_typo_dark.svg"
+            src="/assets/logo/logo_primary_light.svg"
             alt="tryna"
             className="h-8 w-auto"
           />
@@ -59,7 +59,7 @@ export default function Header() {
               <SheetHeader>
                 <SheetTitle>
                   <img
-                    src="/assets/logo/logo_typo_dark.svg"
+                    src="/assets/logo/logo_primary_light.svg"
                     alt="tryna"
                     className="h-8 w-auto"
                   />

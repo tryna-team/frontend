@@ -23,13 +23,13 @@ export default function ApplyPage() {
         variants={staggerContainer}
       >
         <motion.div variants={fadeUp} className="max-w-[720px]">
-          <p className="text-sm font-semibold text-[#4f6f62]">Apply</p>
+          <p className="text-sm font-semibold text-[#16754D]">Apply</p>
           <h1 className="mt-5 text-3xl font-semibold leading-tight tracking-normal text-foreground sm:text-4xl">
             함께 만들 역할을 살펴보세요
           </h1>
           <p className="mt-5 text-base leading-8 text-muted-foreground sm:text-lg">
             현재{" "}
-            <span className="font-semibold text-sky-500">
+            <span className="font-semibold text-[#16754D]">
               {openPositionCount}개
             </span>
             의 포지션이 열려있습니다.

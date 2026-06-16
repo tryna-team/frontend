@@ -57,6 +57,31 @@ export const lifestyleCards = [
     src: "/assets/landing/lifestyle-06.png",
     alt: "여행이나 이동 전 준비하는 일상 이미지",
   },
+  {
+    label: "시험 전",
+    title: "준비 확인",
+    src: "/assets/landing/lifestyle-07.png",
+    alt: "시험이나 중요한 일정 전 준비를 확인하는 일상 이미지",
+  },
+]
+
+export const productPreviewImages = [
+  {
+    src: "/assets/landing/7.png",
+    alt: "tryna 월간 캘린더 화면",
+  },
+  {
+    src: "/assets/landing/4.png",
+    alt: "tryna 일정과 할 일을 함께 보는 주간 화면",
+  },
+  {
+    src: "/assets/landing/6.png",
+    alt: "tryna 일정 카드와 할 일 확인 화면",
+  },
+  {
+    src: "/assets/landing/2.png",
+    alt: "tryna 일정 입력과 챙길 일 추가 화면",
+  },
 ]
 
 export const problemCards = [
@@ -80,20 +105,20 @@ export const serviceBlocks = [
     body: "복잡한 입력 폼보다 가볍게 적고, 할 일을 확인해요",
     src: "/assets/landing/service-input.png",
     alt: "가볍게 적는 일정 이미지",
-    accent: "bg-[#E9F4EF]",
+    accent: "bg-[#EFFFF7]",
   },
   {
     title: "일정과 함께 할 일 보기",
     body: "할 일과 준비물을 따로 흩어두지 않고, 어떤 일정과 연결된 일인지 함께 보여줘요",
     src: "/assets/landing/service-task.png",
     alt: "일정 옆에 연결되는 챙길 일 이미지",
-    accent: "bg-[#F7EFE7]",
+    accent: "bg-[#F7F8F7]",
   },
   {
     title: "오늘의 일정과 할 일 한 화면에서 보기",
     body: "오늘의 일정와 할 일들을 한 화면에서 가볍게 확인해요",
     src: "/assets/landing/service-today.png",
     alt: "오늘 한 화면 서비스 방향 이미지",
-    accent: "bg-[#EEF2F7]",
+    accent: "bg-[#F3FAF6]",
   },
 ]

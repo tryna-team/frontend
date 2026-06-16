@@ -9,7 +9,7 @@ export default function RecruitingBanner() {
   return (
     <section id="recruiting" className="bg-background py-10 sm:py-14">
       <motion.div
-        className="relative min-h-[420px] overflow-hidden bg-[#dfe7e3]"
+        className="relative min-h-[420px] overflow-hidden bg-[#EAF5EF]"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.25 }}
@@ -20,14 +20,14 @@ export default function RecruitingBanner() {
           alt="tryna를 함께 만드는 팀 이미지"
           className="absolute inset-0 h-full w-full object-cover object-[68%_center]"
           fallback={
-            <div className="absolute inset-0 flex items-end justify-end bg-[#dfe7e3] p-8 text-[#1f2933]">
+            <div className="absolute inset-0 flex items-end justify-end bg-[#EAF5EF] p-8 text-foreground">
               <div className="inline-flex size-14 items-center justify-center rounded-full bg-white/70">
                 <ImageIcon className="size-6" />
               </div>
             </div>
           }
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#eef3f2]/95 via-[#eef3f2]/78 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#F1FAF6]/95 via-[#F1FAF6]/78 to-transparent" />
         <div className="section-shell relative z-10 flex min-h-[420px] items-center">
           <div className="max-w-[560px] py-14">
             <h2 className="text-3xl font-semibold leading-tight tracking-normal text-foreground sm:text-4xl">
@@ -45,7 +45,7 @@ export default function RecruitingBanner() {
               <Button
                 asChild
                 size="lg"
-                className="h-14 rounded-[6px] bg-[#3d464b] px-10 text-base text-white shadow-lg shadow-black/15 hover:bg-[#313a3f]"
+                className="h-14 rounded-[6px] bg-primary px-10 text-base font-semibold text-primary-foreground shadow-lg shadow-[#57F3A5]/10 hover:bg-[#B6F4D5]"
               >
                 <Link to="/apply">
                   지원 바로가기

@@ -31,7 +31,7 @@ export default function JobDetailPage() {
       <section className="section-padding">
         <div className="section-shell">
           <div className="max-w-[560px]">
-            <p className="text-sm font-semibold text-[#4f6f62]">Apply</p>
+            <p className="text-sm font-semibold text-[#16754D]">Apply</p>
             <h1 className="mt-5 text-3xl font-semibold leading-tight tracking-normal text-foreground sm:text-4xl">
               지원 역할을 찾을 수 없습니다
             </h1>
@@ -71,9 +71,9 @@ export default function JobDetailPage() {
         <div className="mt-16 grid gap-12 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-20">
           <article className="min-w-0 space-y-20">
             <div>
-              <p className="text-sm font-semibold text-sky-500">tryna</p>
-              <div className="mt-5 border-l-4 border-sky-100 pl-6">
-                <p className="text-lg font-semibold leading-8 text-sky-500">
+              <p className="text-sm font-semibold text-[#16754D]">tryna</p>
+              <div className="mt-5 border-l-4 border-[#C8FADF] pl-6">
+                <p className="text-lg font-semibold leading-8 text-[#16754D]">
                   {job.description ?? "상세 내용은 아직 준비 중입니다."}
                 </p>
                 <ul className="mt-5 list-disc space-y-3 pl-5 text-base leading-8 text-muted-foreground">
@@ -103,7 +103,7 @@ export default function JobDetailPage() {
               {hasExternalApplyLink ? (
                 <Button
                   asChild
-                  className="h-14 w-full rounded-[8px] bg-sky-500 text-base font-semibold text-white hover:bg-sky-600"
+                  className="h-14 w-full rounded-[8px] bg-primary text-base font-semibold text-primary-foreground hover:bg-[#B6F4D5]"
                 >
                   <a href={jobApplyLink} {...jobApplyLinkProps}>
                     지원하기
@@ -113,7 +113,7 @@ export default function JobDetailPage() {
               ) : (
                 <Button
                   disabled
-                  className="h-14 w-full rounded-[8px] bg-sky-500 text-base font-semibold text-white hover:bg-sky-500"
+                  className="h-14 w-full rounded-[8px] bg-primary text-base font-semibold text-primary-foreground hover:bg-primary"
                 >
                   {isClosed ? "모집 종료" : "지원 안내 준비 중"}
                 </Button>

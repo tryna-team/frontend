@@ -48,7 +48,7 @@ function PagePlaceholder({
         variants={staggerContainer}
       >
         <motion.div variants={fadeUp} className="max-w-[680px]">
-          <p className="text-sm font-semibold text-[#4f6f62]">{eyebrow}</p>
+          <p className="text-sm font-semibold text-[#16754D]">{eyebrow}</p>
           <h1 className="mt-5 text-3xl font-semibold leading-tight tracking-normal text-foreground sm:text-4xl">
             {title}
           </h1>

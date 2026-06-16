@@ -14,7 +14,7 @@ const icons = [Clock3, MessageSquareText, CheckCircle2]
 
 export default function ProblemContext() {
   return (
-    <section id="problem" className="bg-[#F6F7F8] section-padding">
+    <section id="problem" className="bg-[#F7F8F7] section-padding">
       <div className="section-shell grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:gap-14">
         <motion.div
           initial="hidden"
@@ -52,7 +52,7 @@ function ProblemGraphic() {
   return (
     <motion.div variants={staggerContainer} className="min-w-0">
       <Card className="overflow-hidden border-white bg-white/90 soft-shadow">
-        <CardHeader className="border-b bg-[#fbfbfa] p-4 sm:p-6">
+        <CardHeader className="border-b bg-[#FBFCFB] p-4 sm:p-6">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-muted-foreground">
@@ -62,8 +62,8 @@ function ProblemGraphic() {
                 목요일의 흐름
               </CardTitle>
             </div>
-            <div className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-[#E9F4EF] sm:size-11">
-              <ListTodo className="size-5 text-[#315947]" />
+            <div className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-[#EFFFF7] sm:size-11">
+              <ListTodo className="size-5 text-[#16754D]" />
             </div>
           </div>
         </CardHeader>

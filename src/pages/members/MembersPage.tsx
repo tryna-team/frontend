@@ -27,7 +27,7 @@ export default function MembersPage() {
         variants={staggerContainer}
       >
         <motion.div variants={fadeUp} className="max-w-[700px]">
-          <p className="text-sm font-semibold text-[#4f6f62]">Members</p>
+          <p className="text-sm font-semibold text-[#16754D]">Members</p>
           <h1 className="mt-5 text-3xl font-semibold leading-tight tracking-normal text-foreground sm:text-4xl">
             멤버소개 페이지 준비 중
           </h1>

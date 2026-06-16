@@ -30,23 +30,23 @@
 :root {
   --radius: 1.25rem;
   --background: #ffffff;
-  --foreground: #1f2933;
+  --foreground: #1d2722;
   --card: #ffffff;
-  --card-foreground: #1f2933;
+  --card-foreground: #1d2722;
   --popover: #ffffff;
-  --popover-foreground: #1f2933;
-  --primary: #111827;
-  --primary-foreground: #ffffff;
-  --secondary: #f6f7f8;
-  --secondary-foreground: #1f2933;
-  --muted: #f6f7f8;
-  --muted-foreground: #6b7280;
-  --accent: #e9f4ef;
-  --accent-foreground: #1f2933;
+  --popover-foreground: #1d2722;
+  --primary: #c7fce1;
+  --primary-foreground: #0f2118;
+  --secondary: #f7f8f7;
+  --secondary-foreground: #1d2722;
+  --muted: #f7f8f7;
+  --muted-foreground: #66736d;
+  --accent: #effff7;
+  --accent-foreground: #16754d;
   --destructive: #dc2626;
   --border: #e5e7eb;
   --input: #e5e7eb;
-  --ring: #9ca3af;
+  --ring: #57f3a5;
 }
 
 * {
@@ -82,8 +82,8 @@ a {
 }
 
 ::selection {
-  background: #cfe7dc;
-  color: #111827;
+  background: #c8fadf;
+  color: #102018;
 }
 
 .section-shell {
