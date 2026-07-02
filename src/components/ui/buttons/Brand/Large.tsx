@@ -9,9 +9,10 @@ export default function BrandButtonLarge({ children, className, ...props }: Bran
   return (
     <Button
       className={cn(
-        "relative w-[358px] h-[48px] rounded-full overflow-hidden border-none",
+        "relative w-[358px] h-12 rounded-full overflow-hidden border-none",
         "font-[Pretendard] text-[15px] font-semibold text-white",
-        "bg-white px-0",
+        "bg-white hover:bg-white px-15",
+        "active:translate-y-0 focus-visible:ring-0 focus-visible:border-transparent",
         className
       )}
       {...props}

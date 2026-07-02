@@ -9,11 +9,11 @@ export default function DefaultButtonLarge({ children, className, ...props }: De
   return (
     <Button
       className={cn(
-        "w-[358px] h-[48px] rounded-[24px]",
-        "bg-[rgba(28,22,48,0.05)] hover:bg-[rgba(28,22,48,0.08)]",
-        "shadow-[0px_0px_20px_0px_rgba(0,0,0,0.08)]",
+        "w-[358px] h-12 rounded-[24px]",
+        "bg-[rgba(28,22,48,0.05)] hover:bg-[rgba(28,22,48,0.05)]",
         "font-[Pretendard] text-[15px] font-semibold text-[#1C1630]",
-        "border-none",
+        "border-none shadow-none",
+        "active:translate-y-0 focus-visible:ring-0 focus-visible:border-transparent",
         className
       )}
       {...props}

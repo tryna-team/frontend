@@ -9,10 +9,11 @@ export default function ClearButton({ children, className, ...props }: ClearButt
   return (
     <Button
       className={cn(
-        "h-[48px] rounded-[24px] px-[24px]",
+        "h-12 rounded-[24px] px-6",
         "bg-transparent hover:bg-transparent",
         "font-[Pretendard] text-[13px] font-normal text-[#1C1630]",
         "border-none shadow-none",
+        "active:translate-y-0 focus-visible:ring-0 focus-visible:border-transparent",
         className
       )}
       {...props}
