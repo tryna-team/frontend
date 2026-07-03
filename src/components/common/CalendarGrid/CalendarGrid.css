@@ -1,4 +1,4 @@
-/* 전체 캘린더 좌우 꽉 차게 */
+
 .fc {
   width: 100%;
 }
@@ -18,7 +18,7 @@
 
 .fc-daygrid-day-frame {
   height: 93px;
-  padding: 2px 0;              /* 좌우 padding 제거, 상하만 유지 */
+  padding: 2px 0;              
   overflow: hidden;
   border-bottom: 1px solid #EDEDF2 !important;
 }
@@ -26,7 +26,7 @@
 .fc-theme-standard td,
 .fc-theme-standard th {
   border: none !important;
-  padding: 0 !important;        /* 기본 테이블 셀 여백 제거 */
+  padding: 0 !important;        
 }
 
 .fc-theme-standard .fc-scrollgrid {
@@ -57,7 +57,7 @@
 
 .fc-daygrid-event-harness {
   margin-bottom: 4px !important;
-  margin-left: 1px !important;   /* Figma 값: 좌우 1px */
+  margin-left: 1px !important;   
   margin-right: 1px !important;
 }
 
