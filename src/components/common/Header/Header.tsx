@@ -1,5 +1,3 @@
-import { ChevronLeft, Menu } from 'lucide-react';
-
 import { Button } from '@/components/ui/button';
 
 type HeaderProps = {
@@ -16,36 +14,47 @@ export default function Header({
   showMenuButton = false,
 }: HeaderProps) {
   return (
-    <header className="relative flex h-[52px] w-full max-w-[393px] items-center justify-between border-b border-[#EDEDF2] bg-white px-5">
+    <header className="relative flex h-[52px] w-full items-center justify-between border-b border-[#EDEDF2] bg-white px-5">
+      {/* Left */}
       <Button
         type="button"
         variant="ghost"
-        className="flex h-[25px] w-[104px] items-center justify-start gap-2 p-0 text-[#201A36] hover:bg-transparent"
-        aria-label="왼쪽 버튼"
+        className="flex h-[25px] basis-[104px] items-center justify-start gap-2 p-0 hover:bg-transparent"
+        aria-label="뒤로가기"
       >
-        <ChevronLeft className="h-6 w-6" strokeWidth={2.2} />
+        <img
+          src="/icon/Header_back.png"
+          alt="Back"
+          className="h-6 w-6 object-contain"
+        />
 
         {leftText && (
-          <span className="flex h-[26px] w-[72px] items-center text-[17px] font-medium leading-6 tracking-[-0.43px]">
+          <span className="flex h-[26px] w-[72px] items-center text-[17px] font-medium leading-6 tracking-[-0.43px] text-[#201A36]">
             {leftText}
           </span>
         )}
       </Button>
 
-      <h1 className="absolute left-1/2 flex h-[26px] w-[157px] -translate-x-1/2 items-center justify-center gap-[10px] text-center text-[17px] font-semibold leading-6 tracking-[-0.43px] text-[#201A36]">
+      {/* Title */}
+      <h1 className="absolute left-1/2 flex h-[26px] w-[157px] -translate-x-1/2 items-center justify-center text-center text-[17px] font-semibold leading-6 tracking-[-0.43px] text-[#201A36]">
         {title}
       </h1>
 
-      <div className="flex h-6 w-[104px] items-center justify-end gap-[10px]">
+      {/* Right */}
+      <div className="flex h-6 basis-[104px] items-center justify-end">
         {showMenuButton ? (
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-6 w-6 p-0 text-[#201A36] hover:bg-transparent"
-            aria-label="메뉴 버튼"
+            className="h-6 w-6 p-0 hover:bg-transparent"
+            aria-label="메뉴"
           >
-            <Menu className="h-6 w-6" strokeWidth={2.2} />
+            <img
+              src="/icon/Header_hamburger.png"
+              alt="Menu"
+              className="h-6 w-6 object-contain"
+            />
           </Button>
         ) : rightText ? (
           <Button
@@ -56,7 +65,9 @@ export default function Header({
           >
             {rightText}
           </Button>
-        ) : null}
+        ) : (
+          <div className="h-6 w-6" />
+        )}
       </div>
     </header>
   );
