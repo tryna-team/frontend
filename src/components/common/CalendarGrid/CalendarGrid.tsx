@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -19,29 +19,32 @@ interface CalendarGridProps {
   events: CalendarEvent[];
   selectedDate: string | null;
   onSelectDate: (date: string) => void;
-  onMonthChange?: (month: number) => void;
 }
 
-function CalendarGrid({ events, selectedDate, onSelectDate, onMonthChange }: CalendarGridProps) {
+function CalendarGrid({ events, selectedDate, onSelectDate }: CalendarGridProps) {
   const calendarRef = useRef<FullCalendar>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
 
   const handleDateClick = (arg: DateClickArg) => {
     onSelectDate(arg.dateStr);
   };
 
   const dayCellClassNames = (arg: { date: Date }) => {
-    const dateStr = arg.date.toLocaleDateString('sv-SE'); // 'YYYY-MM-DD'
+    const dateStr = arg.date.toLocaleDateString('sv-SE');
     return dateStr === selectedDate ? ['selected-date'] : [];
   };
 
   const swipeHandlers = useSwipeable({
     onSwipedLeft: () => calendarRef.current?.getApi().next(),
     onSwipedRight: () => calendarRef.current?.getApi().prev(),
-    trackMouse: true,
+    trackMouse: false,
   });
 
   return (
     <div {...swipeHandlers}>
+      <div className="calendar-header">
+        <span className="month-number">{currentMonth}</span>
+      </div>
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, interactionPlugin]}
@@ -57,8 +60,8 @@ function CalendarGrid({ events, selectedDate, onSelectDate, onMonthChange }: Cal
         dayMaxEvents={2}
         moreLinkContent={(arg: MoreLinkContentArg) => `+${arg.num}`}
         datesSet={(arg) => {
-          const currentMonth = arg.view.currentStart.getMonth() + 1;
-          onMonthChange?.(currentMonth);
+          const month = arg.view.currentStart.getMonth() + 1;
+          setCurrentMonth(month);
         }}
       />
     </div>

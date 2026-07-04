@@ -110,3 +110,20 @@
   color: #1C1630 !important;
 }
 
+.calendar-header {
+  height: 80px;
+  display: flex;
+  align-items: flex-end;
+  padding: 0;
+}
+
+.month-number {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 48px;
+  letter-spacing: -0.4px;
+  color: #1C1630;
+  width: 14.28%;      
+  text-align: center; 
+}
