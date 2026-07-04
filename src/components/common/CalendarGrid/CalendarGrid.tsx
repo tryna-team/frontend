@@ -37,7 +37,7 @@ function CalendarGrid({ events, selectedDate, onSelectDate, onMonthChange }: Cal
   const swipeHandlers = useSwipeable({
     onSwipedLeft: () => calendarRef.current?.getApi().next(),
     onSwipedRight: () => calendarRef.current?.getApi().prev(),
-    trackMouse: false,
+    trackMouse: true,
   });
 
   return (
