@@ -2,7 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
-
+@import "pretendard/dist/web/static/pretendard.css";
+@import "@fontsource/plus-jakarta-sans/700.css";
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
