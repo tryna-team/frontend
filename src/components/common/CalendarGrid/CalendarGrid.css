@@ -1,0 +1,129 @@
+
+.fc {
+  width: 100%;
+}
+.fc-daygrid-day-top {
+  display: flex;
+  justify-content: center;
+}
+.fc-col-header {
+  margin-bottom: 4px;
+}
+.fc-col-header-cell-cushion {
+  display: block;
+  text-align: center;
+  font-family: "Pretendard", sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: -0.12px;
+  color: #1C1630;
+}
+
+.fc-col-header-cell.fc-day-sat .fc-col-header-cell-cushion,
+.fc-col-header-cell.fc-day-sun .fc-col-header-cell-cushion {
+  color: rgba(28, 22, 48, 0.30);
+}
+
+.fc-scrollgrid,
+.fc-scrollgrid table {
+  width: 100% !important;
+}
+
+.fc-daygrid-day-frame {
+  height: 97px;
+  padding: 2px 0;              
+  overflow: hidden;
+  border-bottom: 1px solid #EDEDF2 !important;
+}
+
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border: none !important;
+  padding: 0 !important;        
+}
+
+.fc-theme-standard .fc-scrollgrid {
+  border: none !important;
+}
+
+.fc-daygrid-day-number {
+  color: #1C1630;
+  font-family: "Pretendard", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1; 
+  letter-spacing: -0.15px;
+  width: 22px;
+  height: 22px;
+  margin: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+.fc-day-sat .fc-daygrid-day-number {
+  color: rgba(28, 22, 48, 0.30);
+}
+.selected-date .fc-daygrid-day-number {
+  background-color: #1C1630;
+  color: white;
+}
+
+.selected-date {
+  background-color: transparent !important;
+}
+
+.fc-daygrid-event-harness {
+  margin-bottom: 4px !important;
+  margin-left: 1px !important;   
+  margin-right: 1px !important;
+}
+
+.fc-event {
+  font-size: 10px !important;
+  padding: 0 1px !important;
+  height: 15px !important;
+  line-height: 15px !important;
+  margin: 0 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.fc-daygrid-more-link {
+  font-size: 10px !important;
+  padding: 0 2px !important;
+  margin: 0 1px !important;
+  color: #1C1630 !important;
+}
+
+.fc-day-today {
+  background-color: transparent !important;
+}
+
+.fc-day-today .fc-daygrid-day-number {
+  background-color: transparent !important;
+  color: #1C1630 !important;
+}
+
+.calendar-header {
+  height: 80px;
+  display: flex;
+  align-items: flex-end;
+  padding: 0;
+}
+
+.month-number {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 48px;
+  letter-spacing: -0.4px;
+  color: #1C1630;
+  width: 14.28%;      
+  text-align: center; 
+}
