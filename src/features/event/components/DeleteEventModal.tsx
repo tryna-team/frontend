@@ -1,4 +1,4 @@
-import WarningButtonMedium from "@/components/ui/buttons/Warning/Medium";
+import WarningButtonMedium from '@/components/common/Buttons/Warning/Medium';
 
 interface DeleteEventModalProps {
   message?: string;
@@ -6,7 +6,7 @@ interface DeleteEventModalProps {
 }
 
 export default function DeleteEventModal({
-  message = "이 이벤트를 삭제하시겠습니까?",
+  message = '이 이벤트를 삭제하시겠습니까?',
   onConfirm,
 }: DeleteEventModalProps) {
   return (
