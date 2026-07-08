@@ -52,7 +52,11 @@ export default function ChecklistItem({
   onToggle,
   onDelete,
 }: ChecklistItemProps) {
-  const textStyle = disabled ? 'text-[#B8B8C2]' : 'text-[#201A36]';
+  const textStyle = disabled
+    ? 'text-[#B8B8C2]'
+    : status === 'done'
+      ? 'text-[#1C16304D]'
+      : 'text-[#201A36]';
 
   const textSize =
     variant === 'daily'
