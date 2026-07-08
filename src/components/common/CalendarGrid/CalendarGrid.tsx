@@ -22,6 +22,7 @@ interface CalendarGridProps {
   onSearchClick?: () => void;
   onViewToggleClick?: () => void;
   onSettingsClick?: () => void;
+  initialView?: string;
 }
 
 function CalendarGrid({
@@ -31,6 +32,7 @@ function CalendarGrid({
   onSearchClick,
   onViewToggleClick,
   onSettingsClick,
+  initialView = 'dayGridMonth',
 }: CalendarGridProps) {
   const calendarRef = useRef<FullCalendar>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
@@ -51,7 +53,7 @@ function CalendarGrid({
   });
 
   return (
-    <div {...swipeHandlers}>
+    <div {...swipeHandlers} className={selectedDate ? 'has-selection' : ''}>
       <div className="calendar-header">
         <span className="month-number">{currentMonth}</span>
         <div className="calendar-header-icons">
@@ -84,7 +86,7 @@ function CalendarGrid({
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth"
+        initialView={initialView}
         locale="ko"
         events={events}
         dateClick={handleDateClick}
@@ -93,7 +95,7 @@ function CalendarGrid({
         height="auto"
         headerToolbar={false}
         fixedWeekCount={false}
-        dayMaxEvents={2}
+        dayMaxEvents={3}
         moreLinkContent={(arg: MoreLinkContentArg) => `+${arg.num}`}
         datesSet={(arg) => {
           const month = arg.view.currentStart.getMonth() + 1;

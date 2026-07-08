@@ -4,6 +4,9 @@
 .fc-daygrid-day-top {
   display: flex;
   justify-content: center;
+  align-items: center;
+  height: 38px;
+  flex-shrink: 0;
 }
 .fc-col-header {
   margin-bottom: 4px;
@@ -27,7 +30,7 @@
   width: 100% !important;
 }
 .fc-daygrid-day-frame {
-  height: 97px;
+  height: 116px;
   padding: 2px 0;
   overflow: hidden;
   border-bottom: 1px solid #EDEDF2 !important;
@@ -77,19 +80,41 @@
   align-items: center !important;
 }
 .fc-daygrid-more-link {
-  font-size: 10px !important;
+  font-family: "Pretendard", sans-serif;
+  font-size: 11px !important;
+  font-weight: 400;
+  line-height: 15px;
+  letter-spacing: -0.11px;
   padding: 0 2px !important;
   margin: 0 1px !important;
-  color: #1C1630 !important;
+  color: rgba(28, 22, 48, 0.70) !important;
 }
-
-/* 오늘 날짜 / 선택된 날짜 - 통일된 회색 캡슐 스타일 */
-.selected-date,
 .fc-day-today {
   background-color: transparent !important;
 }
-.selected-date .fc-daygrid-day-number,
+
 .fc-day-today .fc-daygrid-day-number {
+  width: 100%;
+  height: 26px;
+  border-radius: 999px;
+  background-color: rgba(28, 22, 48, 0.05);
+  color: #1C1630 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 2px 0;
+}
+
+
+.has-selection .fc-day-today:not(.selected-date) .fc-daygrid-day-number {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: transparent;
+  margin: 2px;
+}
+
+.selected-date .fc-daygrid-day-number {
   width: 100%;
   height: 26px;
   border-radius: 999px;
