@@ -19,9 +19,19 @@ interface CalendarGridProps {
   events: CalendarEvent[];
   selectedDate: string | null;
   onSelectDate: (date: string) => void;
+  onSearchClick?: () => void;
+  onViewToggleClick?: () => void;
+  onSettingsClick?: () => void;
 }
 
-function CalendarGrid({ events, selectedDate, onSelectDate }: CalendarGridProps) {
+function CalendarGrid({
+  events,
+  selectedDate,
+  onSelectDate,
+  onSearchClick,
+  onViewToggleClick,
+  onSettingsClick,
+}: CalendarGridProps) {
   const calendarRef = useRef<FullCalendar>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
 
@@ -44,6 +54,32 @@ function CalendarGrid({ events, selectedDate, onSelectDate }: CalendarGridProps)
     <div {...swipeHandlers}>
       <div className="calendar-header">
         <span className="month-number">{currentMonth}</span>
+        <div className="calendar-header-icons">
+          <button
+            type="button"
+            className="icon-button"
+            onClick={onSearchClick}
+            aria-label="검색"
+          >
+            <img src="/icon/search.svg" alt="" />
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={onViewToggleClick}
+            aria-label="캘린더 뷰 전환"
+          >
+            <img src="/icon/calendar-view.svg" alt="" />
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={onSettingsClick}
+            aria-label="설정"
+          >
+            <img src="/icon/settings.svg" alt="" />
+          </button>
+        </div>
       </div>
       <FullCalendar
         ref={calendarRef}
