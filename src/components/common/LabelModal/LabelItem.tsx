@@ -1,5 +1,3 @@
-// src/components/common/LabelModal/LabelItem.tsx
-
 type LabelItemProps = {
   label: string;
   isCreate?: boolean;
@@ -22,9 +20,11 @@ export default function LabelItem({
       </span>
 
       {isCreate && (
-        <span className="text-[24px] font-normal leading-none text-[#201A36]">
-          ›
-        </span>
+        <img
+          src="/icon/Label_right.png"
+          alt=""
+          className="h-5 w-5 object-contain"
+        />
       )}
     </button>
   );

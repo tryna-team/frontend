@@ -1,5 +1,3 @@
-// src/components/common/LabelModal/LabelModal.tsx
-
 import LabelItem from './LabelItem';
 
 type LabelItemData = {
