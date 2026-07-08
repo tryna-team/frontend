@@ -1,3 +1,5 @@
+// src/components/common/Checklist/ChecklistItem.tsx
+
 type ChecklistVariant = 'create' | 'event-view' | 'daily';
 
 type ChecklistStatus = 'default' | 'done';
