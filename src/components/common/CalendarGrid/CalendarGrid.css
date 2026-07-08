@@ -58,13 +58,6 @@
 .fc-day-sat .fc-daygrid-day-number {
   color: rgba(28, 22, 48, 0.30);
 }
-.selected-date .fc-daygrid-day-number {
-  background-color: #1C1630;
-  color: white;
-}
-.selected-date {
-  background-color: transparent !important;
-}
 .fc-daygrid-event-harness {
   margin-bottom: 4px !important;
   margin-left: 1px !important;
@@ -89,13 +82,25 @@
   margin: 0 1px !important;
   color: #1C1630 !important;
 }
+
+/* 오늘 날짜 / 선택된 날짜 - 통일된 회색 캡슐 스타일 */
+.selected-date,
 .fc-day-today {
   background-color: transparent !important;
 }
+.selected-date .fc-daygrid-day-number,
 .fc-day-today .fc-daygrid-day-number {
-  background-color: transparent !important;
+  width: 100%;
+  height: 26px;
+  border-radius: 999px;
+  background-color: rgba(28, 22, 48, 0.05);
   color: #1C1630 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 2px 0;
 }
+
 .calendar-header {
   box-sizing: border-box;
   display: flex;
