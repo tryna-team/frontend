@@ -23,7 +23,7 @@ export default function Header({
         aria-label="뒤로가기"
       >
         <img
-          src="/icon/Header_back.png"
+          src="public/icon/chevron/left_medium.svg"
           alt="Back"
           className="h-6 w-6 object-contain"
         />
@@ -51,7 +51,7 @@ export default function Header({
             aria-label="메뉴"
           >
             <img
-              src="/icon/Header_hamburger.png"
+              src="public/icon/icons/hamburger_medium.svg"
               alt="Menu"
               className="h-6 w-6 object-contain"
             />
