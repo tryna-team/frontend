@@ -1,19 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-interface ClearButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface SmallDefaultButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children?: React.ReactNode;
 }
 
-export default function ClearButton({ children, className, ...props }: ClearButtonProps) {
+export default function SmallDefaultButton({ children, className, ...props }: SmallDefaultButtonProps) {
   return (
     <Button
       className={cn(
-        "h-12 rounded-[24px] px-6",
+        "h-auto rounded-none px-0.5 py-0",
         "bg-transparent hover:bg-transparent",
-        "font-[Pretendard] text-[13px] font-normal text-[#1C1630]",
+        "default-body-medium text-text-additional",
         "border-none shadow-none",
         "active:translate-y-0 focus-visible:ring-0 focus-visible:border-transparent",
+        "disabled:text-text-disable disabled:opacity-100",
         className
       )}
       {...props}
