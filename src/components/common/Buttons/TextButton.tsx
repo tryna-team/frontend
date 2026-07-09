@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 const textButtonVariants = cva(
   [
     "border-none shadow-none",
-    "active:translate-y-0 focus-visible:ring-0 focus-visible:border-transparent",
+    "active:translate-y-0",
     "disabled:text-text-disable disabled:opacity-100",
   ],
   {
@@ -79,10 +79,12 @@ export default function TextButton({
   textSize,
   textColor,
   bgColor,
+  type,
   ...props
 }: TextButtonProps) {
   return (
     <Button
+      type={type ?? "button"}
       className={cn(textButtonVariants({ size, width, textSize, textColor, bgColor }), className)}
       {...props}
     >

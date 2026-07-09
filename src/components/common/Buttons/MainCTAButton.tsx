@@ -17,7 +17,7 @@ export default function MainCTAButton({
         "size-16 rounded-medium p-1.5",
         "bg-transparent hover:bg-transparent",
         "border-none shadow-none",
-        "active:translate-y-0 focus-visible:ring-0 focus-visible:border-transparent",
+        "active:translate-y-0",
         className
       )}
       {...props}
