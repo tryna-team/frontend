@@ -1,8 +1,8 @@
-// src/components/common/Checklist/ChecklistItem.tsx
-
 type ChecklistVariant = 'create' | 'event-view' | 'daily';
 
-type ChecklistStatus = 'default' | 'done';
+type ChecklistStatus = 'default' | 'done' | 'add';
+
+type ChecklistSize = 'medium' | 'small';
 
 type ChecklistItemProps = {
   label: string;
@@ -15,32 +15,34 @@ type ChecklistItemProps = {
   onDelete?: () => void;
 };
 
-const CHECKBOX_ICON = {
-  create: {
-    default: '/icon/checkbox_default.png',
-    done: '/icon/checkbox_done.png',
+const RADIO_ICON = {
+  medium: {
+    default: 'public/icon/radio_button/default_medium.svg',
+    done: 'public/icon/radio_button/done_medium.svg',
+    add: 'public/icon/radio_button/add_medium.svg',
   },
-  'event-view': {
-    default: '/icon/todo_default_medium.png',
-    done: '/icon/todo_done_medium.png',
-  },
-  daily: {
-    default: '/icon/todo_default_small.png',
-    done: '/icon/todo_done_small.png',
+  small: {
+    default: 'public/icon/radio_button/default_small.svg',
+    done: 'public/icon/radio_button/done_small.svg',
+    add: 'public/icon/radio_button/add_small.svg',
   },
 } as const;
 
 const ICON_SIZE = {
-  create: 'h-5 w-5',
-  'event-view': 'h-6 w-6',
-  daily: 'h-5 w-5',
+  medium: 'h-6 w-6',
+  small: 'h-5 w-5',
 } as const;
 
 const BUTTON_SIZE = {
-  create: 'h-6 w-6',
-  'event-view': 'h-6 w-6',
-  daily: 'h-5 w-5',
+  medium: 'h-6 w-6',
+  small: 'h-5 w-5',
 } as const;
+
+const VARIANT_SIZE: Record<ChecklistVariant, ChecklistSize> = {
+  create: 'medium',
+  'event-view': 'medium',
+  daily: 'small',
+};
 
 export default function ChecklistItem({
   label,
@@ -52,6 +54,8 @@ export default function ChecklistItem({
   onToggle,
   onDelete,
 }: ChecklistItemProps) {
+  const size = VARIANT_SIZE[variant];
+
   const textStyle = disabled
     ? 'text-[#B8B8C2]'
     : status === 'done'
@@ -77,13 +81,13 @@ export default function ChecklistItem({
             type="button"
             onClick={onToggle}
             disabled={disabled}
-            className={`flex shrink-0 items-center justify-center p-0 disabled:cursor-default ${BUTTON_SIZE[variant]}`}
+            className={`flex shrink-0 items-center justify-center p-0 disabled:cursor-default ${BUTTON_SIZE[size]}`}
             aria-label={`${label} 체크 상태 변경`}
           >
             <img
-              src={CHECKBOX_ICON[variant][status]}
+              src={RADIO_ICON[size][status]}
               alt=""
-              className={`${ICON_SIZE[variant]} shrink-0 object-contain`}
+              className={`${ICON_SIZE[size]} shrink-0 object-contain`}
             />
           </button>
 

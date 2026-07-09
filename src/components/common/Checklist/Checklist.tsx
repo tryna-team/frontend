@@ -1,10 +1,8 @@
-// src/components/common/Checklist/Checklist.tsx
-
 import ChecklistItem from './ChecklistItem';
 
 type ChecklistVariant = 'create' | 'event-view' | 'daily';
 
-type ChecklistStatus = 'default' | 'done';
+type ChecklistStatus = 'default' | 'done' | 'add';
 
 type ChecklistItemData = {
   id: string;
