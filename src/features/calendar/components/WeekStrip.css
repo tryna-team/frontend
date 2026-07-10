@@ -16,6 +16,8 @@
   border: none;
   cursor: pointer;
   padding: 0;
+  width: 40px;
+  flex-shrink: 0;
 }
 
 .week-strip-label {
@@ -24,11 +26,6 @@
   font-weight: 400;
   line-height: 16px;
   letter-spacing: -0.12px;
-  color: #1C1630;
-}
-
-.week-strip-label.is-sat,
-.week-strip-label.is-sun {
   color: rgba(28, 22, 48, 0.30);
 }
 
@@ -38,17 +35,12 @@
   font-weight: 600;
   letter-spacing: -0.15px;
   color: #1C1630;
-  width: 100%;
+  width: 40px;
   height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-}
-
-.week-strip-date.is-sat,
-.week-strip-date.is-sun {
-  color: rgba(28, 22, 48, 0.30);
 }
 
 .week-strip-date.is-active {
