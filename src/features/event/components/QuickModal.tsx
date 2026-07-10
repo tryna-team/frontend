@@ -1,13 +1,15 @@
-import WarningButtonMedium from "@/components/common/Buttons/Warning/Medium";
+import TextButton from "@/components/common/Buttons/TextButton";
 
 interface QuickModalProps {
   message?: string;
+  confirmText?: string;
   onConfirm: () => void;
   onClose: () => void;
 }
 
 export default function QuickModal({
   message = "이 이벤트를 삭제하시겠습니까?",
+  confirmText = "이벤트 삭제",
   onConfirm,
   onClose,
 }: QuickModalProps) {
@@ -22,9 +24,16 @@ export default function QuickModal({
           </p>
         </div>
         <div className="flex flex-col items-start px-6 w-full">
-          <WarningButtonMedium className="w-full" onClick={onConfirm}>
-            이벤트 삭제
-          </WarningButtonMedium>
+          <TextButton
+            size="large"
+            width="regular"
+            textSize="strong"
+            textColor="warning"
+            className="w-full"
+            onClick={onConfirm}
+          >
+            {confirmText}
+          </TextButton>
         </div>
       </div>
     </>
