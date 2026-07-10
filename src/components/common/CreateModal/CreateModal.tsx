@@ -1,5 +1,3 @@
-// src/components/common/CreateModal/CreateModal.tsx
-
 import ChecklistItem from '@/components/common/Checklist/ChecklistItem';
 
 type ChecklistItemData = {
@@ -15,7 +13,7 @@ type CreateModalProps = {
   message?: string;
   checklistItems?: ChecklistItemData[];
   onInputChange?: (value: string) => void;
-  onOpenCalendar?: () => void;
+  onOpenCalender?: () => void;
   onOpenLabel?: () => void;
   onToggleChecklist?: (id: string) => void;
   onDeleteChecklist?: (id: string) => void;
@@ -28,7 +26,7 @@ export default function CreateModal({
   message = '',
   checklistItems = [],
   onInputChange,
-  onOpenCalendar,
+  onOpenCalender,
   onOpenLabel,
   onToggleChecklist,
   onDeleteChecklist,
@@ -48,7 +46,7 @@ export default function CreateModal({
           />
 
           {/* TODO: 공용 Button 컴포넌트 구현 후 교체 */}
-          <span className="flex h-9 w-[74px] shrink-0 items-center justify-center gap-3 px-6 text-[15px] font-semibold leading-[22px] tracking-[-0.15px] text-[rgba(28,22,48,0.30)]">
+          <span className="box-border flex h-9 w-[74px] shrink-0 items-center justify-center whitespace-nowrap text-[15px] font-semibold leading-[22px] tracking-[-0.15px] text-[#1C1630]">
             전송
           </span>
         </div>
@@ -108,7 +106,7 @@ export default function CreateModal({
             />
 
             {/* TODO: 공용 Button 컴포넌트 구현 후 교체 */}
-            <span className="flex h-9 w-[74px] shrink-0 items-center justify-center gap-3 px-6 text-[15px] font-semibold leading-[22px] tracking-[-0.15px] text-[rgba(28,22,48,0.30)]">
+            <span className="box-border flex h-9 w-[74px] shrink-0 items-center justify-center whitespace-nowrap text-[15px] font-semibold leading-[22px] tracking-[-0.15px] text-[#1C1630]">
               전송
             </span>
           </div>
@@ -118,12 +116,12 @@ export default function CreateModal({
       <div className="flex w-full items-center gap-4 px-1 py-1">
         <button
           type="button"
-          onClick={onOpenCalendar}
+          onClick={onOpenCalender}
           className="flex items-center gap-1 bg-transparent p-0 text-center text-[12px] font-normal leading-4 tracking-[-0.12px] text-[rgba(28,22,48,0.70)]"
           aria-label="날짜 및 반복 설정"
         >
           <img
-            src="public/icon/icons/calendar_small.svg"
+            src="public/icon/icons/calender_small.svg"
             alt=""
             className="h-5 w-5 shrink-0 object-contain"
           />
