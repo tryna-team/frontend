@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { ShadcnButton } from '@/components/ui/shadcnButton';
 
 type HeaderProps = {
   title: string;
@@ -16,7 +16,7 @@ export default function Header({
   return (
     <header className="relative flex h-[52px] w-full items-center justify-between border-b border-[#EDEDF2] bg-white px-5">
       {/* Left */}
-      <Button
+      <ShadcnButton
         type="button"
         variant="ghost"
         className="flex h-[25px] basis-[104px] items-center justify-start gap-2 p-0 hover:bg-transparent"
@@ -33,7 +33,7 @@ export default function Header({
             {leftText}
           </span>
         )}
-      </Button>
+      </ShadcnButton>
 
       {/* Title */}
       <h1 className="absolute left-1/2 flex h-[26px] w-[157px] -translate-x-1/2 items-center justify-center text-center text-[17px] font-semibold leading-6 tracking-[-0.43px] text-[#201A36]">
@@ -43,7 +43,7 @@ export default function Header({
       {/* Right */}
       <div className="flex h-6 basis-[104px] items-center justify-end">
         {showMenuButton ? (
-          <Button
+          <ShadcnButton
             type="button"
             variant="ghost"
             size="icon"
@@ -55,16 +55,16 @@ export default function Header({
               alt="Menu"
               className="h-6 w-6 object-contain"
             />
-          </Button>
+          </ShadcnButton>
         ) : rightText ? (
-          <Button
+          <ShadcnButton
             type="button"
             variant="ghost"
             className="h-6 w-[104px] justify-end p-0 text-[17px] font-medium leading-6 tracking-[-0.43px] text-[#201A36] hover:bg-transparent"
             aria-label="오른쪽 버튼"
           >
             {rightText}
-          </Button>
+          </ShadcnButton>
         ) : (
           <div className="h-6 w-6" />
         )}
