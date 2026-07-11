@@ -149,3 +149,8 @@
   letter-spacing: -0.11px;
   color: rgba(28, 22, 48, 0.70);
 }
+
+.schedule-card-checkbox:focus-visible {
+  outline: 2px solid #1C1630;
+  outline-offset: 2px;
+}

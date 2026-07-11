@@ -2,11 +2,12 @@ import { useState } from 'react';
 import WeekStrip from '@/features/calendar/components/WeekStrip';
 import ScheduleCard from '@/features/calendar/components/ScheduleCard';
 import ScheduleBanner from '@/features/calendar/components/ScheduleBanner';
+import type { CategoryColor } from '@/features/calendar/types';
 import './DailyPage.css';
 
 interface ScheduleItem {
   id: string;
-  categoryColor: 'apricot' | 'blue' | 'green' | 'pink' | 'purple' | 'yellow';
+  categoryColor: CategoryColor;
   title: string;
   location: string;
   startTime: string;
@@ -22,7 +23,7 @@ interface ScheduleItem {
 
 interface BannerItem {
   id: string;
-  categoryColor: 'apricot' | 'blue' | 'green' | 'pink' | 'purple' | 'yellow';
+  categoryColor: CategoryColor;
   title: string;
   dateText: string;
   date: string;

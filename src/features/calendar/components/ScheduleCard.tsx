@@ -1,3 +1,4 @@
+import type { CategoryColor } from '@/features/calendar/types';
 import './ScheduleCard.css';
 
 interface ChecklistItem {
@@ -5,8 +6,6 @@ interface ChecklistItem {
   text: string;
   checked: boolean;
 }
-
-type CategoryColor = 'apricot' | 'blue' | 'green' | 'pink' | 'purple' | 'yellow';
 
 interface LinkedSchedule {
   date: string;   // "오늘" 또는 "6월 30일" 등
@@ -22,8 +21,8 @@ interface ScheduleCardProps {
   endTime: string;
   checklist?: ChecklistItem[];
   onToggleItem?: (itemId: string) => void;
-  linkedSchedule?: LinkedSchedule;       // 실행 항목일 때만 전달
-  onLinkedScheduleClick?: () => void;    // 클릭 시 원래 일정 상세로 이동
+  linkedSchedule?: LinkedSchedule;
+  onLinkedScheduleClick?: () => void;
 }
 
 function ScheduleCard({
@@ -57,22 +56,35 @@ function ScheduleCard({
         </div>
       </div>
 
-{linkedSchedule && (
-  <button
-    type="button"
-    className="schedule-card-linked"
-    onClick={onLinkedScheduleClick}
-  >
-    <img
-  src="/icon/icons/linked_small.svg"
-  alt=""
-  className="schedule-card-linked-icon"
-/>
-    <span className="schedule-card-linked-text">
-      {linkedSchedule.date} {linkedSchedule.time} {linkedSchedule.title}
-    </span>
-  </button>
-)}
+      {linkedSchedule && (
+        onLinkedScheduleClick ? (
+          <button
+            type="button"
+            className="schedule-card-linked"
+            onClick={onLinkedScheduleClick}
+          >
+            <img
+              src="/icon/icons/linked_small.svg"
+              alt=""
+              className="schedule-card-linked-icon"
+            />
+            <span className="schedule-card-linked-text">
+              {linkedSchedule.date} {linkedSchedule.time} {linkedSchedule.title}
+            </span>
+          </button>
+        ) : (
+          <div className="schedule-card-linked">
+            <img
+              src="/icon/icons/linked_small.svg"
+              alt=""
+              className="schedule-card-linked-icon"
+            />
+            <span className="schedule-card-linked-text">
+              {linkedSchedule.date} {linkedSchedule.time} {linkedSchedule.title}
+            </span>
+          </div>
+        )
+      )}
 
       {checklist.length > 0 && (
         <ul className="schedule-card-checklist">

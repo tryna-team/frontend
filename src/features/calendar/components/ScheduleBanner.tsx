@@ -1,11 +1,10 @@
+import type { CategoryColor } from '@/features/calendar/types';
 import './ScheduleBanner.css';
-
-type CategoryColor = 'apricot' | 'blue' | 'green' | 'pink' | 'purple' | 'yellow';
 
 interface ScheduleBannerProps {
   categoryColor?: CategoryColor;
   title: string;
-  dateText: string; // "하루" 또는 "N일차" — 계산 로직은 부모에서 처리
+  dateText: string; // "하루" 또는 "N일차"
   onClick?: () => void;
 }
 
