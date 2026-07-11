@@ -1,38 +1,40 @@
-import LabelItem from './LabelItem';
+import LabelItem, {
+  type LabelColor,
+} from './LabelItem';
 
-type LabelItemData = {
-  id: string;
+export type LabelItemData = {
+  id: number;
   label: string;
+  color: LabelColor;
 };
 
 type LabelModalProps = {
-  labels: LabelItemData[];
-  onSelectLabel?: (id: string) => void;
+  labels?: LabelItemData[];
+  onSelectLabel?: (id: number) => void;
   onCreateLabel?: () => void;
 };
 
 export default function LabelModal({
-  labels,
+  labels = [],
   onSelectLabel,
   onCreateLabel,
 }: LabelModalProps) {
   return (
-    <section className="w-[200px] rounded-[20px] bg-white py-3 shadow-[0_8px_24px_rgba(28,22,48,0.16)]">
-      <div className="flex flex-col">
-        {labels.map((item) => (
-          <LabelItem
-            key={item.id}
-            label={item.label}
-            onClick={() => onSelectLabel?.(item.id)}
-          />
-        ))}
-
+    <section className="flex w-[200px] flex-col items-start justify-center rounded-[16px] bg-white py-3 shadow-[0_0_20px_0_rgba(0,0,0,0.08)]">
+      {labels.map((item) => (
         <LabelItem
-          label="새로운 그룹"
-          isCreate
-          onClick={onCreateLabel}
+          key={item.id}
+          type="color"
+          label={item.label}
+          color={item.color}
+          onClick={() => onSelectLabel?.(item.id)}
         />
-      </div>
+      ))}
+
+      <LabelItem
+        type="create"
+        onClick={onCreateLabel}
+      />
     </section>
   );
 }
