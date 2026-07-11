@@ -33,7 +33,7 @@ function ScheduleCard({
         <div className="schedule-card-left">
           <div className="schedule-card-title">
             <img
-              src={`/icon/alert_indicator/dot_${categoryColor}.png`}
+              src={`/icon/alert_indicator/dot_${categoryColor}.svg`}
               alt=""
               className="schedule-card-dot"
             />
@@ -60,8 +60,8 @@ function ScheduleCard({
                 <img
                   src={
                     item.checked
-                      ? '/icon/radio_button/done_medium.png'
-                      : '/icon/radio_button/default_medium.png'
+                      ? '/icon/radio_button/done_medium.svg'
+                      : '/icon/radio_button/default_medium.svg'
                   }
                   alt=""
                 />
