@@ -1,9 +1,11 @@
-import ChecklistItem from '@/components/common/Checklist/ChecklistItem';
+import ChecklistItem, {
+  type ChecklistStatus,
+} from '@/components/common/Checklist/ChecklistItem';
 
 type ChecklistItemData = {
-  id: string;
+  id: number;
   label: string;
-  status?: 'default' | 'done' | 'add';
+  status?: ChecklistStatus;
 };
 
 type CreateModalProps = {
@@ -15,8 +17,9 @@ type CreateModalProps = {
   onInputChange?: (value: string) => void;
   onOpenCalender?: () => void;
   onOpenLabel?: () => void;
-  onToggleChecklist?: (id: string) => void;
-  onDeleteChecklist?: (id: string) => void;
+  onAddChecklist?: () => void;
+  onToggleChecklist?: (id: number) => void;
+  onDeleteChecklist?: (id: number) => void;
 };
 
 export default function CreateModal({
@@ -28,6 +31,7 @@ export default function CreateModal({
   onInputChange,
   onOpenCalender,
   onOpenLabel,
+  onAddChecklist,
   onToggleChecklist,
   onDeleteChecklist,
 }: CreateModalProps) {
@@ -36,7 +40,7 @@ export default function CreateModal({
   return (
     <section className="flex w-full max-w-[385px] flex-col items-start gap-0.5 rounded-[24px] border border-[rgba(28,22,48,0.05)] bg-white p-3">
       {!isRecommendMode && (
-        <div className="flex w-full items-center justify-between pl-2">
+        <div className="flex w-full items-center justify-between self-stretch pl-2">
           <input
             type="text"
             value={inputValue}
@@ -59,6 +63,7 @@ export default function CreateModal({
               <span className="bg-gradient-to-l from-[#29C878] to-[#32E089] bg-clip-text text-[15px] font-semibold leading-[22px] tracking-[-0.15px] text-transparent">
                 {keyword}
               </span>
+
               {message}
             </p>
           </div>
@@ -68,14 +73,18 @@ export default function CreateModal({
           <div className="flex w-full flex-col">
             {checklistItems.map((item) => (
               <div key={item.id}>
-                <div className="py-2">
+                <div className="flex h-[46px] w-full items-center justify-between py-3 pr-1">
                   <ChecklistItem
                     label={item.label}
-                    status={item.status}
-                    variant="create"
-                    deletable
-                    onToggle={() => onToggleChecklist?.(item.id)}
-                    onDelete={() => onDeleteChecklist?.(item.id)}
+                    status={item.status ?? 'add'}
+                    iconSize="medium"
+                    trailing={{
+                      type: 'delete',
+                      onClick: () => onDeleteChecklist?.(item.id),
+                    }}
+                    onLeadingClick={() =>
+                      onToggleChecklist?.(item.id)
+                    }
                   />
                 </div>
 
@@ -83,24 +92,24 @@ export default function CreateModal({
               </div>
             ))}
 
-            <div className="flex h-[46px] w-full items-center gap-2 border-t border-[rgba(28,22,48,0.05)] bg-white py-3">
-              <img
-                src="public/icon/icons/plus_small.svg"
-                alt=""
-                className="h-5 w-5 shrink-0 object-contain"
+            <div className="flex h-[46px] w-full items-center py-3">
+              <ChecklistItem
+                label="직접 추가"
+                status="plus"
+                iconSize="small"
+                trailing={{ type: 'none' }}
+                onLeadingClick={onAddChecklist}
               />
-
-              <span className="text-[15px] font-medium leading-[22px] tracking-[-0.15px] text-[rgba(28,22,48,0.30)]">
-                직접 추가
-              </span>
             </div>
           </div>
 
-          <div className="mt-6 flex w-full items-center justify-between pl-2">
+          <div className="flex w-full items-center justify-between self-stretch pl-2">
             <input
               type="text"
               value={inputValue}
-              onChange={(event) => onInputChange?.(event.target.value)}
+              onChange={(event) =>
+                onInputChange?.(event.target.value)
+              }
               placeholder="어떤 일 인가요?"
               className="h-9 min-w-0 flex-1 bg-transparent text-[15px] font-medium leading-[22px] tracking-[-0.15px] text-[#1C1630] outline-none placeholder:text-[rgba(28,22,48,0.30)]"
             />
