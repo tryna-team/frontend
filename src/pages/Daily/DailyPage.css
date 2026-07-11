@@ -4,6 +4,12 @@
   background-color: #FFFFFF;
 }
 
+.daily-page-banners {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 .daily-page-content {
   display: flex;
   flex-direction: column;
