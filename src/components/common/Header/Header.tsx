@@ -1,74 +1,168 @@
-import { Button } from '@/components/ui/button';
+type HeaderVariant = 'daily' | 'bottom-sheet';
+
+type HeaderLeading =
+  | { type: 'none'; }
+  | {
+      type: 'icon';
+      onClick?: () => void;
+    }
+  | {
+      type: 'icon-text';
+      text: string;
+      onClick?: () => void;
+    };
+
+type HeaderTrailing =
+  | { type: 'none'; }
+  | {
+      type: 'menu';
+      onClick?: () => void;
+    }
+  | {
+      type: 'text';
+      text: string;
+      onClick?: () => void;
+    };
 
 type HeaderProps = {
-  title: string;
-  leftText?: string;
-  rightText?: string;
-  showMenuButton?: boolean;
+  variant?: HeaderVariant;
+  title?: string;
+  leading?: HeaderLeading;
+  trailing?: HeaderTrailing;
 };
 
+const HEADER_STYLE = {
+  daily: {
+    container:
+      'flex h-[42px] w-[393px] items-center justify-between bg-background-white px-margin-small',
+    leadingSlot:
+      'flex h-full w-[104px] shrink-0 items-center justify-start',
+    leadingContent: 'flex h-[25px] items-center gap-small',
+    title:
+      'flex h-[26px] min-w-0 flex-1 items-center justify-center gap-[10px] text-center text-text-default default-body-strong-large',
+    trailingSlot:
+      'flex h-full w-[104px] shrink-0 items-center justify-end self-stretch py-2',
+  },
+
+  'bottom-sheet': {
+    container:
+      'flex w-[353px] items-center justify-between bg-background-white',
+    leadingSlot:
+      'flex w-[74px] shrink-0 items-center gap-[10px]',
+    leadingContent: 'flex items-center gap-[10px]',
+    title:
+      'min-w-0 flex-1 truncate text-center text-text-default default-heading-small',
+    trailingSlot:
+      'flex w-[74px] shrink-0 items-center justify-end',
+  },
+} as const;
+
+const HEADER_ICON = {
+  daily: {
+    leading: '/icon/chevron/left_medium.svg',
+    menu: '/icon/icons/hamburger_medium.svg',
+  },
+
+  'bottom-sheet': {
+    leading: '/icon/chevron/left_small.svg',
+    menu: '/icon/icons/hamburger_medium.svg',
+  },
+} as const;
+
 export default function Header({
-  title,
-  leftText,
-  rightText,
-  showMenuButton = false,
+  variant = 'daily',
+  title = '',
+  leading = { type: 'none' },
+  trailing = { type: 'none' },
 }: HeaderProps) {
-  return (
-    <header className="relative flex h-[52px] w-full items-center justify-between border-b border-[#EDEDF2] bg-white px-5">
-      {/* Left */}
-      <Button
+  const style = HEADER_STYLE[variant];
+  const icon = HEADER_ICON[variant];
+
+  const renderLeading = () => {
+    if (leading.type === 'none') {
+      return null;
+    }
+
+    return (
+      <button
         type="button"
-        variant="ghost"
-        className="flex h-[25px] basis-[104px] items-center justify-start gap-2 p-0 hover:bg-transparent"
-        aria-label="뒤로가기"
+        onClick={leading.onClick}
+        className={`${style.leadingContent} border-0 bg-transparent p-0`}
       >
         <img
-          src="public/icon/chevron/left_medium.svg"
-          alt="Back"
-          className="h-6 w-6 object-contain"
+          src={icon.leading}
+          alt=""
+          className="block shrink-0 object-contain"
         />
 
-        {leftText && (
-          <span className="flex h-[26px] w-[72px] items-center text-[17px] font-medium leading-6 tracking-[-0.43px] text-[#201A36]">
-            {leftText}
+        {leading.type === 'icon-text' && (
+          <span className="whitespace-nowrap text-text-default default-body-large">
+            {leading.text}
           </span>
         )}
-      </Button>
+      </button>
+    );
+  };
 
-      {/* Title */}
-      <h1 className="absolute left-1/2 flex h-[26px] w-[157px] -translate-x-1/2 items-center justify-center text-center text-[17px] font-semibold leading-6 tracking-[-0.43px] text-[#201A36]">
-        {title}
-      </h1>
+  const renderTrailing = () => {
+    if (trailing.type === 'none') {
+      return null;
+    }
 
-      {/* Right */}
-      <div className="flex h-6 basis-[104px] items-center justify-end">
-        {showMenuButton ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 p-0 hover:bg-transparent"
-            aria-label="메뉴"
+    if (trailing.type === 'menu') {
+      return (
+        <button
+          type="button"
+          onClick={trailing.onClick}
+          className="flex items-center justify-center border-0 bg-transparent p-0"
+        >
+          <img
+            src={icon.menu}
+            alt=""
+            className="block shrink-0 object-contain"
+          />
+        </button>
+      );
+    }
+
+    if (variant === 'daily') {
+      return (
+        <>
+          {/* TODO: 공용 Button 컴포넌트 구현 후 교체 */}
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={trailing.onClick}
+            className="cursor-pointer whitespace-nowrap text-text-default default-body-large"
           >
-            <img
-              src="public/icon/icons/hamburger_medium.svg"
-              alt="Menu"
-              className="h-6 w-6 object-contain"
-            />
-          </Button>
-        ) : rightText ? (
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-6 w-[104px] justify-end p-0 text-[17px] font-medium leading-6 tracking-[-0.43px] text-[#201A36] hover:bg-transparent"
-            aria-label="오른쪽 버튼"
-          >
-            {rightText}
-          </Button>
-        ) : (
-          <div className="h-6 w-6" />
-        )}
-      </div>
+            {trailing.text}
+          </span>
+        </>
+      );
+    }
+
+    return (
+      <>
+        {/* TODO: 공용 Button 컴포넌트 구현 후 교체 */}
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={trailing.onClick}
+          className="box-border flex h-9 w-[74px] cursor-pointer items-center justify-center gap-medium whitespace-nowrap px-6 text-text-default default-body-strong-medium"
+        >
+          {trailing.text}
+        </span>
+      </>
+    );
+  };
+
+  return (
+    <header className={style.container}>
+      <div className={style.leadingSlot}>{renderLeading()}</div>
+
+      <h1 className={style.title}>{title}</h1>
+
+      <div className={style.trailingSlot}>{renderTrailing()}</div>
     </header>
   );
 }
