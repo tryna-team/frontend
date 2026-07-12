@@ -1,0 +1,156 @@
+.schedule-card {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  border-radius: 24px;
+  background-color: #FFFFFF;
+  background-image: linear-gradient(
+    0deg,
+    rgba(28, 22, 48, 0.02) 0%,
+    rgba(28, 22, 48, 0.02) 100%
+  );
+}
+
+.schedule-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.schedule-card-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.schedule-card-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.schedule-card-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+}
+
+.schedule-card-title-text {
+  font-family: "Pretendard", sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1C1630;
+}
+
+.schedule-card-time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.schedule-card-time-start {
+  font-family: "Pretendard", sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.13px;
+  color: #1C1630;
+}
+
+.schedule-card-time-end {
+  font-family: "Pretendard", sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.13px;
+  color: rgba(28, 22, 48, 0.30);
+}
+
+.schedule-card-location {
+  display: block;
+  font-family: "Pretendard", sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.13px;
+  color: rgba(28, 22, 48, 0.30);
+  margin: 0;
+}
+
+.schedule-card-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.schedule-card-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.schedule-card-checkbox {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.schedule-card-checkbox img {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
+.schedule-card-checklist-text {
+  font-family: "Pretendard", sans-serif;
+  font-size: 14px;
+  color: #1C1630;
+}
+
+.schedule-card-checklist-text.is-checked {
+  color: rgba(28, 22, 48, 0.4);
+}
+.schedule-card-linked {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.schedule-card-linked-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.schedule-card-linked-text {
+  font-family: "Pretendard", sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 15px;
+  letter-spacing: -0.11px;
+  color: rgba(28, 22, 48, 0.70);
+}
+
+.schedule-card-checkbox:focus-visible {
+  outline: 2px solid #1C1630;
+  outline-offset: 2px;
+}
