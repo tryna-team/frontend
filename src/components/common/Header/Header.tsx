@@ -1,7 +1,7 @@
-type HeaderVariant = 'daily' | 'bottom-sheet';
+type HeaderVariant = 'daily' | 'modal';
 
 type HeaderLeading =
-  | { type: 'none'; }
+  | { type: 'none' }
   | {
       type: 'icon';
       onClick?: () => void;
@@ -13,7 +13,7 @@ type HeaderLeading =
     };
 
 type HeaderTrailing =
-  | { type: 'none'; }
+  | { type: 'none' }
   | {
       type: 'menu';
       onClick?: () => void;
@@ -44,7 +44,7 @@ const HEADER_STYLE = {
       'flex h-full w-[104px] shrink-0 items-center justify-end self-stretch py-2',
   },
 
-  'bottom-sheet': {
+  modal: {
     container:
       'flex w-[353px] items-center justify-between bg-background-white',
     leadingSlot:
@@ -63,7 +63,7 @@ const HEADER_ICON = {
     menu: '/icon/icons/hamburger_medium.svg',
   },
 
-  'bottom-sheet': {
+  modal: {
     leading: '/icon/chevron/left_small.svg',
     menu: '/icon/icons/hamburger_medium.svg',
   },
