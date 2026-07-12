@@ -66,6 +66,16 @@ export const textColorClassNames = {
 export const iconButtonClassNames =
   "h-auto w-auto p-0 rounded-none bg-transparent hover:bg-transparent border-none shadow-none active:translate-y-0";
 
+// 텍스트 스타일(17px/500)은 Figma(node 1477:3938, Header "Left")의 Default/Body/Large(default-body-large) + text-text-default.
+export const iconTextButtonClassNames =
+  "h-auto w-auto p-0 rounded-none bg-transparent hover:bg-transparent border-none shadow-none active:translate-y-0 default-body-large text-text-default disabled:text-text-disable disabled:opacity-100";
+
+// 아이콘-텍스트 간격. tds의 gap-small(8px)이 Figma(node 1477:3938)의 gap-[8px]와 일치해 기본값으로 사용.
+export const gapClassNames = {
+  small: "gap-small",
+  medium: "gap-medium",
+} as const;
+
 export const mainCTAButtonClassNames =
   "fixed right-5 bottom-5 z-50 size-16 rounded-medium p-1.5 bg-transparent hover:bg-transparent border-none shadow-none active:translate-y-0";
 
@@ -74,3 +84,4 @@ export type ButtonSize = NonNullable<ButtonVariantProps["size"]>;
 export type ButtonWidth = keyof typeof widthClassNames;
 export type ButtonTextSize = keyof typeof textStyleClassNames;
 export type ButtonTextColor = keyof typeof textColorClassNames;
+export type ButtonGap = keyof typeof gapClassNames;

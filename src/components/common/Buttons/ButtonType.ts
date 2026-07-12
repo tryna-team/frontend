@@ -18,7 +18,7 @@ export type TextButtonType =
   | "LargeWarningRegular"
   | "LargeWarningFit";
 
-export type ButtonType = TextButtonType | "Icon" | "MainCTAButton";
+export type ButtonType = TextButtonType | "Icon" | "IconText" | "MainCTAButton";
 
 interface TextButtonConfig {
   size: ButtonSize;

@@ -5,11 +5,14 @@ import { ShadcnButton } from "@/components/ui/shadcnButton";
 import { cn } from "@/lib/utils";
 import {
   buttonVariants,
+  gapClassNames,
   iconButtonClassNames,
+  iconTextButtonClassNames,
   mainCTAButtonClassNames,
   textColorClassNames,
   textStyleClassNames,
   widthClassNames,
+  type ButtonGap,
 } from "./ButtonVariants";
 import { textButtonConfig, type TextButtonType } from "./ButtonType";
 
@@ -34,6 +37,19 @@ type IconButtonRenderProps = ButtonBaseProps & {
   children?: never;
 };
 
+type IconTextButtonRenderProps = ButtonBaseProps & {
+  variant: "IconText";
+  children: ReactNode;
+  /** public/icon 기준 상대 경로 (예: "chevron/left_medium.svg") */
+  icon: string;
+  /** 아이콘 alt 텍스트. children(라벨)이 이미 접근성 이름을 제공하므로 장식용이면 생략 가능(기본값: "") */
+  alt?: string;
+  /** 아이콘 자체의 가로/세로 크기(px). 지정하지 않으면 svg 파일의 원본 크기를 사용합니다. */
+  size?: number;
+  /** 아이콘-텍스트 간격. 지정하지 않으면 "small"(8px, Figma 기본값)이 적용됩니다. */
+  gap?: ButtonGap;
+};
+
 type MainCTAButtonRenderProps = ButtonBaseProps & {
   variant: "MainCTAButton";
   children?: never;
@@ -42,7 +58,11 @@ type MainCTAButtonRenderProps = ButtonBaseProps & {
   size?: never;
 };
 
-export type ButtonProps = TextButtonRenderProps | IconButtonRenderProps | MainCTAButtonRenderProps;
+export type ButtonProps =
+  | TextButtonRenderProps
+  | IconButtonRenderProps
+  | IconTextButtonRenderProps
+  | MainCTAButtonRenderProps;
 
 export default function Button(props: ButtonProps) {
   if (props.variant === "Icon") {
@@ -55,6 +75,21 @@ export default function Button(props: ButtonProps) {
         {...buttonProps}
       >
         <img src={`/icon/${icon}`} alt={alt} width={size} height={size} />
+      </ShadcnButton>
+    );
+  }
+
+  if (props.variant === "IconText") {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- ShadcnButton의 자체 variant prop과 이름이 겹쳐 spread에서 제외
+    const { variant, icon, alt, size, gap, children, className, type, ...buttonProps } = props;
+    return (
+      <ShadcnButton
+        type={type ?? "button"}
+        className={cn(iconTextButtonClassNames, gapClassNames[gap ?? "small"], className)}
+        {...buttonProps}
+      >
+        <img src={`/icon/${icon}`} alt={alt ?? ""} width={size} height={size} />
+        {children}
       </ShadcnButton>
     );
   }
