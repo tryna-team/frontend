@@ -79,6 +79,42 @@ export const gapClassNames = {
 export const mainCTAButtonClassNames =
   "fixed right-5 bottom-5 z-50 size-16 rounded-medium p-1.5 bg-transparent hover:bg-transparent border-none shadow-none active:translate-y-0";
 
+// Icon/IconText 전용: 아이콘(혹은 아이콘+텍스트) 크기와 무관하게 버튼의 절대적인 터치 영역을 지정.
+export const hitAreaPresetPx = {
+  small: 24,
+  medium: 36,
+  large: 48,
+} as const;
+
+export type ButtonHitAreaPreset = keyof typeof hitAreaPresetPx;
+export type ButtonHitAreaValue = number | ButtonHitAreaPreset;
+export type ButtonHitArea =
+  | ButtonHitAreaValue
+  | {
+      width?: ButtonHitAreaValue;
+      height?: ButtonHitAreaValue;
+      w?: ButtonHitAreaValue;
+      h?: ButtonHitAreaValue;
+    };
+
+function resolveHitAreaValue(value?: ButtonHitAreaValue): number | undefined {
+  if (value === undefined) return undefined;
+  return typeof value === "number" ? value : hitAreaPresetPx[value];
+}
+
+// hitArea prop(값 또는 { width/height, w/h } 객체)을 실제 style에 넣을 { width, height } px 값으로 변환.
+export function resolveHitAreaSize(hitArea?: ButtonHitArea): { width?: number; height?: number } {
+  if (hitArea === undefined) return {};
+  if (typeof hitArea === "number" || typeof hitArea === "string") {
+    const px = resolveHitAreaValue(hitArea);
+    return { width: px, height: px };
+  }
+  return {
+    width: resolveHitAreaValue(hitArea.width ?? hitArea.w),
+    height: resolveHitAreaValue(hitArea.height ?? hitArea.h),
+  };
+}
+
 export type ButtonVariantProps = VariantProps<typeof buttonVariants>;
 export type ButtonSize = NonNullable<ButtonVariantProps["size"]>;
 export type ButtonWidth = keyof typeof widthClassNames;
