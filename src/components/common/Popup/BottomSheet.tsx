@@ -1,3 +1,4 @@
+// 코드래빗 적용_Escape 키 닫기, 다이얼로그 접근성 속성에 필요
 import { useEffect, useId } from 'react';
 
 import Button from '@/components/common/Buttons/Button';
@@ -32,9 +33,11 @@ export default function Modal({
   onCancel,
   onClose,
 }: ModalProps) {
+  // 코드래빗 적용_aria-labelledby/aria-describedby로 연결할 제목·설명 id
   const titleId = useId();
   const descriptionId = useId();
 
+  // 코드래빗 적용_Escape 키로 모달 닫기
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -45,6 +48,7 @@ export default function Modal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/20" onClick={onClose}>
+      {/* 코드래빗 적용_role/aria-modal/aria-labelledby/aria-describedby로 다이얼로그임을 스크린 리더에 안내 */}
       <div
         role="dialog"
         aria-modal="true"
@@ -56,6 +60,7 @@ export default function Modal({
         {/* 콘텐츠 영역 */}
         <div className="flex flex-col gap-2 items-start w-full">
           <img src={ICON_MAP[icon]} alt={icon} className="size-23 shrink-0 -m-2" />
+          {/* 코드래빗 적용_위 aria-labelledby/aria-describedby가 참조하는 id */}
           <p id={titleId} className="default-heading-small text-text-default w-full">{title}</p>
           <p id={descriptionId} className="default-body-medium text-text-additional w-full">{description}</p>
         </div>
@@ -66,6 +71,7 @@ export default function Modal({
             {confirmText}
           </Button>
           {cancelText && (
+            // 코드래빗 적용_onCancel 미전달 시 onClose로 대체(취소 버튼 먹통 방지)
             <Button variant="Small" onClick={onCancel ?? onClose}>
               {cancelText}
             </Button>
