@@ -29,7 +29,7 @@ const COLOR_ICON = {
   yellow: 'public/icon/color_picker/yellow.svg',
 } as const;
 
-const CREATE_ICON = 'public/icon/chevron/left_small.svg';
+const CREATE_ICON = 'public/icon/chevron/right_small.svg';
 
 export default function LabelItem(props: LabelItemProps) {
   const isCreateItem = props.type === 'create';
