@@ -65,7 +65,7 @@ export default function ActionRow({
   return (
     <div
       onClick={onClick}
-      className="box-border flex h-[52px] w-full min-w-0 items-center justify-between self-stretch bg-background-white px-1"
+      className="box-border flex h-[52px] w-full min-w-0 items-center justify-between self-stretch px-1"
     >
       <div className="min-w-0">
         {renderLeading()}
