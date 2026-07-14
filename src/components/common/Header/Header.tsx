@@ -87,6 +87,7 @@ export default function Header({
       <button
         type="button"
         onClick={leading.onClick}
+        aria-label="뒤로"
         className={`${style.leadingContent} border-0 bg-transparent p-0`}
       >
         <img
@@ -113,6 +114,7 @@ export default function Header({
         <button
           type="button"
           onClick={trailing.onClick}
+          aria-label="메뉴"
           className="flex items-center justify-center border-0 bg-transparent p-0"
         >
           <img
