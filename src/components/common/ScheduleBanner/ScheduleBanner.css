@@ -11,11 +11,27 @@
 }
 
 .schedule-banner-green {
-  background: var(--Base-Green-Green-50, #E3FDF0);
+  background: var(--color-green-50, #E3FDF0);
 }
 
 .schedule-banner-apricot {
-  background: var(--Base-Apricot-Apricot-50, #FFEEDF);
+  background: var(--color-apricot-50, #FFEEDF);
+}
+
+.schedule-banner-blue {
+  background: var(--color-blue-50, #E2EFFD);
+}
+
+.schedule-banner-pink {
+  background: var(--color-pink-50, #FFEFF7);
+}
+
+.schedule-banner-purple {
+  background: var(--color-purple-50, #F6EFFE);
+}
+
+.schedule-banner-yellow {
+  background: var(--color-yellow-50, #FDFEE4);
 }
 
 .schedule-banner-left {
@@ -50,9 +66,25 @@
 }
 
 .schedule-banner-green .schedule-banner-date {
-  color: var(--Base-Green-Green-500, #29C878);
+  color: var(--color-green-500, #29C878);
 }
 
 .schedule-banner-apricot .schedule-banner-date {
-  color: var(--Base-Apricot-Apricot-500, #DC710E);
+  color: var(--color-apricot-500, #DC710E);
+}
+
+.schedule-banner-blue .schedule-banner-date {
+  color: var(--color-blue-500, #1271D9);
+}
+
+.schedule-banner-pink .schedule-banner-date {
+  color: var(--color-pink-500, #DC0E7C);
+}
+
+.schedule-banner-purple .schedule-banner-date {
+  color: var(--color-purple-500, #7C2BE5);
+}
+
+.schedule-banner-yellow .schedule-banner-date {
+  color: var(--color-yellow-500, #969B06);
 }

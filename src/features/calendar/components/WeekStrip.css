@@ -21,7 +21,7 @@
 }
 
 .week-strip-label {
-  font-family: "Pretendard", sans-serif;
+  font-family: Pretendard, sans-serif;
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
@@ -30,7 +30,7 @@
 }
 
 .week-strip-date {
-  font-family: "Pretendard", sans-serif;
+  font-family: Pretendard, sans-serif;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.15px;
