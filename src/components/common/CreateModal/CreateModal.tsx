@@ -1,5 +1,5 @@
 import ChecklistItem from '@/components/common/Checklist/ChecklistItem';
-import { Button } from '@/components/ui/button';
+import { ShadcnButton } from '@/components/ui/shadcnButton';
 
 type ChecklistItemData = {
   id: string;
@@ -47,7 +47,7 @@ export default function CreateModal({
             className="h-8 flex-1 bg-transparent text-[16px] font-medium leading-6 tracking-[-0.3px] text-[#201A36] outline-none placeholder:text-[#B8B8C2]"
           />
 
-          <Button
+          <ShadcnButton
             type="button"
             variant="ghost"
             size="icon"
@@ -56,7 +56,7 @@ export default function CreateModal({
             aria-label="일정 생성"
           >
             <img src="../public/icon/send_default.png" alt="" className="h-9 w-9 object-contain" />
-          </Button>
+          </ShadcnButton>
         </div>
       )}
 
@@ -105,7 +105,7 @@ export default function CreateModal({
               className="h-8 min-w-0 flex-1 bg-transparent text-[16px] font-medium leading-6 tracking-[-0.3px] text-[#201A36] outline-none placeholder:text-[#B8B8C2]"
             />
 
-            <Button
+            <ShadcnButton
               type="button"
               variant="ghost"
               size="icon"
@@ -114,13 +114,13 @@ export default function CreateModal({
               aria-label="일정 생성"
             >
               <img src="../public/icon/send_active.png" alt="" className="h-9 w-9 object-contain" />
-            </Button>
+            </ShadcnButton>
           </div>
         </div>
       )}
 
       <div className="mt-4 flex items-center gap-4 text-[13px] font-medium leading-5 tracking-[-0.26px] text-[#8F8F9B]">
-        <Button
+        <ShadcnButton
           type="button"
           variant="ghost"
           onClick={onOpenCalendar}
@@ -129,9 +129,9 @@ export default function CreateModal({
         >
           <img src="../public/icon/calendar.png" alt="" className="h-5 w-5 object-contain" />
           <span>오늘 · 반복 없음</span>
-        </Button>
+        </ShadcnButton>
 
-        <Button
+        <ShadcnButton
           type="button"
           variant="ghost"
           onClick={onOpenLabel}
@@ -140,7 +140,7 @@ export default function CreateModal({
         >
           <img src="../public/icon/label.png" alt="" className="h-5 w-5 object-contain" />
           <span>레이블 없음</span>
-        </Button>
+        </ShadcnButton>
       </div>
     </section>
   );
