@@ -34,7 +34,7 @@ type HeaderProps = {
 const HEADER_STYLE = {
   daily: {
     container:
-      'flex h-[42px] w-[393px] items-center justify-between bg-background-white px-margin-small',
+      'flex h-[42px] w-[393px] items-center justify-between px-margin-small',
     leadingSlot:
       'flex h-full w-[104px] shrink-0 items-center justify-start',
     leadingContent: 'flex h-[25px] items-center gap-small',
@@ -46,7 +46,7 @@ const HEADER_STYLE = {
 
   modal: {
     container:
-      'flex w-[353px] items-center justify-between bg-background-white',
+      'flex w-[353px] items-center justify-between',
     leadingSlot:
       'flex w-[74px] shrink-0 items-center gap-[10px]',
     leadingContent: 'flex items-center gap-[10px]',
@@ -91,7 +91,6 @@ export default function Header({
       >
         <img
           src={icon.leading}
-          alt=""
           className="block shrink-0 object-contain"
         />
 
@@ -118,7 +117,6 @@ export default function Header({
         >
           <img
             src={icon.menu}
-            alt=""
             className="block shrink-0 object-contain"
           />
         </button>
