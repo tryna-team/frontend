@@ -1,0 +1,25 @@
+.daily-page {
+  box-sizing: border-box;
+  min-height: 100vh;
+  background-color: #FFFFFF;
+}
+.daily-page-banners {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  
+}
+.daily-page-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.daily-page-empty {
+  text-align: center;
+  color: rgba(28, 22, 48, 0.4);
+  font-family: "Pretendard", sans-serif;
+  font-size: 14px;
+  padding: 40px 0;
+}
