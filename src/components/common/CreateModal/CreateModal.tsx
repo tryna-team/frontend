@@ -1,10 +1,34 @@
-import ChecklistItem from '@/components/common/Checklist/ChecklistItem';
-import { ShadcnButton } from '@/components/ui/shadcnButton';
+import ChecklistItem, {
+  type ChecklistStatus,
+} from '@/components/common/Checklist/ChecklistItem';
+
+export type LabelColor =
+  | 'apricot'
+  | 'blue'
+  | 'green'
+  | 'pink'
+  | 'purple'
+  | 'yellow';
+
+export type CalendarStatus =
+  | { type: 'default' }
+  | {
+      type: 'repeat';
+      text: string;
+    };
+
+export type LabelStatus =
+  | { type: 'default' }
+  | {
+      type: 'selected';
+      label: string;
+      color: LabelColor;
+    };
 
 type ChecklistItemData = {
-  id: string;
+  id: number;
   label: string;
-  status?: 'default' | 'done';
+  status?: ChecklistStatus;
 };
 
 type CreateModalProps = {
@@ -13,13 +37,24 @@ type CreateModalProps = {
   keyword?: string;
   message?: string;
   checklistItems?: ChecklistItemData[];
+  calendarStatus?: CalendarStatus;
+  labelStatus?: LabelStatus;
   onInputChange?: (value: string) => void;
-  onSubmit?: () => void;
   onOpenCalendar?: () => void;
   onOpenLabel?: () => void;
-  onToggleChecklist?: (id: string) => void;
-  onDeleteChecklist?: (id: string) => void;
+  onAddChecklist?: () => void;
+  onToggleChecklist?: (id: number) => void;
+  onDeleteChecklist?: (id: number) => void;
 };
+
+const COLOR_ICON = {
+  apricot: '/icon/color_picker/apricot_small.svg',
+  blue: '/icon/color_picker/blue_small.svg',
+  green: '/icon/color_picker/green_small.svg',
+  pink: '/icon/color_picker/pink_small.svg',
+  purple: '/icon/color_picker/purple_small.svg',
+  yellow: '/icon/color_picker/yellow_small.svg',
+} as const;
 
 export default function CreateModal({
   mode = 'default',
@@ -27,120 +62,151 @@ export default function CreateModal({
   keyword = '',
   message = '',
   checklistItems = [],
+  calendarStatus = { type: 'default' },
+  labelStatus = { type: 'default' },
   onInputChange,
-  onSubmit,
   onOpenCalendar,
   onOpenLabel,
+  onAddChecklist,
   onToggleChecklist,
   onDeleteChecklist,
 }: CreateModalProps) {
   const isRecommendMode = mode === 'recommend';
 
+  const calendarText =
+    calendarStatus.type === 'default'
+      ? '오늘 · 반복 없음'
+      : `${calendarStatus.text}마다`;
+
   return (
-    <section className="w-full rounded-[20px] bg-white px-5 py-4 shadow-sm">
+    <section className="flex w-full max-w-[385px] flex-col items-start gap-0.5 rounded-[24px] border border-[rgba(28,22,48,0.05)] bg-background-white p-3">
       {!isRecommendMode && (
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex w-full items-center justify-between self-stretch pl-2">
           <input
+            type="text"
             value={inputValue}
             onChange={(event) => onInputChange?.(event.target.value)}
             placeholder="어떤 일 인가요?"
-            className="h-8 flex-1 bg-transparent text-[16px] font-medium leading-6 tracking-[-0.3px] text-[#201A36] outline-none placeholder:text-[#B8B8C2]"
+            className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
           />
 
-          <ShadcnButton
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onSubmit}
-            className="h-9 w-9 rounded-full p-0 hover:bg-transparent"
-            aria-label="일정 생성"
-          >
-            <img src="/icon/send_default.png" alt="" className="h-9 w-9 object-contain" />
-          </Button>
+          {/* TODO: 공용 Button 컴포넌트 구현 후 교체 */}
+          <span className="box-border flex h-9 w-[74px] shrink-0 items-center justify-center whitespace-nowrap text-text-default default-body-strong-medium">
+            전송
+          </span>
         </div>
       )}
 
       {isRecommendMode && (
-        <div>
-          <p className="mb-3 text-[16px] font-medium leading-6 tracking-[-0.3px] text-[#1C1630B2]">
-            <span className="font-semibold text-[#1C1630]">{keyword}</span>
-            {message}
-          </p>
+        <div className="flex w-full flex-col">
+          <div className="flex w-full items-center justify-between px-1 py-2">
+            <p className="min-w-0 text-text-additional default-body-medium">
+              <span className="bg-gradient-to-l from-[#29C878] to-[#32E089] bg-clip-text text-transparent default-body-strong-medium">
+                {keyword}
+              </span>
 
-          <div className="border-b border-[#ECECF1]" />
+              {message}
+            </p>
+          </div>
 
-          <div className="flex flex-col">
+          <div className="border-b border-divider-default" />
+
+          <div className="flex w-full flex-col">
             {checklistItems.map((item) => (
               <div key={item.id}>
-                <div className="py-2">
+                <div className="flex h-[46px] w-full items-center justify-between py-3 pr-1">
                   <ChecklistItem
                     label={item.label}
-                    status={item.status}
-                    variant="create"
-                    deletable
-                    onToggle={() => onToggleChecklist?.(item.id)}
-                    onDelete={() => onDeleteChecklist?.(item.id)}
+                    status={item.status ?? 'add'}
+                    iconSize="medium"
+                    trailing={{
+                      type: 'delete',
+                      onClick: () => onDeleteChecklist?.(item.id),
+                    }}
+                    onLeadingClick={() =>
+                      onToggleChecklist?.(item.id)
+                    }
                   />
                 </div>
 
-                <div className="border-b border-[#ECECF1]" />
+                <div className="border-b border-divider-default" />
               </div>
             ))}
 
-            <div className="py-2">
+            <div className="flex h-[46px] w-full items-center py-3">
               <ChecklistItem
                 label="직접 추가"
-                status="default"
-                variant="create"
-                onToggle={() => {}}
+                status="plus"
+                iconSize="small"
+                trailing={{ type: 'none' }}
+                onLeadingClick={onAddChecklist}
               />
             </div>
           </div>
 
-          <div className="mt-7 flex items-center justify-between gap-3">
+          <div className="flex w-full items-center justify-between self-stretch pl-2">
             <input
+              type="text"
               value={inputValue}
               onChange={(event) => onInputChange?.(event.target.value)}
               placeholder="어떤 일 인가요?"
-              className="h-8 min-w-0 flex-1 bg-transparent text-[16px] font-medium leading-6 tracking-[-0.3px] text-[#201A36] outline-none placeholder:text-[#B8B8C2]"
+              className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
             />
 
-            <ShadcnButton
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={onSubmit}
-              className="h-9 w-9 rounded-full p-0 hover:bg-transparent"
-              aria-label="일정 생성"
-            >
-              <img src="/icon/send_active.png" alt="" className="h-9 w-9 object-contain" />
-            </Button>
+            {/* TODO: 공용 Button 컴포넌트 구현 후 교체 */}
+            <span className="box-border flex h-9 w-[74px] shrink-0 items-center justify-center whitespace-nowrap text-text-default default-body-strong-medium">
+              전송
+            </span>
           </div>
         </div>
       )}
 
-      <div className="mt-4 flex items-center gap-4 text-[13px] font-medium leading-5 tracking-[-0.26px] text-[#8F8F9B]">
-        <ShadcnButton
+      <div className="flex w-full items-center gap-4 px-1 py-1">
+        <button
           type="button"
-          variant="ghost"
           onClick={onOpenCalendar}
-          className="h-auto gap-1 p-0 text-[13px] font-medium text-[#8F8F9B] hover:bg-transparent"
-          aria-label="날짜 선택"
+          className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
         >
-          <img src="/icon/calendar.png" alt="" className="h-5 w-5 object-contain" />
-          <span>오늘 · 반복 없음</span>
-        </ShadcnButton>
+          <img
+            src="/icon/icons/calendar_small.svg"
+            alt=""
+            className="block shrink-0"
+          />
 
-        <ShadcnButton
+          <span className="whitespace-nowrap">
+            {calendarText}
+          </span>
+        </button>
+
+        <button
           type="button"
-          variant="ghost"
           onClick={onOpenLabel}
-          className="h-auto gap-1 p-0 text-[13px] font-medium text-[#8F8F9B] hover:bg-transparent"
-          aria-label="레이블 선택"
+          className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
         >
-          <img src="/icon/label.png" alt="" className="h-5 w-5 object-contain" />
-          <span>레이블 없음</span>
-        </ShadcnButton>
+          <img
+            src="/icon/icons/label_small.svg"
+            alt=""
+            className="block shrink-0"
+          />
+
+          {labelStatus.type === 'default' ? (
+            <span className="whitespace-nowrap">
+              레이블 없음
+            </span>
+          ) : (
+            <div className="flex min-w-0 items-center gap-xsmall">
+              <span className="max-w-[80px] truncate">
+                {labelStatus.label}
+              </span>
+
+              <img
+                src={COLOR_ICON[labelStatus.color]}
+                alt=""
+                className="block shrink-0"
+              />
+            </div>
+          )}
+        </button>
       </div>
     </section>
   );
