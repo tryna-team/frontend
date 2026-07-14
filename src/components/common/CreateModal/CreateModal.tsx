@@ -1,5 +1,3 @@
-// src/components/common/CreateModal/CreateModal.tsx
-
 import ChecklistItem, {
   type ChecklistStatus,
 } from '@/components/common/Checklist/ChecklistItem';
