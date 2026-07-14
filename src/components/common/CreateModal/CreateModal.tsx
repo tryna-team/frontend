@@ -13,7 +13,7 @@ type CreateModalProps = {
   message?: string;
   checklistItems?: ChecklistItemData[];
   onInputChange?: (value: string) => void;
-  onOpenCalender?: () => void;
+  onOpenCalander?: () => void;
   onOpenLabel?: () => void;
   onAddChecklist?: () => void;
   onToggleChecklist?: (id: number) => void;
@@ -27,7 +27,7 @@ export default function CreateModal({
   message = '',
   checklistItems = [],
   onInputChange,
-  onOpenCalender,
+  onOpenCalendar,
   onOpenLabel,
   onAddChecklist,
   onToggleChecklist,
@@ -119,12 +119,12 @@ export default function CreateModal({
       <div className="flex w-full items-center gap-4 px-1 py-1">
         <button
           type="button"
-          onClick={onOpenCalender}
+          onClick={onOpenCalendar}
           className="flex items-center gap-1 bg-transparent p-0 text-center text-[12px] font-normal leading-4 tracking-[-0.12px] text-[rgba(28,22,48,0.70)]"
           aria-label="날짜 및 반복 설정"
         >
           <img
-            src="/icon/icons/calender_small.svg"
+            src="/icon/icons/calendar_small.svg"
             alt=""
             className="h-5 w-5 shrink-0 object-contain"
           />
