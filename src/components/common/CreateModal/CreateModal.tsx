@@ -1,6 +1,4 @@
-import ChecklistItem, {
-  type ChecklistStatus,
-} from '@/components/common/Checklist/ChecklistItem';
+import ChecklistItem, { type ChecklistStatus } from '@/components/common/Checklist/ChecklistItem';
 
 type ChecklistItemData = {
   id: number;
@@ -82,9 +80,7 @@ export default function CreateModal({
                       type: 'delete',
                       onClick: () => onDeleteChecklist?.(item.id),
                     }}
-                    onLeadingClick={() =>
-                      onToggleChecklist?.(item.id)
-                    }
+                    onLeadingClick={() => onToggleChecklist?.(item.id)}
                   />
                 </div>
 
@@ -107,9 +103,7 @@ export default function CreateModal({
             <input
               type="text"
               value={inputValue}
-              onChange={(event) =>
-                onInputChange?.(event.target.value)
-              }
+              onChange={(event) => onInputChange?.(event.target.value)}
               placeholder="어떤 일 인가요?"
               className="h-9 min-w-0 flex-1 bg-transparent text-[15px] font-medium leading-[22px] tracking-[-0.15px] text-[#1C1630] outline-none placeholder:text-[rgba(28,22,48,0.30)]"
             />
@@ -130,7 +124,7 @@ export default function CreateModal({
           aria-label="날짜 및 반복 설정"
         >
           <img
-            src="public/icon/icons/calender_small.svg"
+            src="/icon/icons/calender_small.svg"
             alt=""
             className="h-5 w-5 shrink-0 object-contain"
           />
@@ -145,7 +139,7 @@ export default function CreateModal({
           aria-label="레이블 설정"
         >
           <img
-            src="public/icon/icons/label_small.svg"
+            src="/icon/icons/label_small.svg"
             alt=""
             className="h-5 w-5 shrink-0 object-contain"
           />
