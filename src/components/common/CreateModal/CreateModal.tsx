@@ -55,8 +55,8 @@ export default function CreateModal({
             className="h-9 w-9 rounded-full p-0 hover:bg-transparent"
             aria-label="일정 생성"
           >
-            <img src="../public/icon/send_default.png" alt="" className="h-9 w-9 object-contain" />
-          </ShadcnButton>
+            <img src="/icon/send_default.png" alt="" className="h-9 w-9 object-contain" />
+          </Button>
         </div>
       )}
 
@@ -113,8 +113,8 @@ export default function CreateModal({
               className="h-9 w-9 rounded-full p-0 hover:bg-transparent"
               aria-label="일정 생성"
             >
-              <img src="../public/icon/send_active.png" alt="" className="h-9 w-9 object-contain" />
-            </ShadcnButton>
+              <img src="/icon/send_active.png" alt="" className="h-9 w-9 object-contain" />
+            </Button>
           </div>
         </div>
       )}
@@ -127,7 +127,7 @@ export default function CreateModal({
           className="h-auto gap-1 p-0 text-[13px] font-medium text-[#8F8F9B] hover:bg-transparent"
           aria-label="날짜 선택"
         >
-          <img src="../public/icon/calendar.png" alt="" className="h-5 w-5 object-contain" />
+          <img src="/icon/calendar.png" alt="" className="h-5 w-5 object-contain" />
           <span>오늘 · 반복 없음</span>
         </ShadcnButton>
 
@@ -138,7 +138,7 @@ export default function CreateModal({
           className="h-auto gap-1 p-0 text-[13px] font-medium text-[#8F8F9B] hover:bg-transparent"
           aria-label="레이블 선택"
         >
-          <img src="../public/icon/label.png" alt="" className="h-5 w-5 object-contain" />
+          <img src="/icon/label.png" alt="" className="h-5 w-5 object-contain" />
           <span>레이블 없음</span>
         </ShadcnButton>
       </div>
