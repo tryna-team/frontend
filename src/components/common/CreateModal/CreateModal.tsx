@@ -55,7 +55,7 @@ export default function CreateModal({
             className="h-9 w-9 rounded-full p-0 hover:bg-transparent"
             aria-label="일정 생성"
           >
-            <img src="./icon/send_default.png" alt="" className="h-9 w-9 object-contain" />
+            <img src="/icon/send_default.png" alt="" className="h-9 w-9 object-contain" />
           </Button>
         </div>
       )}
