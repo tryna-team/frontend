@@ -48,7 +48,7 @@ export default function LabelItem(props: LabelItemProps) {
     <button
       type="button"
       onClick={props.onClick}
-      className="flex w-[200px] items-center justify-between bg-white px-5 py-2 text-left"
+      className="flex w-[200px] items-center justify-between px-5 py-2 text-left"
       aria-label={ariaLabel}
     >
       <span className="min-w-0 truncate text-[16px] font-medium leading-6 tracking-[-0.3px] text-[#1C1630]">
