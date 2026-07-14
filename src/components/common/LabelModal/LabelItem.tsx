@@ -1,10 +1,4 @@
-export type LabelColor =
-  | 'apricot'
-  | 'blue'
-  | 'green'
-  | 'pink'
-  | 'purple'
-  | 'yellow';
+export type LabelColor = 'apricot' | 'blue' | 'green' | 'pink' | 'purple' | 'yellow';
 
 type ColorLabelItemProps = {
   type: 'color';
@@ -21,28 +15,24 @@ type CreateLabelItemProps = {
 type LabelItemProps = ColorLabelItemProps | CreateLabelItemProps;
 
 const COLOR_ICON = {
-  apricot: 'public/icon/color_picker/apricot.svg',
-  blue: 'public/icon/color_picker/blue.svg',
-  green: 'public/icon/color_picker/green.svg',
-  pink: 'public/icon/color_picker/pink.svg',
-  purple: 'public/icon/color_picker/purple.svg',
-  yellow: 'public/icon/color_picker/yellow.svg',
+  apricot: '/icon/color_picker/apricot.svg',
+  blue: '/icon/color_picker/blue.svg',
+  green: '/icon/color_picker/green.svg',
+  pink: '/icon/color_picker/pink.svg',
+  purple: '/icon/color_picker/purple.svg',
+  yellow: '/icon/color_picker/yellow.svg',
 } as const;
 
-const CREATE_ICON = 'public/icon/chevron/right_small.svg';
+const CREATE_ICON = '/icon/chevron/right_small.svg';
 
 export default function LabelItem(props: LabelItemProps) {
   const isCreateItem = props.type === 'create';
 
   const label = isCreateItem ? '새로운 레이블' : props.label;
 
-  const trailingIcon = isCreateItem
-    ? CREATE_ICON
-    : COLOR_ICON[props.color];
+  const trailingIcon = isCreateItem ? CREATE_ICON : COLOR_ICON[props.color];
 
-  const ariaLabel = isCreateItem
-    ? '새로운 레이블 생성'
-    : `${props.label} 레이블 선택`;
+  const ariaLabel = isCreateItem ? '새로운 레이블 생성' : `${props.label} 레이블 선택`;
 
   return (
     <button
@@ -55,11 +45,7 @@ export default function LabelItem(props: LabelItemProps) {
         {label}
       </span>
 
-      <img
-        src={trailingIcon}
-        alt=""
-        className="block shrink-0"
-      />
+      <img src={trailingIcon} alt="" className="block shrink-0" />
     </button>
   );
 }
