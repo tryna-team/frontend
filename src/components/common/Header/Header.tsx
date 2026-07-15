@@ -1,3 +1,7 @@
+// src/components/common/Header/Header.tsx
+
+import { Button } from '@/components/common/Buttons';
+
 type HeaderVariant = 'daily' | 'modal';
 
 type HeaderLeading =
@@ -45,15 +49,12 @@ const HEADER_STYLE = {
   },
 
   modal: {
-    container:
-      'flex w-[353px] items-center justify-between',
-    leadingSlot:
-      'flex w-[74px] shrink-0 items-center gap-[10px]',
+    container: 'flex w-[353px] items-center justify-between',
+    leadingSlot: 'flex w-[74px] shrink-0 items-center gap-[10px]',
     leadingContent: 'flex items-center gap-[10px]',
     title:
       'min-w-0 flex-1 truncate text-center text-text-default default-heading-small',
-    trailingSlot:
-      'flex w-[74px] shrink-0 items-center justify-end',
+    trailingSlot: 'flex w-[74px] shrink-0 items-center justify-end',
   },
 } as const;
 
@@ -92,6 +93,7 @@ export default function Header({
       >
         <img
           src={icon.leading}
+          alt=""
           className="block shrink-0 object-contain"
         />
 
@@ -119,6 +121,7 @@ export default function Header({
         >
           <img
             src={icon.menu}
+            alt=""
             className="block shrink-0 object-contain"
           />
         </button>
@@ -127,32 +130,25 @@ export default function Header({
 
     if (variant === 'daily') {
       return (
-        <>
-          {/* TODO: 공용 Button 컴포넌트 구현 후 교체 */}
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={trailing.onClick}
-            className="cursor-pointer whitespace-nowrap text-text-default default-body-large"
-          >
-            {trailing.text}
-          </span>
-        </>
+        <Button
+          type="button"
+          variant="Small"
+          onClick={trailing.onClick}
+          className="ml-auto justify-end text-right"
+        >
+          {trailing.text}
+        </Button>
       );
     }
 
     return (
-      <>
-        {/* TODO: 공용 Button 컴포넌트 구현 후 교체 */}
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={trailing.onClick}
-          className="box-border flex h-9 w-[74px] cursor-pointer items-center justify-center gap-medium whitespace-nowrap px-6 text-text-default default-body-strong-medium"
-        >
-          {trailing.text}
-        </span>
-      </>
+      <Button
+        type="button"
+        variant="MediumDefaultFit"
+        onClick={trailing.onClick}
+      >
+        {trailing.text}
+      </Button>
     );
   };
 
