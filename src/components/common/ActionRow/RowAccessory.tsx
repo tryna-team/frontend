@@ -1,25 +1,27 @@
-export type LabelColor =
-  | 'apricot'
-  | 'blue'
-  | 'green'
-  | 'pink'
-  | 'purple'
-  | 'yellow';
+import type { MouseEvent } from 'react';
+
+import {
+  COLOR_ICON,
+  type LabelColor,
+} from './ActionRow.constant';
 
 type ColorAccessoryProps = {
   type: 'color';
   color: LabelColor;
+  ariaLabel?: string;
   onClick?: () => void;
 };
 
 type ToggleAccessoryProps = {
   type: 'toggle';
   checked: boolean;
+  ariaLabel?: string;
   onClick?: () => void;
 };
 
 type ChevronAccessoryProps = {
   type: 'chevron';
+  ariaLabel?: string;
   onClick?: () => void;
 };
 
@@ -27,15 +29,6 @@ export type RowAccessoryProps =
   | ColorAccessoryProps
   | ToggleAccessoryProps
   | ChevronAccessoryProps;
-
-const COLOR_ICON = {
-  apricot: '/icon/color_picker/apricot.svg',
-  blue: '/icon/color_picker/blue.svg',
-  green: '/icon/color_picker/green.svg',
-  pink: '/icon/color_picker/pink.svg',
-  purple: '/icon/color_picker/purple.svg',
-  yellow: '/icon/color_picker/yellow.svg',
-} as const;
 
 const CHEVRON_ICON = '/icon/chevron/right_xsmall.svg';
 
@@ -47,11 +40,20 @@ const TOGGLE_ICON = {
 export default function RowAccessory(
   props: RowAccessoryProps,
 ) {
+  // Accessory 클릭 시 Row의 onClick이 함께 실행되지 않도록 이벤트 전파 차단
+  const handleClick = (
+    event: MouseEvent<HTMLButtonElement>,
+  ) => {
+    event.stopPropagation();
+    props.onClick?.();
+  };
+
   if (props.type === 'color') {
     return (
       <button
         type="button"
-        onClick={props.onClick}
+        onClick={handleClick}
+        aria-label={props.ariaLabel ?? '레이블 색상 선택'}
         className="flex items-center gap-2 border-0 bg-transparent p-0"
       >
         <img
@@ -73,7 +75,10 @@ export default function RowAccessory(
     return (
       <button
         type="button"
-        onClick={props.onClick}
+        role="switch"
+        aria-checked={props.checked}
+        aria-label={props.ariaLabel ?? '설정 전환'}
+        onClick={handleClick}
         className="border-0 bg-transparent p-0"
       >
         <img
@@ -92,7 +97,8 @@ export default function RowAccessory(
   return (
     <button
       type="button"
-      onClick={props.onClick}
+      onClick={handleClick}
+      aria-label={props.ariaLabel ?? '상세 화면으로 이동'}
       className="border-0 bg-transparent p-0"
     >
       <img
