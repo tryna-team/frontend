@@ -1,5 +1,3 @@
-// src/components/common/Header/Header.tsx
-
 import { Button } from '@/components/common/Buttons';
 
 type HeaderVariant = 'daily' | 'modal';
