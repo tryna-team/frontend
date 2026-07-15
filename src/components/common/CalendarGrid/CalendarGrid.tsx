@@ -71,7 +71,7 @@ function CalendarGrid({
             onClick={onViewToggleClick}
             aria-label="캘린더 뷰 전환"
           >
-            <img src="/icon/calendar-view.svg" alt="" />
+            <img src="/icon/icons/label_small.svg" alt="" />
           </button>
           <button
             type="button"
