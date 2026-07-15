@@ -129,12 +129,30 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
-  body {
-    @apply bg-background text-foreground;
-    }
+  }
+
+  /* 앱이 화면 전체를 기준으로 렌더링되도록 기본 크기 설정 */
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+  }
+
   html {
     @apply font-sans;
-    }
+  }
+
+  body {
+	  /* 화면 바깥 영역(앱 외부) 배경색 */
+    min-height: 100vh;
+    @apply bg-grey-100 text-foreground;
+  }
+
+	/* App 컴포넌트가 화면 전체 높이를 사용할 수 있도록 설정 */
+  #root {
+    min-height: 100vh;
+  }
 }
 
