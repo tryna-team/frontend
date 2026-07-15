@@ -19,6 +19,7 @@ const BORDER_COLOR_CLASS_NAME: Record<CategoryColor, string> = {
 };
 
 export default function DailyScheduleDetail({
+  //카테고리 그룹에 따라 색상 지정으로 수정 필요(테스트용 하드코딩)
   categoryColor = 'green',
   startTime,
   endTime,
