@@ -1,74 +1,179 @@
-import { ShadcnButton } from '@/components/ui/shadcnButton';
+import { Button } from '@/components/common/Buttons';
+
+type HeaderVariant = 'daily' | 'modal';
+
+type HeaderLeading =
+  | { type: 'none' }
+  | {
+      type: 'icon';
+      onClick?: () => void;
+    }
+  | {
+      type: 'icon-text';
+      text: string;
+      onClick?: () => void;
+    };
+
+type HeaderTrailing =
+  | { type: 'none' }
+  | {
+      type: 'menu';
+      onClick?: () => void;
+    }
+  | {
+      type: 'text';
+      text: string;
+      onClick?: () => void;
+    };
 
 type HeaderProps = {
-  title: string;
-  leftText?: string;
-  rightText?: string;
-  showMenuButton?: boolean;
+  variant?: HeaderVariant;
+  title?: string;
+  leading?: HeaderLeading;
+  trailing?: HeaderTrailing;
 };
 
+/*
+ * Header는 leading, title, trailing의 내부 배치만 담당합니다.
+ *
+ * 화면별 좌우 padding과 외부 여백은 Header를 사용하는 페이지나 Modal에서 설정합니다.
+ * 예: Daily 페이지에서 <div className="px-margin-small">로 Header를 감싸서 사용
+*/
+const HEADER_STYLE = {
+  daily: {
+    /*
+     * Daily Header
+     * 부모 영역의 전체 너비를 사용
+    */
+    container: 'flex h-[42px] w-full items-center justify-between',
+
+    // leading과 trailing에 같은 너비를 지정해 title이 중앙에 위치하도록 구성
+    leadingSlot: 'flex h-full w-[104px] shrink-0 items-center justify-start',
+    leadingContent: 'flex h-[25px] items-center gap-small',
+    title: 'flex h-[26px] min-w-0 flex-1 items-center justify-center gap-[10px] text-center text-text-default default-body-strong-large',
+    trailingSlot: 'flex h-full w-[104px] shrink-0 items-center justify-end self-stretch py-2',
+  },
+
+  modal: {
+    /*
+     * Modal Header
+     * Modal 내부 콘텐츠 너비인 353px 사용
+    */
+    container: 'flex w-[353px] items-center justify-between',
+
+    // leading과 trailing 영역을 각각 74px로 고정해 title을 중앙에 배치
+    leadingSlot: 'flex w-[74px] shrink-0 items-center gap-[10px]',
+    leadingContent: 'flex items-center gap-[10px]',
+    title: 'min-w-0 flex-1 truncate text-center text-text-default default-heading-small',
+    trailingSlot: 'flex w-[74px] shrink-0 items-center justify-end',
+  },
+} as const;
+
+/*
+ * variant별로 사용하는 아이콘 경로를 관리합니다.
+ * public/icon을 기준으로 절대 경로를 사용합니다.
+*/
+const HEADER_ICON = {
+  daily: {
+    leading: '/icon/chevron/left_medium.svg',
+    menu: '/icon/icons/hamburger_medium.svg',
+  },
+
+  modal: {
+    leading: '/icon/chevron/left_small.svg',
+    menu: '/icon/icons/hamburger_medium.svg',
+  },
+} as const;
+
 export default function Header({
-  title,
-  leftText,
-  rightText,
-  showMenuButton = false,
+  variant = 'daily',
+  title = '',
+  leading = { type: 'none' },
+  trailing = { type: 'none' },
 }: HeaderProps) {
-  return (
-    <header className="relative flex h-[52px] w-full items-center justify-between border-b border-[#EDEDF2] bg-white px-5">
-      {/* Left */}
-      <ShadcnButton
+  const style = HEADER_STYLE[variant];
+  const icon = HEADER_ICON[variant];
+
+  const renderLeading = () => {
+    if (leading.type === 'none') {
+      return null;
+    }
+
+    return (
+      <button
         type="button"
-        variant="ghost"
-        className="flex h-[25px] basis-[104px] items-center justify-start gap-2 p-0 hover:bg-transparent"
-        aria-label="뒤로가기"
+        onClick={leading.onClick}
+        aria-label="뒤로"
+        className={`${style.leadingContent} border-0 bg-transparent p-0`}
       >
         <img
-          src="/icon/Header_back.png"
-          alt="Back"
-          className="h-6 w-6 object-contain"
+          src={icon.leading}
+          alt=""
+          className="block shrink-0 object-contain"
         />
 
-        {leftText && (
-          <span className="flex h-[26px] w-[72px] items-center text-[17px] font-medium leading-6 tracking-[-0.43px] text-[#201A36]">
-            {leftText}
+        {leading.type === 'icon-text' && (
+          <span className="whitespace-nowrap text-text-default default-body-large">
+            {leading.text}
           </span>
         )}
-      </ShadcnButton>
+      </button>
+    );
+  };
 
-      {/* Title */}
-      <h1 className="absolute left-1/2 flex h-[26px] w-[157px] -translate-x-1/2 items-center justify-center text-center text-[17px] font-semibold leading-6 tracking-[-0.43px] text-[#201A36]">
-        {title}
-      </h1>
+  const renderTrailing = () => {
+    if (trailing.type === 'none') {
+      return null;
+    }
 
-      {/* Right */}
-      <div className="flex h-6 basis-[104px] items-center justify-end">
-        {showMenuButton ? (
-          <ShadcnButton
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 p-0 hover:bg-transparent"
-            aria-label="메뉴"
-          >
-            <img
-              src="/icon/Header_hamburger.png"
-              alt="Menu"
-              className="h-6 w-6 object-contain"
-            />
-          </ShadcnButton>
-        ) : rightText ? (
-          <ShadcnButton
-            type="button"
-            variant="ghost"
-            className="h-6 w-[104px] justify-end p-0 text-[17px] font-medium leading-6 tracking-[-0.43px] text-[#201A36] hover:bg-transparent"
-            aria-label="오른쪽 버튼"
-          >
-            {rightText}
-          </ShadcnButton>
-        ) : (
-          <div className="h-6 w-6" />
-        )}
-      </div>
+    if (trailing.type === 'menu') {
+      return (
+        <button
+          type="button"
+          onClick={trailing.onClick}
+          aria-label="메뉴"
+          className="flex items-center justify-center border-0 bg-transparent p-0"
+        >
+          <img
+            src={icon.menu}
+            alt=""
+            className="block shrink-0 object-contain"
+          />
+        </button>
+      );
+    }
+
+    if (variant === 'daily') {
+      return (
+        <Button
+          type="button"
+          variant="Small"
+          onClick={trailing.onClick}
+          className="ml-auto justify-end text-right"
+        >
+          {trailing.text}
+        </Button>
+      );
+    }
+
+    return (
+      <Button
+        type="button"
+        variant="MediumDefaultFit"
+        onClick={trailing.onClick}
+      >
+        {trailing.text}
+      </Button>
+    );
+  };
+
+  return (
+    <header className={style.container}>
+      <div className={style.leadingSlot}>{renderLeading()}</div>
+
+      <h1 className={style.title}>{title}</h1>
+
+      <div className={style.trailingSlot}>{renderTrailing()}</div>
     </header>
   );
 }

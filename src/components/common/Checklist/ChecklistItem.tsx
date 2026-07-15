@@ -1,120 +1,136 @@
-// src/components/common/Checklist/ChecklistItem.tsx
+export type ChecklistStatus = 'plus' | 'default' | 'done' | 'add';
 
-type ChecklistVariant = 'create' | 'event-view' | 'daily';
+export type ChecklistIconSize = 'medium' | 'small';
 
-type ChecklistStatus = 'default' | 'done';
+export type ChecklistSize = 'large' | 'medium';
 
-type ChecklistItemProps = {
+export type ChecklistTrailing =
+  | { type: 'none' }
+  | { type: 'date'; text: string }
+  | { type: 'delete'; onClick?: () => void };
+
+export type ChecklistItemProps = {
   label: string;
-  date?: string;
-  variant?: ChecklistVariant;
   status?: ChecklistStatus;
-  deletable?: boolean;
+  iconSize?: ChecklistIconSize;
+  trailing?: ChecklistTrailing;
   disabled?: boolean;
-  onToggle?: () => void;
-  onDelete?: () => void;
+  onLeadingClick?: () => void;
 };
 
-const CHECKBOX_ICON = {
-  create: {
-    default: '/icon/checkbox_default.png',
-    done: '/icon/checkbox_done.png',
+const ICON = {
+  plus: {
+    medium: '/icon/icons/plus_small.svg',
+    small: '/icon/icons/plus_small.svg',
   },
-  'event-view': {
-    default: '/icon/todo_default_medium.png',
-    done: '/icon/todo_done_medium.png',
+  default: {
+    medium: '/icon/radio_button/default_medium.svg',
+    small: '/icon/radio_button/default_small.svg',
   },
-  daily: {
-    default: '/icon/todo_default_small.png',
-    done: '/icon/todo_done_small.png',
+  done: {
+    medium: '/icon/radio_button/done_medium.svg',
+    small: '/icon/radio_button/done_small.svg',
+  },
+  add: {
+    medium: '/icon/radio_button/add_medium.svg',
+    small: '/icon/radio_button/add_small.svg',
   },
 } as const;
 
-const ICON_SIZE = {
-  create: 'h-5 w-5',
-  'event-view': 'h-6 w-6',
-  daily: 'h-5 w-5',
+const DELETE_ICON = '/icon/icons/delete_small.svg';
+
+const ITEM_STYLE = {
+  large: {
+    leadingTextGap: 'gap-2',
+    label: 'text-[17px] font-semibold leading-[26px] tracking-[-0.17px]',
+    addLabel: 'text-[15px] font-medium leading-[22px] tracking-[-0.15px]',
+    date: 'text-right text-[12px] font-medium leading-[18px] tracking-[-0.12px]',
+  },
+  medium: {
+    leadingTextGap: 'gap-1',
+    label: 'text-[13px] font-normal leading-5 tracking-[-0.13px]',
+    addLabel: 'text-[13px] font-normal leading-5 tracking-[-0.13px]',
+    date: 'text-[12px] font-medium leading-[18px] tracking-[-0.12px]',
+  },
 } as const;
 
-const BUTTON_SIZE = {
-  create: 'h-6 w-6',
-  'event-view': 'h-6 w-6',
-  daily: 'h-5 w-5',
-} as const;
+function resolveChecklistSize(status: ChecklistStatus, iconSize: ChecklistIconSize): ChecklistSize {
+  if (status === 'plus') {
+    return 'large';
+  }
+
+  return iconSize === 'medium' ? 'large' : 'medium';
+}
 
 export default function ChecklistItem({
   label,
-  date,
-  variant = 'create',
   status = 'default',
-  deletable = false,
+  iconSize = 'medium',
+  trailing = { type: 'none' },
   disabled = false,
-  onToggle,
-  onDelete,
+  onLeadingClick,
 }: ChecklistItemProps) {
-  const textStyle = disabled
-    ? 'text-[#B8B8C2]'
-    : status === 'done'
-      ? 'text-[#1C16304D]'
-      : 'text-[#201A36]';
+  const size = resolveChecklistSize(status, iconSize);
+  const style = ITEM_STYLE[size];
 
-  const textSize =
-    variant === 'daily'
-      ? 'text-[12px] leading-[18px]'
-      : 'text-[16px] leading-[24px]';
+  const isPlus = status === 'plus';
+  const isAdd = status === 'add';
+  const isDone = status === 'done';
 
-  const itemHeight = variant === 'daily' ? 'h-5' : 'h-8';
+  const labelColor = disabled || isDone || isPlus ? 'text-[rgba(28,22,48,0.30)]' : 'text-[#1C1630]';
+
+  const trailingTextColor =
+    disabled || isDone ? 'text-[rgba(28,22,48,0.30)]' : 'text-[rgba(28,22,48,0.70)]';
+
+  const labelStyle = isPlus || isAdd ? style.addLabel : style.label;
+
+  const leadingAriaLabel = isPlus || isAdd ? `${label} 추가` : `${label} 체크 상태 변경`;
+
+  const leadingIconSize = status === 'plus' ? 'small' : iconSize;
 
   return (
-    <div className={`flex w-full items-center justify-between bg-white ${itemHeight}`}>
+    <div
+      className={`flex min-w-0 items-center ${
+        size === 'medium' ? 'gap-2' : 'flex-1 justify-between'
+      }`}
+    >
       <div
-        className={`flex min-w-0 flex-1 items-center ${
-          variant === 'daily' ? 'gap-2' : 'justify-between'
+        className={`flex min-w-0 items-center ${style.leadingTextGap} ${
+          size === 'large' ? 'flex-1' : ''
         }`}
       >
-        <div className="flex min-w-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={onToggle}
-            disabled={disabled}
-            className={`flex shrink-0 items-center justify-center p-0 disabled:cursor-default ${BUTTON_SIZE[variant]}`}
-            aria-label={`${label} 체크 상태 변경`}
-          >
-            <img
-              src={CHECKBOX_ICON[variant][status]}
-              alt=""
-              className={`${ICON_SIZE[variant]} shrink-0 object-contain`}
-            />
-          </button>
-
-          <span
-            className={`truncate font-medium tracking-[-0.3px] ${textSize} ${textStyle}`}
-          >
-            {label}
-          </span>
-        </div>
-
-        {date && (
-          <span
-            className={`shrink-0 font-medium tracking-[-0.26px] ${
-              variant === 'daily'
-                ? 'text-[12px] leading-[18px]'
-                : 'text-[14px] leading-5'
-            } ${disabled ? 'text-[#C8C8D0]' : 'text-[#A9A9B4]'}`}
-          >
-            {date}
-          </span>
-        )}
-      </div>
-
-      {deletable && (
         <button
           type="button"
-          onClick={onDelete}
-          className="ml-2 flex h-6 w-6 shrink-0 items-center justify-center p-0 text-[18px] leading-none text-[#B8B8C2]"
+          onClick={onLeadingClick}
+          disabled={disabled}
+          className="flex shrink-0 items-center justify-center bg-transparent p-0 disabled:cursor-default"
+          aria-label={leadingAriaLabel}
+        >
+          <img src={ICON[status][leadingIconSize]} alt="" className="block shrink-0" />
+        </button>
+
+        <span className={`min-w-0 truncate text-left ${labelStyle} ${labelColor}`}>{label}</span>
+      </div>
+
+      {trailing.type === 'date' && (
+        <span
+          className={`shrink-0 ${
+            size === 'large' ? 'ml-auto' : ''
+          } ${style.date} ${trailingTextColor}`}
+        >
+          {trailing.text}
+        </span>
+      )}
+
+      {trailing.type === 'delete' && (
+        <button
+          type="button"
+          onClick={trailing.onClick}
+          disabled={disabled}
+          className="ml-auto flex shrink-0 items-center justify-center bg-transparent p-0 disabled:cursor-default"
           aria-label={`${label} 삭제`}
         >
-          ×
+          <img src={DELETE_ICON} alt="" className="block shrink-0" />
         </button>
       )}
     </div>
