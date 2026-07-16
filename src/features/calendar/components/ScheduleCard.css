@@ -63,22 +63,30 @@
 }
 
 .schedule-card-time-end {
-  font-family: "Pretendard", sans-serif;
+  font-family: var(--font-default);
   font-size: 13px;
   font-weight: 400;
   line-height: 20px;
   letter-spacing: -0.13px;
-  color: rgba(28, 22, 48, 0.30);
+  color: var(--color-text-additional, rgba(28, 22, 48, 0.60));
+}
+
+.schedule-card-location-wrap {
+  display: flex;
+  padding-left: 22px;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
 }
 
 .schedule-card-location {
   display: block;
-  font-family: "Pretendard", sans-serif;
+  font-family: var(--font-default);
   font-size: 13px;
   font-weight: 400;
   line-height: 20px;
   letter-spacing: -0.13px;
-  color: rgba(28, 22, 48, 0.30);
+  color: var(--color-text-additional, rgba(28, 22, 48, 0.60));
   margin: 0;
 }
 

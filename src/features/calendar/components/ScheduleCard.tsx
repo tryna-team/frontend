@@ -49,7 +49,9 @@ function ScheduleCard({
             />
             <span className="schedule-card-title-text">{title}</span>
           </div>
-          <span className="schedule-card-location">{location}</span>
+          <div className="schedule-card-location-wrap">
+            <span className="schedule-card-location">{location}</span>
+          </div>
         </div>
         <div className="schedule-card-time">
           <span className="schedule-card-time-start">{startTime}</span>
