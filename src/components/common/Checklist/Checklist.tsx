@@ -21,10 +21,7 @@ type ChecklistProps = {
   onDelete?: (id: number) => void;
 };
 
-function resolveChecklistSize(
-  status: ChecklistStatus,
-  iconSize: ChecklistIconSize,
-): ChecklistSize {
+function resolveChecklistSize(status: ChecklistStatus, iconSize: ChecklistIconSize): ChecklistSize {
   if (status === 'plus') {
     return 'large';
   }
@@ -32,10 +29,7 @@ function resolveChecklistSize(
   return iconSize === 'medium' ? 'large' : 'medium';
 }
 
-function getItemLayout(
-  status: ChecklistStatus,
-  iconSize: ChecklistIconSize,
-) {
+function getItemLayout(status: ChecklistStatus, iconSize: ChecklistIconSize) {
   const size = resolveChecklistSize(status, iconSize);
 
   if (status === 'plus') {
@@ -64,10 +58,7 @@ export default function Checklist({
       {items.map((item) => {
         const status = item.status ?? 'default';
 
-        const resolvedIconSize =
-          status === 'plus'
-            ? 'small'
-            : item.iconSize ?? iconSize;
+        const resolvedIconSize = status === 'plus' ? 'small' : (item.iconSize ?? iconSize);
 
         const originalTrailing = item.trailing;
 
@@ -80,13 +71,10 @@ export default function Checklist({
                   onDelete?.(item.id);
                 },
               }
-            : originalTrailing ?? { type: 'none' };
+            : (originalTrailing ?? { type: 'none' });
 
         return (
-          <div
-            key={item.id}
-            className={getItemLayout(status, resolvedIconSize)}
-          >
+          <div key={item.id} className={getItemLayout(status, resolvedIconSize)}>
             <ChecklistItem
               label={item.label}
               status={status}

@@ -5,16 +5,16 @@
    정식 반응형 레이아웃이 확정되면 이 블록(.event-view-frame-wrapper,
    .event-view-frame)과 EventViewPage.tsx의 관련 래퍼 div를 삭제하세요.
    ============================================================ */
-/*브라우저 창 전체에서 모바일 프레임 중앙 정렬*/
+/* 브라우저 창 전체에서 모바일 프레임 중앙 정렬 */
 .event-view-frame-wrapper {
   display: flex;
-  align-items: center;
+  align-items: safe center;
   justify-content: center;
   min-height: 100vh;
   background-color: #ffffff;
 }
 
-/*모바일 프레임(393*852)*/
+/* 모바일 프레임(393*852) */
 .event-view-frame {
   position: relative;
   width: min(393px, 100vw);
@@ -33,6 +33,9 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* .event-view-page-floating(absolute, 82px 높이 + bottom 34px)에 콘텐츠 마지막 줄이
+     가리지 않도록 그만큼 하단 여백 확보 */
+  padding-bottom: calc(82px + 34px);
 }
 
 .event-view-page-floating {
