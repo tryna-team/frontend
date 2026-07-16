@@ -47,6 +47,8 @@ export default function DailyScheduleCard({
       />
 
       <div className="flex items-center justify-center gap-10">
+        {/* Figma 스펙: "모두 완료"와 동일 크기의 보이지 않는 스페이서 — 기능 없음, 정렬용 */}
+        <div aria-hidden="true" className="h-5.5 w-14.75" />
         <Button variant="LargeDefaultFit" onClick={onAddClick}>
           직접 추가
         </Button>

@@ -45,58 +45,50 @@ function EventViewPage() {
   };
 
   return (
-    // TEMP LAYOUT START: Figma 프레임(393×852) 비율 고정 래퍼. 정식 반응형 레이아웃
-    // 확정 시 event-view-frame-wrapper / event-view-frame div와 CSS를 함께 삭제하세요.
-    <div className="event-view-frame-wrapper">
-      <div className="event-view-frame">
-        {/* TEMP LAYOUT END */}
-        <div className="event-view-page">
-          <Header
-            variant="daily"
-            leading={{ type: 'icon-text', text: MOCK_EVENT.dateLabel }}
-            trailing={{ type: 'text', text: '수정' }}
+    <div className="event-view-page">
+      <Header
+        variant="daily"
+        leading={{ type: 'icon-text', text: MOCK_EVENT.dateLabel }}
+        trailing={{ type: 'text', text: '수정' }}
+      />
+
+      <div className="event-view-page-content">
+        <ScheduleBanner
+          categoryColor={MOCK_EVENT.categoryColor}
+          title={MOCK_EVENT.title}
+          dateText=""
+        />
+
+        <DailyScheduleDetail
+          categoryColor={MOCK_EVENT.categoryColor}
+          startTime={MOCK_EVENT.startTime}
+          endTime={MOCK_EVENT.endTime}
+          rotationText={MOCK_EVENT.rotationText}
+          location={MOCK_EVENT.location}
+        />
+
+        <div className="px-1">
+          <DailyScheduleCard
+            items={todoItems}
+            onToggleItem={handleToggleItem}
+            onCompleteAllClick={handleCompleteAll}
           />
-
-          <div className="event-view-page-content">
-            <ScheduleBanner
-              categoryColor={MOCK_EVENT.categoryColor}
-              title={MOCK_EVENT.title}
-              dateText=""
-            />
-
-            <DailyScheduleDetail
-              categoryColor={MOCK_EVENT.categoryColor}
-              startTime={MOCK_EVENT.startTime}
-              endTime={MOCK_EVENT.endTime}
-              rotationText={MOCK_EVENT.rotationText}
-              location={MOCK_EVENT.location}
-            />
-
-            <div className="px-1">
-              <DailyScheduleCard
-                items={todoItems}
-                onToggleItem={handleToggleItem}
-                onCompleteAllClick={handleCompleteAll}
-              />
-            </div>
-          </div>
-
-          <div className="event-view-page-floating">
-            <Button variant="LargeWarningFit" onClick={() => setIsDeleteModalOpen(true)}>
-              이벤트 삭제
-            </Button>
-          </div>
-
-          {isDeleteModalOpen && (
-            <QuickModal
-              onConfirm={() => setIsDeleteModalOpen(false)}
-              onClose={() => setIsDeleteModalOpen(false)}
-            />
-          )}
         </div>
       </div>
+
+      <div className="event-view-page-floating">
+        <Button variant="LargeWarningFit" onClick={() => setIsDeleteModalOpen(true)}>
+          이벤트 삭제
+        </Button>
+      </div>
+
+      {isDeleteModalOpen && (
+        <QuickModal
+          onConfirm={() => setIsDeleteModalOpen(false)}
+          onClose={() => setIsDeleteModalOpen(false)}
+        />
+      )}
     </div>
-    // TEMP LAYOUT END (event-view-frame-wrapper / event-view-frame)
   );
 }
 
