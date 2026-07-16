@@ -8,6 +8,23 @@ interface HomePageProps {
   onSelectDate?: (date: string) => void;
 }
 
+const CATEGORY_COLOR_MAP: Record<string, string> = {
+  green: '#E3FDF0',
+  apricot: '#FFEEDF',
+  blue: '#E2EFFD',
+  pink: '#FFEFF7',
+  purple: '#F6EFFE',
+  yellow: '#FDFEE4',
+};
+
+const calendarEvents = MOCK_SCHEDULES.map((schedule) => ({
+  title: schedule.title,
+  date: schedule.date,
+  backgroundColor: CATEGORY_COLOR_MAP[schedule.categoryColor] ?? CATEGORY_COLOR_MAP.yellow,
+  textColor: '#1C1630',
+  borderColor: 'transparent',
+}));
+
 function HomePage({ onSelectDate }: HomePageProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -16,20 +33,6 @@ function HomePage({ onSelectDate }: HomePageProps) {
     setSelectedDate(date);
     onSelectDate?.(date);
   };
-
-  const calendarEvents = MOCK_SCHEDULES.map((schedule) => ({
-    title: schedule.title,
-    date: schedule.date,
-    backgroundColor:
-      schedule.categoryColor === 'green' ? '#E3FDF0' :
-      schedule.categoryColor === 'apricot' ? '#FFEEDF' :
-      schedule.categoryColor === 'blue' ? '#E2EFFD' :
-      schedule.categoryColor === 'pink' ? '#FFEFF7' :
-      schedule.categoryColor === 'purple' ? '#F6EFFE' :
-      '#FDFEE4', // yellow
-    textColor: '#1C1630',
-    borderColor: 'transparent',
-  }));
 
   return (
     <div className="home-page">

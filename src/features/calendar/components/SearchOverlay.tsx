@@ -4,12 +4,14 @@ import { MOCK_SCHEDULES } from '@/features/calendar/mockData';
 import './SearchOverlay.css';
 
 function formatDateHeader(dateStr: string, isFirst: boolean): string {
-  const date = new Date(dateStr);
+  const [yearStr, monthStr, dayStr] = dateStr.split('-');
+  const date = new Date(Number(yearStr), Number(monthStr) - 1, Number(dayStr));
+  const year = date.getFullYear();
   const month = date.getMonth() + 1;
   const day = date.getDate();
   const weekday = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()];
   return isFirst
-    ? `${date.getFullYear()}년 ${month}월 ${day}일 (${weekday})`
+    ? `${year}년 ${month}월 ${day}일 (${weekday})`
     : `${month}월 ${day}일 (${weekday})`;
 }
 
@@ -23,23 +25,24 @@ function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
 
   const hasQuery = query.trim() !== '';
 
-  const groupedResults = useMemo(() => {
-    if (!hasQuery) return [];
-    const filtered = MOCK_SCHEDULES.filter((item) =>
-      item.title.includes(query) || item.location?.includes(query)
-    );
-    const sorted = [...filtered].sort((a, b) => a.date.localeCompare(b.date));
-    const groups: { date: string; items: typeof filtered }[] = [];
-    for (const item of sorted) {
-      const lastGroup = groups[groups.length - 1];
-      if (lastGroup && lastGroup.date === item.date) {
-        lastGroup.items.push(item);
-      } else {
-        groups.push({ date: item.date, items: [item] });
-      }
+const groupedResults = useMemo(() => {
+  if (!hasQuery) return [];
+  const lowerQuery = query.toLowerCase();
+  const filtered = MOCK_SCHEDULES.filter((item) =>
+    item.title.toLowerCase().includes(lowerQuery) || item.location?.toLowerCase().includes(lowerQuery)
+  );
+  const sorted = [...filtered].sort((a, b) => a.date.localeCompare(b.date));
+  const groups: { date: string; items: typeof filtered }[] = [];
+  for (const item of sorted) {
+    const lastGroup = groups[groups.length - 1];
+    if (lastGroup && lastGroup.date === item.date) {
+      lastGroup.items.push(item);
+    } else {
+      groups.push({ date: item.date, items: [item] });
     }
-    return groups;
-  }, [query, hasQuery]);
+  }
+  return groups;
+}, [query, hasQuery]);
 
   const handleClose = () => {
     setQuery('');
