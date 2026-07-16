@@ -53,7 +53,10 @@ function CalendarGrid({
   });
 
   return (
-    <div {...swipeHandlers} className={selectedDate ? 'has-selection' : ''}>
+    <div
+      {...swipeHandlers}
+      className={`calendar-grid-root ${selectedDate ? 'has-selection' : ''}`}
+    >
       <div className="calendar-header">
         <span className="month-number">{currentMonth}</span>
         <div className="calendar-header-icons">
