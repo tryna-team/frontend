@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import TextButton from '@/components/common/Buttons/TextButton';
+import { Button } from "@/components/common/Buttons";
 import { MOCK_SCHEDULES } from '@/features/calendar/mockData';
 import './SearchOverlay.css';
 
@@ -69,10 +69,10 @@ function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
             <img src="/icon/icons/delete_small.svg" alt="" />
           </button>
           <div className="search-overlay-close-wrap">
-            <TextButton size="medium" onClick={handleClose}>
-              닫기
-            </TextButton>
-          </div>
+  <Button variant="MediumDefaultFit" onClick={handleClose}>
+    닫기
+  </Button>
+</div>
         </div>
 
         {hasQuery && (

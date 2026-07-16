@@ -1,12 +1,12 @@
 .search-overlay {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 9999;
   background: var(--color-grey-opacity-200);
 }
 
 .search-overlay-stack {
-  position: fixed;
+  position: absolute;
   top: calc(env(safe-area-inset-top, 0px) + 12px);
   left: 8px;
   right: 8px;
