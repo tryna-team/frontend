@@ -1,7 +1,8 @@
 import type { CategoryColor } from '@/features/calendar/types';
+import Checklist from '@/components/common/Checklist/Checklist';
 import './ScheduleCard.css';
 
-interface ChecklistItem {
+interface ChecklistItemData {
   id: string;
   text: string;
   checked: boolean;
@@ -19,7 +20,7 @@ interface ScheduleCardProps {
   location: string;
   startTime: string;
   endTime: string;
-  checklist?: ChecklistItem[];
+  checklist?: ChecklistItemData[];
   onToggleItem?: (itemId: string) => void;
   linkedSchedule?: LinkedSchedule;
   onLinkedScheduleClick?: () => void;
@@ -87,34 +88,15 @@ function ScheduleCard({
       )}
 
       {checklist.length > 0 && (
-        <ul className="schedule-card-checklist">
-          {checklist.map((item) => (
-            <li key={item.id} className="schedule-card-checklist-item">
-              <button
-                type="button"
-                className="schedule-card-checkbox"
-                onClick={() => onToggleItem?.(item.id)}
-                aria-label={item.checked ? '완료 취소' : '완료 처리'}
-              >
-                <img
-                  src={
-                    item.checked
-                      ? '/icon/radio_button/done_medium.svg'
-                      : '/icon/radio_button/default_medium.svg'
-                  }
-                  alt=""
-                />
-              </button>
-              <span
-                className={`schedule-card-checklist-text ${
-                  item.checked ? 'is-checked' : ''
-                }`}
-              >
-                {item.text}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <Checklist
+          items={checklist.map((item, index) => ({
+            id: index,
+            label: item.text,
+            status: item.checked ? 'done' : 'default',
+            iconSize: 'small',
+          }))}
+          onLeadingClick={(id) => onToggleItem?.(checklist[id].id)}
+        />
       )}
     </div>
   );
