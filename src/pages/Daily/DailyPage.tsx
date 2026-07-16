@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import WeekStrip from '@/features/calendar/components/WeekStrip';
 import ScheduleCard from '@/features/calendar/components/ScheduleCard';
-import ScheduleBanner from '@/features/calendar/components/ScheduleBanner';
+import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import type { CategoryColor } from '@/features/calendar/types';
 import './DailyPage.css';
 

@@ -1,18 +1,12 @@
 import './App.css';
 
-import IconButton from '@/components/common/Buttons/IconButton';
-
 function App() {
   return (
-    <div className="flex min-h-screen flex-col gap-8 p-10">
-      <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-bold">IconButton</h2>
-        <div className="flex flex-wrap items-center gap-3">
-          <IconButton icon="icons/hamburger_medium.svg" alt="메뉴" onClick={() => console.log('hamburger clicked')} />
-          <IconButton icon="icons/search_medium.svg" alt="검색" onClick={() => console.log('search clicked')} />
-          <IconButton icon="icons/setting_medium.svg" alt="설정" onClick={() => console.log('setting clicked')} />
-        </div>
-      </section>
+	  // 공통 테스트 화면 크기
+    // width : 390 ~ 402px
+    // height: 최소 840px, 콘텐츠에 따라 자동 증가
+    <div className="mx-auto min-h-[840px] w-full min-w-[390px] max-w-[402px] bg-background">
+      
     </div>
   );
 }

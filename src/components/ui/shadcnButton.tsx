@@ -42,7 +42,7 @@ const buttonVariants = cva(
   },
 );
 
-function Button({
+function ShadcnButton({
   className,
   variant = 'default',
   size = 'default',
@@ -66,4 +66,4 @@ function Button({
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export { Button, buttonVariants };
+export { ShadcnButton, buttonVariants };
