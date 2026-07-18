@@ -1,0 +1,310 @@
+/* 
+ * 이벤트 생성 전용 시간 선택 다이얼
+ * 전체 레이아웃: 208px × 194px
+ * 내부 viewport: 200px × 170px
+ * 한 행: 200px × 34px
+ * 한 칸: 50px × 34px
+ * 세로 열: 50px × 170px
+ */
+
+.time-picker-dial {
+  --time-picker-width: 200px;
+  --time-picker-item-width: 50px;
+  --time-picker-item-height: 34px;
+  --time-picker-visible-item-count: 5;
+  --time-picker-viewport-height: calc(
+    var(--time-picker-item-height) *
+      var(--time-picker-visible-item-count)
+  );
+
+  box-sizing: border-box;
+  display: inline-flex;
+  width: 208px;
+  height: 194px;
+  padding:
+    var(
+      --Spacing-Semantic-Page-Padding-Small,
+      12px
+    )
+    var(
+      --Spacing-Semantic-Page-Padding-XXSmall,
+      4px
+    );
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  border-radius: var(
+    --Radius-Semantic-Medium,
+    16px
+  );
+  background: var(
+    --Semantic-BackGround-White,
+    #fff
+  );
+  box-shadow: 0 0 20px 0
+    rgba(0, 0, 0, 0.08);
+}
+
+/* Dial Viewport */
+
+.time-picker-dial__viewport {
+  position: relative;
+  width: var(--time-picker-width);
+  height: var(
+    --time-picker-viewport-height
+  );
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(
+    --Radius-Semantic-Medium,
+    16px
+  );
+  background: var(
+    --Semantic-BackGround-White,
+    #fff
+  );
+}
+
+/* Columns */
+
+.time-picker-dial__columns {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  display: flex;
+  width: var(--time-picker-width);
+  height: var(
+    --time-picker-viewport-height
+  );
+  padding:
+    0
+    var(
+      --Spacing-Semantic-Page-Padding-Large,
+      20px
+    );
+  align-items: stretch;
+  justify-content: space-between;
+}
+
+/* Selected Row */
+
+.time-picker-dial__selected-row {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  left: 0;
+  box-sizing: border-box;
+  width: var(--time-picker-width);
+  height: var(
+    --time-picker-item-height
+  );
+  border-radius: var(
+    --Radius-Semantic-Full,
+    999px
+  );
+  background: var(
+    --Base-Grey-Grey-Opacity-Grey-Opacity-100,
+    rgba(28, 22, 48, 0.05)
+  );
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* Scroll Column */
+
+.time-picker-dial__column {
+  position: relative;
+  box-sizing: border-box;
+  width: var(
+    --time-picker-item-width
+  );
+  height: var(
+    --time-picker-viewport-height
+  );
+  flex-shrink: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.time-picker-dial__column::-webkit-scrollbar {
+  display: none;
+}
+
+.time-picker-dial__spacer {
+  width: var(
+    --time-picker-item-width
+  );
+  height: var(
+    --time-picker-item-height
+  );
+  min-height: var(
+    --time-picker-item-height
+  );
+  flex-shrink: 0;
+  scroll-snap-align: none;
+  pointer-events: none;
+}
+
+/* Time Item */
+
+.time-picker-dial__item {
+  box-sizing: border-box;
+  display: flex;
+  width: var(
+    --time-picker-item-width
+  );
+  height: var(
+    --time-picker-item-height
+  );
+  min-height: var(
+    --time-picker-item-height
+  );
+  padding:
+    var(
+      --Spacing-Semantic-Page-Padding-XXSmall,
+      4px
+    )
+    0;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(
+    --Semantic-Text-Additional,
+    rgba(28, 22, 48, 0.6)
+  );
+  font-family: var(
+    --Default-Body-Large-FontFamily,
+    var(
+      --font-default,
+      Pretendard,
+      sans-serif
+    )
+  );
+  font-size: var(
+    --Default-Body-Large-FontSize,
+    1.0625rem
+  );
+  font-weight: var(
+    --Default-Body-Large-FontWeight,
+    500
+  );
+  line-height: var(
+    --Default-Body-Large-LineHeight,
+    1.625rem
+  );
+  letter-spacing: var(
+    --Default-Body-Large-LetterSpacing,
+    -0.010625rem
+  );
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  transition: color 120ms ease;
+}
+
+/* 오전/오후: 왼쪽 정렬 */
+.time-picker-dial__column--meridiem
+  .time-picker-dial__item {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+/* 분: 오른쪽 정렬 */
+.time-picker-dial__column--minute
+  .time-picker-dial__item {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.time-picker-dial__item--selected {
+  color: var(
+    --Semantic-Text-Default,
+    #1c1630
+  );
+}
+
+/* Fade Overlay */
+
+.time-picker-dial__fade {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  width: 198px;
+  height: 39px;
+  pointer-events: none;
+}
+
+.time-picker-dial__fade--top {
+  top: 0;
+  background: linear-gradient(
+    180deg,
+    var(
+        --Semantic-BackGround-White,
+        #fff
+      )
+      39.74%,
+    rgba(255, 255, 255, 0)
+      100%
+  );
+}
+
+.time-picker-dial__fade--bottom {
+  bottom: 0;
+  background: linear-gradient(
+    0deg,
+    var(
+        --Semantic-BackGround-White,
+        #fff
+      )
+      39.74%,
+    rgba(255, 255, 255, 0)
+      100%
+  );
+}
+
+/* Focus */
+
+.time-picker-dial__column:focus-visible {
+  border-radius: var(
+    --Radius-Semantic-Small,
+    8px
+  );
+  outline: 2px solid
+    var(
+      --Base-Green-Green-200,
+      #96f9c7
+    );
+  outline-offset: -2px;
+}
+
+.time-picker-dial__item:focus-visible {
+  border-radius: var(
+    --Radius-Semantic-Full,
+    999px
+  );
+  outline: 2px solid
+    var(
+      --Base-Green-Green-200,
+      #96f9c7
+    );
+  outline-offset: -2px;
+}
+
+/* Reduced Motion */
+
+@media (
+  prefers-reduced-motion: reduce
+) {
+  .time-picker-dial__item {
+    transition: none;
+  }
+}
