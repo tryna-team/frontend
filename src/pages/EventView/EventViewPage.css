@@ -9,17 +9,32 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* 콘텐츠가 화면보다 짧을 때 남는 공간을 채워서 아래 sticky 바를 화면 바닥으로 밀어냄 */
-  flex: 1;
+  /* .event-view-page-floating(fixed, 82px 높이 + bottom 34px)에 콘텐츠 마지막 줄이
+     가리지 않도록 그만큼 하단 여백 확보 */
+  padding-bottom: calc(82px + 34px);
 }
 
 .event-view-page-floating {
-  /* 모바일 화면 하단에 항상 붙어있도록 sticky 처리 — 스크롤 컨테이너는 페이지 자체 */
-  position: sticky;
-  bottom: 0;
+  /*
+   * sticky는 체크리스트가 길어지면 이 요소의 문서상 위치(맨 끝)까지 스크롤해야만
+   * "붙기" 시작해서, 그 전까지는 삭제 버튼이 아예 안 보이는 문제가 있어 fixed로 변경
+   * (CodeRabbit 리뷰로 발견: 콘텐츠가 짧을 땐 문제없지만 길어지면 스크롤 끝까지
+   * 가야 버튼이 나타남).
+   *
+   * TODO: 지금은 페이지(EventViewPage) 단위로 fixed 처리했지만, 이건 임시 조치임.
+   * 나중에 App.tsx/index.css 레벨에서 Main(스크롤 영역)과 FloatingButtons(플로팅
+   * 영역)을 구조적으로 분리하는 레이아웃을 도입하면(예: 앱 프레임 높이를 고정하고
+   * Main만 내부 스크롤), 이 fixed 포지셔닝과 위 .event-view-page-content의
+   * padding-bottom 예약이 더 이상 필요 없어짐 — 그때 이 버튼을 App 레벨 플로팅
+   * 슬롯으로 옮기고 이 블록은 삭제할 것.
+   */
+  position: fixed;
+  bottom: 34px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(402px, 100vw);
   z-index: 10;
   display: flex;
-  width: 100%;
   height: 82px;
   align-items: center;
   justify-content: center;
