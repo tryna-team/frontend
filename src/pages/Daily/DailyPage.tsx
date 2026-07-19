@@ -29,6 +29,7 @@ interface BannerItem {
   date: string;
 }
 
+//체크리스트 모크 데이터
 const MOCK_SCHEDULES: ScheduleItem[] = [
   {
     id: '1',
@@ -72,6 +73,7 @@ const MOCK_SCHEDULES: ScheduleItem[] = [
   },
 ];
 
+//배너 모크 데이터
 const MOCK_BANNERS: BannerItem[] = [
   {
     id: 'b1',
@@ -103,10 +105,10 @@ function DailyPage() {
         return {
           ...schedule,
           checklist: schedule.checklist.map((item) =>
-            item.id === itemId ? { ...item, checked: !item.checked } : item
+            item.id === itemId ? { ...item, checked: !item.checked } : item,
           ),
         };
-      })
+      }),
     );
   };
 
