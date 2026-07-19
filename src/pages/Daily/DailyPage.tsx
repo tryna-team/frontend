@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Header from '@/components/common/Header/Header';
 import WeekStrip from '@/features/calendar/components/WeekStrip';
 import ScheduleCard from '@/features/calendar/components/ScheduleCard';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
@@ -114,6 +115,14 @@ function DailyPage() {
 
   return (
     <div className="daily-page">
+      {/* Mock: Figma(node 1246:16068)의 정적 예시 텍스트를 그대로 적용. selectedDate 연동 없음 */}
+      <Header
+        variant="daily"
+        title="6월 4일 (목)"
+        leading={{ type: 'icon-text', text: '6월' }}
+        trailing={{ type: 'none' }}
+      />
+
       <WeekStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />
 
       {todayBanners.length > 0 && (
