@@ -34,18 +34,26 @@ type HeaderProps = {
 };
 
 /*
- * Header는 leading, title, trailing의 내부 배치만 담당합니다.
+ * Header는 leading, title, trailing의 내부 배치를 담당합니다.
  *
- * 화면별 좌우 padding과 외부 여백은 Header를 사용하는 페이지나 Modal에서 설정합니다.
- * 예: Daily 페이지에서 <div className="px-margin-small">로 Header를 감싸서 사용
+ * daily variant는 좌우 패딩(px-margin-small, 20px)을 컴포넌트 내부에서 자체 적용합니다
+ * (아래 daily.container 참고). modal variant는 Modal 내부 콘텐츠 너비(353px)에 맞춰
+ * 배치되므로 여전히 Header를 사용하는 Modal 쪽에서 폭/여백을 설정합니다.
  */
 const HEADER_STYLE = {
   daily: {
     /*
      * Daily Header
      * 부모 영역의 전체 너비를 사용
+     *
+     * TODO: 좌우 패딩(px-margin-small)을 여기서 자체 적용하도록 바꿨음 — 화면마다
+     * wrapper 씌우는 걸 잊어버릴 위험은 줄지만, 나중에 여백 없는 풀블리드 헤더가
+     * 필요해지면 이 안에서 별도 prop 등으로 예외 처리를 해야 함. 반대로 바깥에서
+     * <div className="px-margin-small">로 감싸는 방식은 그런 예외 대응이 더 쉽고
+     * 호출부에서 여백 적용 여부가 명시적으로 보인다는 장점이 있으니, 상황에 따라
+     * 바깥에서 감싸는 방식으로 되돌리는 것도 같이 고려할 것.
      */
-    container: 'flex h-[42px] w-full items-center justify-between',
+    container: 'flex h-[52px] w-full items-center justify-between px-margin-small',
 
     // leading과 trailing에 같은 너비를 지정해 title이 중앙에 위치하도록 구성
     leadingSlot: 'flex h-full w-[104px] shrink-0 items-center justify-start',
