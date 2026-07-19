@@ -1,11 +1,14 @@
-import ChecklistItem, {
-  type ChecklistIconSize,
-  type ChecklistSize,
-  type ChecklistStatus,
-  type ChecklistTrailing,
+import ChecklistItem from './ChecklistItem';
+
+import type {
+  ChecklistIconSize,
+  ChecklistRadioVariant,
+  ChecklistSize,
+  ChecklistStatus,
+  ChecklistTrailing,
 } from './ChecklistItem';
 
-type ChecklistItemData = {
+export type ChecklistItemData = {
   id: number;
   label: string;
   status?: ChecklistStatus;
@@ -14,12 +17,41 @@ type ChecklistItemData = {
   disabled?: boolean;
 };
 
-type ChecklistProps = {
+export type ChecklistProps = {
   items: ChecklistItemData[];
   iconSize?: ChecklistIconSize;
+  radioVariant?: ChecklistRadioVariant;
   onLeadingClick?: (id: number) => void;
   onDelete?: (id: number) => void;
 };
+
+const RADIO_ICON_SIZE: Record<
+  ChecklistRadioVariant,
+  ChecklistIconSize
+> = {
+  create: 'medium',
+  event: 'medium',
+  daily: 'small',
+};
+
+function resolveChecklistIconSize(
+  status: ChecklistStatus,
+  iconSize: ChecklistIconSize,
+  radioVariant: ChecklistRadioVariant,
+): ChecklistIconSize {
+  if (status === 'plus') {
+    return 'small';
+  }
+
+  if (
+    status === 'default' ||
+    status === 'done'
+  ) {
+    return RADIO_ICON_SIZE[radioVariant];
+  }
+
+  return iconSize;
+}
 
 function resolveChecklistSize(
   status: ChecklistStatus,
@@ -29,20 +61,28 @@ function resolveChecklistSize(
     return 'large';
   }
 
-  return iconSize === 'medium' ? 'large' : 'medium';
+  return iconSize === 'medium'
+    ? 'large'
+    : 'medium';
 }
 
 function getItemLayout(
   status: ChecklistStatus,
   iconSize: ChecklistIconSize,
 ) {
-  const size = resolveChecklistSize(status, iconSize);
+  const size = resolveChecklistSize(
+    status,
+    iconSize,
+  );
 
   if (status === 'plus') {
     return 'flex h-[46px] w-full max-w-[361px] items-center py-3';
   }
 
-  if (status === 'add' && size === 'large') {
+  if (
+    status === 'add' &&
+    size === 'large'
+  ) {
     return 'flex h-[46px] w-full max-w-[350px] items-center justify-between py-3 pr-1';
   }
 
@@ -56,23 +96,32 @@ function getItemLayout(
 export default function Checklist({
   items,
   iconSize = 'medium',
+  radioVariant = 'event',
   onLeadingClick,
   onDelete,
 }: ChecklistProps) {
   return (
     <div className="flex w-full flex-col">
       {items.map((item) => {
-        const status = item.status ?? 'default';
+        const status =
+          item.status ?? 'default';
+
+        const requestedIconSize =
+          item.iconSize ?? iconSize;
 
         const resolvedIconSize =
-          status === 'plus'
-            ? 'small'
-            : item.iconSize ?? iconSize;
+          resolveChecklistIconSize(
+            status,
+            requestedIconSize,
+            radioVariant,
+          );
 
-        const originalTrailing = item.trailing;
+        const originalTrailing =
+          item.trailing;
 
         const trailing: ChecklistTrailing =
-          originalTrailing?.type === 'delete'
+          originalTrailing?.type ===
+          'delete'
             ? {
                 type: 'delete',
                 onClick: () => {
@@ -80,20 +129,34 @@ export default function Checklist({
                   onDelete?.(item.id);
                 },
               }
-            : originalTrailing ?? { type: 'none' };
+            : originalTrailing ?? {
+                type: 'none',
+              };
 
         return (
           <div
             key={item.id}
-            className={getItemLayout(status, resolvedIconSize)}
+            className={getItemLayout(
+              status,
+              resolvedIconSize,
+            )}
           >
             <ChecklistItem
               label={item.label}
               status={status}
-              iconSize={resolvedIconSize}
+              iconSize={
+                resolvedIconSize
+              }
+              radioVariant={
+                radioVariant
+              }
               trailing={trailing}
               disabled={item.disabled}
-              onLeadingClick={() => onLeadingClick?.(item.id)}
+              onLeadingClick={() =>
+                onLeadingClick?.(
+                  item.id,
+                )
+              }
             />
           </div>
         );
