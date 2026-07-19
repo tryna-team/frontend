@@ -1,8 +1,5 @@
 .event-view-page {
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
 }
 
 .event-view-page-content {
