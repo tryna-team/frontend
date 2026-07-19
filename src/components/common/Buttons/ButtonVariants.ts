@@ -66,12 +66,17 @@ export const textColorClassNames = {
 export const iconButtonClassNames =
   "h-auto w-auto p-0 rounded-none bg-transparent hover:bg-transparent border-none shadow-none active:translate-y-0";
 
-// 텍스트 스타일(17px/500)은 Figma(node 1477:3938, Header "Left")의 Default/Body/Large(default-body-large) + text-text-default.
+// 구조 스타일만 담당 — 타이포그래피/텍스트 색상은 프리셋(IconTextButtonConfig)별로 다르므로
+// ButtonType.ts의 iconTextButtonConfig에서 개별 지정.
 export const iconTextButtonClassNames =
-  "h-auto w-auto p-0 rounded-none bg-transparent hover:bg-transparent border-none shadow-none active:translate-y-0 default-body-large text-text-default disabled:text-text-disable disabled:opacity-100";
+  "h-auto w-auto p-0 rounded-none bg-transparent hover:bg-transparent border-none shadow-none active:translate-y-0 disabled:text-text-disable disabled:opacity-100";
 
 // 아이콘-텍스트 간격. tds의 gap-small(8px)이 Figma(node 1477:3938)의 gap-[8px]와 일치해 기본값으로 사용.
 export const gapClassNames = {
+  // ⚠️ tds에 'gap-xsmall'(4px) 유틸리티가 존재하지 않음(gap-small=8px, gap-medium=12px만 정의됨).
+  // Figma IconTextButton_Small(node 2886:21946)의 4px 간격을 맞추기 위해 tds가 아닌
+  // Tailwind 기본 유틸리티 gap-1(=4px)을 사용. tds에 xsmall이 추가되면 교체 검토.
+  xsmall: "gap-1",
   small: "gap-small",
   medium: "gap-medium",
 } as const;
