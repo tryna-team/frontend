@@ -87,7 +87,7 @@ export default function LabelItem(
         </span>
       ) : (
         <span className="flex min-w-0 items-center gap-2">
-          <span className="shrink-0 text-[16px] font-medium leading-6 tracking-[-0.3px] text-[#1C1630]">
+          <span className="min-w-0 truncate text-[16px] font-medium leading-6 tracking-[-0.3px] text-[#1C1630]">
             {props.label}
           </span>
 
