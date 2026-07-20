@@ -56,7 +56,6 @@ export type CreateModalProps = {
   onOpenLabel?: () => void;
   onAddChecklist?: () => void;
   onToggleChecklist?: (id: number) => void;
-  onDeleteChecklist?: (id: number) => void;
 };
 
 const COLOR_ICON = {
@@ -85,7 +84,6 @@ export default function CreateModal({
   onOpenLabel,
   onAddChecklist,
   onToggleChecklist,
-  onDeleteChecklist,
 }: CreateModalProps) {
   const isRecommendMode =
     mode === 'recommend';
@@ -150,19 +148,6 @@ export default function CreateModal({
     onToggleChecklist?.(id);
   };
 
-  const handleDeleteChecklist = (
-    id: number,
-  ) => {
-    // 내부 전용 직접 추가 항목은 삭제할 수 없음
-    if (
-      id === ADD_CHECKLIST_ITEM_ID
-    ) {
-      return;
-    }
-
-    onDeleteChecklist?.(id);
-  };
-
   return (
     <section className="flex w-full max-w-[385px] flex-col items-start gap-0.5 rounded-[24px] border border-[rgba(28,22,48,0.05)] bg-background-white p-3">
       {!isRecommendMode && (
@@ -207,9 +192,6 @@ export default function CreateModal({
             radioVariant="create"
             onLeadingClick={
               handleChecklistClick
-            }
-            onDelete={
-              handleDeleteChecklist
             }
           />
 
