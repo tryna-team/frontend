@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Header from '@/components/common/Header/Header';
 import WeekStrip from '@/features/calendar/components/WeekStrip';
 import ScheduleCard from '@/features/calendar/components/ScheduleCard';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
@@ -29,6 +30,7 @@ interface BannerItem {
   date: string;
 }
 
+//체크리스트 모크 데이터
 const MOCK_SCHEDULES: ScheduleItem[] = [
   {
     id: '1',
@@ -72,6 +74,7 @@ const MOCK_SCHEDULES: ScheduleItem[] = [
   },
 ];
 
+//배너 모크 데이터
 const MOCK_BANNERS: BannerItem[] = [
   {
     id: 'b1',
@@ -103,15 +106,23 @@ function DailyPage() {
         return {
           ...schedule,
           checklist: schedule.checklist.map((item) =>
-            item.id === itemId ? { ...item, checked: !item.checked } : item
+            item.id === itemId ? { ...item, checked: !item.checked } : item,
           ),
         };
-      })
+      }),
     );
   };
 
   return (
     <div className="daily-page">
+      {/* Mock: Figma(node 1246:16068)의 정적 예시 텍스트를 그대로 적용. selectedDate 연동 없음 */}
+      <Header
+        variant="daily"
+        title="6월 4일 (목)"
+        leading={{ type: 'icon-text', text: '6월' }}
+        trailing={{ type: 'none' }}
+      />
+
       <WeekStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />
 
       {todayBanners.length > 0 && (
