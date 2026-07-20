@@ -45,12 +45,15 @@ interface CalendarState {
   selectLabel: (labelId: string | null) => void; // 레이블 수정 화면 진입/이탈 시 대상 지정·해제
 }
 
-// 스토어 생성 시 "오늘"을 한 번만 계산해 모듈 스코프 상수로 고정.
-// (매 렌더링마다 new Date()를 새로 만들면 미묘하게 다른 시각 기준이 될 수 있어 주의)
+// 스토어 초기값 계산용 "오늘" — 모듈(앱) 로드 시점의 스냅샷.
+// ⚠️ goToToday() 같은 액션에서는 이 상수를 재사용하면 안 됨(앱을 오래 켜두면
+// 실제 오늘이 아니라 앱 로드 시점 날짜로 돌아가는 stale closure 버그) —
+// 액션 내부에서는 항상 new Date()를 새로 생성해서 씀.
 const today = new Date();
-// Date → 'YYYY-MM-DD' 문자열 변환 헬퍼. toISOString()은 UTC 기준이라
-// 자정 근처(타임존에 따라 날짜가 하루 밀리는 경우)에는 별도 검증이 필요할 수 있음.
-const toISODate = (d: Date) => d.toISOString().slice(0, 10);
+// Date → 'YYYY-MM-DD' 문자열 변환 헬퍼. WeekStrip.tsx/CalendarGrid.tsx가 이미 쓰는
+// toLocaleDateString('sv-SE') 패턴과 동일 — 로컬 타임존 기준이라 toISOString()(UTC)의
+// 자정 근처 하루 밀림 문제가 없음.
+const toISODate = (d: Date) => d.toLocaleDateString('sv-SE');
 
 export const useCalendarStore = create<CalendarState>((set) => ({
   // 초기값: 앱을 처음 열면 항상 "이번 달 오늘"이 기본 뷰가 되도록 오늘 날짜로 세팅
@@ -66,12 +69,15 @@ export const useCalendarStore = create<CalendarState>((set) => ({
   setMonth: (year, month) => set({ currentYear: year, currentMonth: month }),
 
   // "오늘" 버튼: 연/월/선택날짜 세 값을 한 번에 오늘 기준으로 되돌림
-  goToToday: () =>
+  // (stale closure 방지: 위 모듈 스코프 today 대신 호출 시점의 실제 오늘을 새로 계산)
+  goToToday: () => {
+    const now = new Date();
     set({
-      currentYear: today.getFullYear(),
-      currentMonth: today.getMonth() + 1,
-      selectedDate: toISODate(today),
-    }),
+      currentYear: now.getFullYear(),
+      currentMonth: now.getMonth() + 1,
+      selectedDate: toISODate(now),
+    });
+  },
 
   // 날짜 셀 탭: selectedDate만 갱신 → React Query를 쓴다면 이 값이 바뀌는 순간
   // 해당 날짜의 일정 목록 쿼리가 새 쿼리 키로 자동 refetch됨
