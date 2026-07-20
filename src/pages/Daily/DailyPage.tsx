@@ -13,6 +13,7 @@ import type { CategoryColor } from '@/features/calendar/types';
 import {
   generateDailyPath,
   generateEventPath,
+  PATH,
 } from '@/routes/paths';
 
 import './DailyPage.css';
@@ -196,7 +197,19 @@ function DailyPage() {
 
   // Header: chevron -> 직전 화면 이동
   const handleBack = () => {
-    navigate(-1);
+    // 앱 내에 이전 방문 기록이 있는지 확인
+    const canGoBack =
+      window.history.state?.idx > 0;
+
+    if (canGoBack) {
+      navigate(-1);
+      return;
+    }
+
+    // 방문 기록 X -> Home으로 이동
+    navigate(PATH.HOME, {
+      replace: true,
+    });
   };
 
   // 일정 카드 -> EventView 이동
