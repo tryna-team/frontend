@@ -29,6 +29,8 @@ export const queryKeys = {
     all: ["events"] as const,
     detail: (eventId: number | string) =>
       [...queryKeys.events.all, "detail", eventId] as const,
+    search: (keyword: string) =>
+      [...queryKeys.events.all, "search", keyword] as const,
   },
 
   actionItems: {

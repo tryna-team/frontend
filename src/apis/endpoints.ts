@@ -49,6 +49,8 @@ export const ENDPOINTS = {
     DETAIL: (eventId: number | string) => `/events/${eventId}`,
     // 자연어 일정 입력 및 1차 파싱
     PARSE: "/events/parse",
+    // 키워드 검색 - Query: keyword
+    SEARCH: "/events/search",
   },
   ACTION_ITEMS: {
     // 준비/실행 항목 저장(POST) / 일정 연결 항목 조회(GET)
