@@ -52,6 +52,50 @@ const HOUR_VALUES = [
   1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
 ] as const;
 
+const COLUMN_SPACERS = Array.from(
+  { length: SIDE_SPACER_COUNT },
+  (_, index) => index,
+);
+
+const KEYBOARD_MOVE_STEP: Partial<Record<
+  string,
+  number
+>> = {
+  ArrowUp: -1,
+  ArrowDown: 1,
+  PageUp: -2,
+  PageDown: 2,
+};
+
+function joinClassNames(
+  ...classNames: Array<
+    string | undefined | false
+  >
+) {
+  return classNames
+    .filter(Boolean)
+    .join(' ');
+}
+
+function formatMeridiem(
+  meridiem: TimePickerMeridiem,
+) {
+  return meridiem === 'AM'
+    ? '오전'
+    : '오후';
+}
+
+function formatHour(hour: number) {
+  return String(hour);
+}
+
+function formatMinute(minute: number) {
+  return String(minute).padStart(
+    2,
+    '0',
+  );
+}
+
 // 분 단위가 유효하지 않으면 기본값(5분)을 사용
 function normalizeMinuteStep(
   minuteStep: number,
@@ -128,6 +172,64 @@ function getInitialAbsoluteIndex<
   );
 }
 
+// 현재 반복 위치에서 선택값과 가장 가까운 실제 인덱스를 계산
+function getNearestAbsoluteIndex<
+  T extends TimePickerColumnValue,
+>(
+  values: readonly T[],
+  selectedValue: T,
+  currentIndex: number,
+  circular: boolean,
+) {
+  const targetLogicalIndex = Math.max(
+    values.indexOf(selectedValue),
+    0,
+  );
+
+  if (!circular) {
+    return targetLogicalIndex;
+  }
+
+  const currentLogicalIndex =
+    getLogicalIndex(
+      currentIndex,
+      values.length,
+    );
+
+  const forwardDistance =
+    (targetLogicalIndex -
+      currentLogicalIndex +
+      values.length) %
+    values.length;
+
+  const backwardDistance =
+    forwardDistance - values.length;
+
+  const nearestDistance =
+    Math.abs(forwardDistance) <=
+    Math.abs(backwardDistance)
+      ? forwardDistance
+      : backwardDistance;
+
+  return currentIndex + nearestDistance;
+}
+
+type ColumnSpacerProps = {
+  position: 'top' | 'bottom';
+};
+
+function ColumnSpacers({
+  position,
+}: ColumnSpacerProps) {
+  return COLUMN_SPACERS.map((index) => (
+    <div
+      key={`${position}-spacer-${index}`}
+      className="time-picker-dial__spacer"
+      aria-hidden="true"
+    />
+  ));
+}
+
 function TimePickerColumn<
   T extends TimePickerColumnValue,
 >({
@@ -152,6 +254,9 @@ function TimePickerColumn<
       selectedValue,
       circular,
     );
+
+  const initialIndexRef =
+    useRef(initialIndex);
 
   const scrollContainerRef =
     useRef<HTMLDivElement>(null);
@@ -387,55 +492,25 @@ function TimePickerColumn<
       }, SCROLL_END_DELAY);
   };
 
-  const handleItemClick = (
-    absoluteIndex: number,
-  ) => {
-    commitIndex(absoluteIndex, true);
-  };
-
   const handleKeyDown = (
     event: KeyboardEvent<HTMLDivElement>,
   ) => {
     const currentIndex =
       currentAbsoluteIndexRef.current;
 
+    const moveStep =
+      KEYBOARD_MOVE_STEP[event.key];
+
+    if (moveStep !== undefined) {
+      event.preventDefault();
+      commitIndex(
+        currentIndex + moveStep,
+        true,
+      );
+      return;
+    }
+
     switch (event.key) {
-      case 'ArrowUp':
-        event.preventDefault();
-
-        commitIndex(
-          currentIndex - 1,
-          true,
-        );
-        break;
-
-      case 'ArrowDown':
-        event.preventDefault();
-
-        commitIndex(
-          currentIndex + 1,
-          true,
-        );
-        break;
-
-      case 'PageUp':
-        event.preventDefault();
-
-        commitIndex(
-          currentIndex - 2,
-          true,
-        );
-        break;
-
-      case 'PageDown':
-        event.preventDefault();
-
-        commitIndex(
-          currentIndex + 2,
-          true,
-        );
-        break;
-
       case 'Home':
         if (!circular) {
           event.preventDefault();
@@ -461,13 +536,10 @@ function TimePickerColumn<
 
   useEffect(() => {
     setScrollPosition(
-      initialIndex,
+      initialIndexRef.current,
       'auto',
     );
-  }, [
-    initialIndex,
-    setScrollPosition,
-  ]);
+  }, [setScrollPosition]);
 
   useEffect(() => {
     if (
@@ -490,48 +562,13 @@ function TimePickerColumn<
       return;
     }
 
-    let nextIndex: number;
-
-    if (!circular) {
-      nextIndex = Math.max(
-        values.indexOf(selectedValue),
-        0,
+    const nextIndex =
+      getNearestAbsoluteIndex(
+        values,
+        selectedValue,
+        currentIndex,
+        circular,
       );
-    } else {
-      const currentLogicalIndex =
-        getLogicalIndex(
-          currentIndex,
-          values.length,
-        );
-
-      const targetLogicalIndex =
-        Math.max(
-          values.indexOf(
-            selectedValue,
-          ),
-          0,
-        );
-
-      const forwardDistance =
-        (targetLogicalIndex -
-          currentLogicalIndex +
-          values.length) %
-        values.length;
-
-      const backwardDistance =
-        forwardDistance -
-        values.length;
-
-      const nearestDistance =
-        Math.abs(forwardDistance) <=
-        Math.abs(backwardDistance)
-          ? forwardDistance
-          : backwardDistance;
-
-      nextIndex =
-        currentIndex +
-        nearestDistance;
-    }
 
     if (
       externalSyncFrameRef.current
@@ -585,22 +622,13 @@ function TimePickerColumn<
         );
       }
 
-      if (
-        externalSyncFrameRef.current
-      ) {
-        cancelAnimationFrame(
-          externalSyncFrameRef.current,
-        );
-      }
     };
   }, []);
 
-  const rootClassName = [
+  const rootClassName = joinClassNames(
     'time-picker-dial__column',
     className,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  );
 
   return (
     <div
@@ -615,15 +643,7 @@ function TimePickerColumn<
       onScroll={handleScroll}
       onKeyDown={handleKeyDown}
     >
-      {Array.from({
-        length: SIDE_SPACER_COUNT,
-      }).map((_, index) => (
-        <div
-          key={`top-spacer-${index}`}
-          className="time-picker-dial__spacer"
-          aria-hidden="true"
-        />
-      ))}
+      <ColumnSpacers position="top" />
 
       {renderedValues.map(
         (
@@ -645,17 +665,15 @@ function TimePickerColumn<
               type="button"
               role="option"
               aria-selected={isActive}
-              className={[
+              className={joinClassNames(
                 'time-picker-dial__item',
-                isActive
-                  ? 'time-picker-dial__item--selected'
-                  : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
+                isActive &&
+                  'time-picker-dial__item--selected',
+              )}
               onClick={() =>
-                handleItemClick(
+                commitIndex(
                   absoluteIndex,
+                  true,
                 )
               }
             >
@@ -667,15 +685,7 @@ function TimePickerColumn<
         },
       )}
 
-      {Array.from({
-        length: SIDE_SPACER_COUNT,
-      }).map((_, index) => (
-        <div
-          key={`bottom-spacer-${index}`}
-          className="time-picker-dial__spacer"
-          aria-hidden="true"
-        />
-      ))}
+      <ColumnSpacers position="bottom" />
     </div>
   );
 }
@@ -689,20 +699,19 @@ export default function TimePickerDial({
   const normalizedMinuteStep =
     normalizeMinuteStep(minuteStep);
 
-  const minuteValues = useMemo(() => {
-    const values: number[] = [];
-
-    for (
-      let minute = 0;
-      minute < 60;
-      minute +=
-        normalizedMinuteStep
-    ) {
-      values.push(minute);
-    }
-
-    return values;
-  }, [normalizedMinuteStep]);
+  const minuteValues = useMemo(
+    () =>
+      Array.from(
+        {
+          length:
+            60 /
+            normalizedMinuteStep,
+        },
+        (_, index) =>
+          index * normalizedMinuteStep,
+      ),
+    [normalizedMinuteStep],
+  );
 
   const updateValue = <
     Key extends keyof TimePickerValue,
@@ -720,25 +729,10 @@ export default function TimePickerDial({
     });
   };
 
-  const handleHourChange = (
-    nextHour: number,
-  ) => {
-    if (value.hour === nextHour) {
-      return;
-    }
-
-    onChange({
-      ...value,
-      hour: nextHour,
-    });
-  };
-
-  const rootClassName = [
+  const rootClassName = joinClassNames(
     'time-picker-dial',
     className,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  );
 
   return (
     <section
@@ -759,13 +753,7 @@ export default function TimePickerDial({
             selectedValue={
               value.meridiem
             }
-            formatValue={(
-              meridiem,
-            ) =>
-              meridiem === 'AM'
-                ? '오전'
-                : '오후'
-            }
+            formatValue={formatMeridiem}
             onChange={(meridiem) =>
               updateValue(
                 'meridiem',
@@ -778,11 +766,9 @@ export default function TimePickerDial({
             ariaLabel="시"
             values={HOUR_VALUES}
             selectedValue={value.hour}
-            formatValue={(hour) =>
-              String(hour)
-            }
-            onChange={
-              handleHourChange
+            formatValue={formatHour}
+            onChange={(hour) =>
+              updateValue('hour', hour)
             }
             circular
           />
@@ -794,12 +780,7 @@ export default function TimePickerDial({
             selectedValue={
               value.minute
             }
-            formatValue={(minute) =>
-              String(minute).padStart(
-                2,
-                '0',
-              )
-            }
+            formatValue={formatMinute}
             onChange={(minute) =>
               updateValue(
                 'minute',

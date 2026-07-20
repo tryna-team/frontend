@@ -13,8 +13,7 @@
   --time-picker-item-height: 34px;
   --time-picker-visible-item-count: 5;
   --time-picker-viewport-height: calc(
-    var(--time-picker-item-height) *
-      var(--time-picker-visible-item-count)
+    var(--time-picker-item-height) * var(--time-picker-visible-item-count)
   );
 
   box-sizing: border-box;
