@@ -1,10 +1,11 @@
 import Button from '@/components/common/Buttons/Button';
 
 // ChecklistItem의 현재 상태
-// plus: 직접 추가 행에서 사용하는 + 아이콘
-// default: event, daily에서 사용하는 미완료 상태
-// done: event, daily에서는 완료 상태로 사용, create에서는 아직 선택하지 않은 추천 항목으로 사용
-// add: create에서 선택한 추천 항목
+//
+// plus: 직접 추가 항목
+// default: event, daily의 미완료 항목
+// done: 기존 Checklist 및 event, daily의 완료 항목 / create의 선택하지 않은 추천 항목
+// add: 기존 Checklist의 추가 항목 / create의 선택한 추천 항목
 export type ChecklistStatus =
   | 'plus'
   | 'default'
@@ -12,69 +13,103 @@ export type ChecklistStatus =
   | 'add';
 
 // 체크 아이콘 크기
-// medium: create, event에서 사용
-// small: daily에서 사용
+//
+// medium: 기존 큰 Checklist = create, event
+// small: 기존 작은 Checklist = daily
 export type ChecklistIconSize =
   | 'medium'
   | 'small';
 
 // 아이콘 크기에 따라 결정되는 ChecklistItem 스타일 크기
-// large: medium 아이콘과 큰 본문 텍스트 사용
-// medium: small 아이콘과 작은 본문 텍스트 사용
+//
+// large: medium 아이콘과 큰 본문 텍스트
+// medium: small 아이콘과 작은 본문 텍스트
 export type ChecklistSize =
   | 'large'
   | 'medium';
 
+// 새 화면별 UI를 구분하기 위한 타입
+// radioVariant를 전달하지 않으면 기존 Checklist UI를 사용
 export type ChecklistRadioVariant =
   | 'create'
   | 'event'
   | 'daily';
 
-// ChecklistItem 오른쪽 영역에 표시되는 요소
-// none: 요소 없음
-// date: 날짜 텍스트 또는 날짜 선택 버튼
+// ChecklistItem 오른쪽 영역
+//
+// none: 오른쪽 요소 없음
+// date: 기존 사용처에서는 날짜 텍스트 / create에서는 날짜 선택 Button
+// delete: 기존 삭제 버튼
 export type ChecklistTrailing =
-  | { type: 'none' }
+  | {
+      type: 'none';
+    }
   | {
       type: 'date';
       text: string;
       onClick?: () => void;
+    }
+  | {
+      type: 'delete';
+      onClick?: () => void;
     };
 
+// 기존 Props는 모두 유지
+// radioVariant만 선택적 Props로 추가
 export type ChecklistItemProps = {
   label: string;
   status?: ChecklistStatus;
   iconSize?: ChecklistIconSize;
-
-  // Checklist가 사용되는 화면 유형
-  radioVariant?: ChecklistRadioVariant;
-
   trailing?: ChecklistTrailing;
   disabled?: boolean;
   onLeadingClick?: () => void;
+
+  // 전달하지 않으면 기존 ChecklistItem UI를 사용
+  radioVariant?: ChecklistRadioVariant;
 };
 
-// 라디오 아이콘 경로와 텍스트 비활성화 스타일 여부를 함께 관리하는 타입
-type RadioIconConfig = {
+// 아이콘 경로와 라벨 비활성화 여부
+type IconConfig = {
   src: string;
   muted: boolean;
 };
 
-const PLUS_ICON =
-  '/icon/icons/plus_small.svg';
+// 기존 ChecklistItem에서 사용하는 아이콘
+// radioVariant를 전달하지 않은 기존 사용처는 이 아이콘 설정을 그대로 사용
+const LEGACY_ICON = {
+  plus: {
+    medium:
+      '/icon/icons/plus_small.svg',
+    small:
+      '/icon/icons/plus_small.svg',
+  },
+  default: {
+    medium:
+      '/icon/radio_button/default_medium.svg',
+    small:
+      '/icon/radio_button/default_small.svg',
+  },
+  done: {
+    medium:
+      '/icon/radio_button/done_medium.svg',
+    small:
+      '/icon/radio_button/done_small.svg',
+  },
+  add: {
+    medium:
+      '/icon/radio_button/add_medium.svg',
+    small:
+      '/icon/radio_button/add_small.svg',
+  },
+} as const;
 
-const ADD_ICON =
-  '/icon/radio_button/add_medium_check.svg';
-
-// create:
-// done은 아직 선택하지 않은 추천 항목
-// add는 선택한 추천 항목
-//
-// event, daily:
-// default는 미완료
-// done은 완료
-const RADIO_ICON = {
+// create, event, daily에서 사용하는 새 아이콘 설정
+const VARIANT_ICON = {
   create: {
+    plus: {
+      src: '/icon/icons/plus_small.svg',
+      muted: true,
+    },
     default: {
       src: '/icon/radio_button/done_medium.svg',
       muted: true,
@@ -83,9 +118,16 @@ const RADIO_ICON = {
       src: '/icon/radio_button/done_medium.svg',
       muted: true,
     },
-    iconSize: 'medium',
+    add: {
+      src: '/icon/radio_button/add_medium_check.svg',
+      muted: false,
+    },
   },
   event: {
+    plus: {
+      src: '/icon/icons/plus_small.svg',
+      muted: true,
+    },
     default: {
       src: '/icon/radio_button/default_medium.svg',
       muted: false,
@@ -94,9 +136,16 @@ const RADIO_ICON = {
       src: '/icon/radio_button/done_medium_check.svg',
       muted: true,
     },
-    iconSize: 'medium',
+    add: {
+      src: '/icon/radio_button/add_medium_check.svg',
+      muted: false,
+    },
   },
   daily: {
+    plus: {
+      src: '/icon/icons/plus_small.svg',
+      muted: true,
+    },
     default: {
       src: '/icon/radio_button/default_small.svg',
       muted: false,
@@ -105,18 +154,21 @@ const RADIO_ICON = {
       src: '/icon/radio_button/done_small_check.svg',
       muted: true,
     },
-    iconSize: 'small',
+    add: {
+      src: '/icon/radio_button/add_medium_check.svg',
+      muted: false,
+    },
   },
 } as const satisfies Record<
   ChecklistRadioVariant,
-  {
-    default: RadioIconConfig;
-    done: RadioIconConfig;
-    iconSize: ChecklistIconSize;
-  }
+  Record<ChecklistStatus, IconConfig>
 >;
 
+const DELETE_ICON =
+  '/icon/icons/delete_small.svg';
+
 // ChecklistItem 크기에 따른 내부 스타일
+// 기존 직접 작성된 typography class 대신 현재 프로젝트 typography class를 사용
 const ITEM_STYLE = {
   large: {
     leadingTextGap: 'gap-2',
@@ -132,7 +184,8 @@ const ITEM_STYLE = {
   },
 } as const;
 
-const ITEM_LAYOUT: Record<
+// 새 화면별 ChecklistItem 내부 크기
+const VARIANT_ITEM_LAYOUT: Record<
   ChecklistRadioVariant,
   string
 > = {
@@ -141,27 +194,12 @@ const ITEM_LAYOUT: Record<
   daily: 'h-[21px] w-[299px]',
 };
 
-// status와 radioVariant를 기준으로 실제 사용할 아이콘 크기 결정
-function resolveChecklistIconSize(
-  status: ChecklistStatus,
-  radioVariant: ChecklistRadioVariant,
-): ChecklistIconSize {
-  if (status === 'plus') {
-    return 'small';
-  }
-
-  if (status === 'add') {
-    return 'medium';
-  }
-
-  return RADIO_ICON[radioVariant].iconSize;
-}
-
-// 실제 아이콘 크기를 기준으로 텍스트와 간격에 사용할 스타일 크기 결정
+// 아이콘 크기를 기준으로 텍스트와 간격에 사용할 ChecklistItem 스타일 크기를 결정
 function resolveChecklistSize(
   status: ChecklistStatus,
   iconSize: ChecklistIconSize,
 ): ChecklistSize {
+  // plus: small 아이콘 + 기존과 동일하게 large 텍스트 스타일
   if (status === 'plus') {
     return 'large';
   }
@@ -171,115 +209,104 @@ function resolveChecklistSize(
     : 'medium';
 }
 
-// status와 화면 유형에 따라 왼쪽에 표시할 아이콘 경로 반환
-function resolveLeadingIcon(
+// 기존 ChecklistItem의 아이콘 경로를 반환
+function resolveLegacyIcon(
+  status: ChecklistStatus,
+  iconSize: ChecklistIconSize,
+) {
+  const leadingIconSize =
+    status === 'plus'
+      ? 'small'
+      : iconSize;
+
+  return LEGACY_ICON[status][
+    leadingIconSize
+  ];
+}
+
+// 새 화면별 아이콘 정보를 반환한다.
+function resolveVariantIcon(
+  status: ChecklistStatus,
+  radioVariant: ChecklistRadioVariant,
+): IconConfig {
+  return VARIANT_ICON[
+    radioVariant
+  ][status];
+}
+
+// 새 화면별 선택 상태를 판단
+
+// create: add가 선택 상태
+// event, daily: done이 선택 또는 완료 상태
+function resolveIsPressed(
   status: ChecklistStatus,
   radioVariant: ChecklistRadioVariant,
 ) {
-  if (status === 'plus') {
-    return PLUS_ICON;
+  if (radioVariant === 'create') {
+    return status === 'add';
   }
 
-  if (status === 'add') {
-    return ADD_ICON;
-  }
-
-  return RADIO_ICON[
-    radioVariant
-  ][status].src;
+  return status === 'done';
 }
 
-// 항목 상태와 화면 유형에 따라 텍스트를 비활성화 색상으로 표시할지 결정
-function resolveIsMutedLabel(
+// 아이콘 버튼의 접근성 라벨을 반환
+function resolveLeadingAriaLabel(
+  label: string,
   status: ChecklistStatus,
-  radioVariant: ChecklistRadioVariant,
 ) {
-  if (status === 'plus') {
-    return true;
-  }
-
-  if (status === 'add') {
-    return false;
-  }
-
-  return RADIO_ICON[
-    radioVariant
-  ][status].muted;
-}
-
-// Checklist의 단일 행 UI
-// 왼쪽 아이콘 및 라벨 렌더링
-// 상태에 따른 아이콘과 텍스트 색상 결정
-// create 화면의 날짜 버튼 렌더링
-// event 화면의 날짜 텍스트 렌더링
-export default function ChecklistItem({
-  label,
-  status = 'default',
-  iconSize = 'medium',
-  radioVariant = 'event',
-  trailing = { type: 'none' },
-  disabled = false,
-  onLeadingClick,
-}: ChecklistItemProps) {
-  const resolvedIconSize =
-    resolveChecklistIconSize(
-      status,
-      radioVariant,
-    );
-
-  /*
-   * 일반적으로 status와 radioVariant로 결정된 크기를 사용한다.
-   * add 이외의 특수 사용처에서 iconSize가 명시된 경우에는
-   * 전달된 크기를 스타일 계산에 반영한다.
-   */
-  const styleIconSize =
+  if (
+    status === 'plus' ||
     status === 'add'
-      ? resolvedIconSize
-      : iconSize ===
-          RADIO_ICON[radioVariant].iconSize
-        ? iconSize
-        : resolvedIconSize;
+  ) {
+    return `${label} 추가`;
+  }
 
-  const size =
-    resolveChecklistSize(
-      status,
-      styleIconSize,
-    );
+  return `${label} 체크 상태 변경`;
+}
+
+// 기존 ChecklistItem UI
+//
+// radioVariant를 전달하지 않은 기존 사용처에서 렌더링
+// 기존 레이아웃, delete, date 동작을 그대로 유지
+function LegacyChecklistItem({
+  label,
+  status,
+  iconSize,
+  trailing,
+  disabled,
+  onLeadingClick,
+}: Required<
+  Pick<
+    ChecklistItemProps,
+    | 'label'
+    | 'status'
+    | 'iconSize'
+    | 'trailing'
+    | 'disabled'
+  >
+> &
+  Pick<
+    ChecklistItemProps,
+    'onLeadingClick'
+  >) {
+  const size = resolveChecklistSize(
+    status,
+    iconSize,
+  );
 
   const style = ITEM_STYLE[size];
 
-  const isPlus =
-    status === 'plus';
-
-  const isAdd =
-    status === 'add';
-
-  // 체크 상태를 나타내는 항목 여부
-  // create: done, add
-  // event, daily: default, done
-  const isRadioItem =
-    status === 'default' ||
-    status === 'done' ||
-    status === 'add';
-
-  const isMutedLabel =
-    resolveIsMutedLabel(
-      status,
-      radioVariant,
-    );
-
-  // create, event: leading과 trailing을 행의 양쪽 끝에 배치
-  const alignToEdges =
-    radioVariant === 'create' ||
-    radioVariant === 'event';
+  const isPlus = status === 'plus';
+  const isAdd = status === 'add';
+  const isDone = status === 'done';
 
   const labelColor =
-    disabled || isMutedLabel
+    disabled || isDone || isPlus
       ? 'text-[var(--Semantic-Text-Disable,rgba(28,22,48,0.30))]'
       : 'text-[var(--Semantic-Text-Default,#1C1630)]';
 
   const trailingTextColor =
-    disabled || isMutedLabel
+    disabled || isDone
       ? 'text-[var(--Semantic-Text-Disable,rgba(28,22,48,0.30))]'
       : 'text-[var(--Semantic-Text-Additional,rgba(28,22,48,0.70))]';
 
@@ -289,28 +316,171 @@ export default function ChecklistItem({
       : style.label;
 
   const leadingAriaLabel =
-    isPlus
-      ? `${label} 추가`
-      : `${label} 체크 상태 변경`;
-
-  const leadingIcon =
-    resolveLeadingIcon(
+    resolveLeadingAriaLabel(
+      label,
       status,
-      radioVariant,
     );
 
-  // 화면별 선택 상태
-  // create: add
-  // event, daily: done
-  const isPressed =
-    radioVariant === 'create'
-      ? status === 'add'
-      : status === 'done';
+  const leadingIcon =
+    resolveLegacyIcon(
+      status,
+      iconSize,
+    );
 
   return (
     <div
       className={`flex min-w-0 items-center ${
-        ITEM_LAYOUT[radioVariant]
+        size === 'medium'
+          ? 'gap-2'
+          : 'flex-1 justify-between'
+      }`}
+    >
+      <div
+        className={`flex min-w-0 items-center ${style.leadingTextGap} ${
+          size === 'large'
+            ? 'flex-1'
+            : ''
+        }`}
+      >
+        <button
+          type="button"
+          onClick={onLeadingClick}
+          disabled={disabled}
+          className="flex shrink-0 items-center justify-center bg-transparent p-0 disabled:cursor-default"
+          aria-label={
+            leadingAriaLabel
+          }
+        >
+          <img
+            src={leadingIcon}
+            alt=""
+            className="block shrink-0"
+          />
+        </button>
+
+        <span
+          className={`min-w-0 truncate text-left ${labelStyle} ${labelColor}`}
+        >
+          {label}
+        </span>
+      </div>
+
+      {trailing.type === 'date' && (
+        <span
+          className={`shrink-0 ${
+            size === 'large'
+              ? 'ml-auto'
+              : ''
+          } ${style.date} ${trailingTextColor}`}
+        >
+          {trailing.text}
+        </span>
+      )}
+
+      {trailing.type ===
+        'delete' && (
+        <button
+          type="button"
+          onClick={
+            trailing.onClick
+          }
+          disabled={disabled}
+          className="ml-auto flex shrink-0 items-center justify-center bg-transparent p-0 disabled:cursor-default"
+          aria-label={`${label} 삭제`}
+        >
+          <img
+            src={DELETE_ICON}
+            alt=""
+            className="block shrink-0"
+          />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// create, event, daily용 ChecklistItem UI
+//
+// radioVariant가 전달된 새 사용처에서 렌더링
+function VariantChecklistItem({
+  label,
+  status,
+  iconSize,
+  radioVariant,
+  trailing,
+  disabled,
+  onLeadingClick,
+}: Required<
+  Pick<
+    ChecklistItemProps,
+    | 'label'
+    | 'status'
+    | 'iconSize'
+    | 'radioVariant'
+    | 'trailing'
+    | 'disabled'
+  >
+> &
+  Pick<
+    ChecklistItemProps,
+    'onLeadingClick'
+  >) {
+  const size = resolveChecklistSize(
+    status,
+    iconSize,
+  );
+
+  const style = ITEM_STYLE[size];
+
+  const icon = resolveVariantIcon(
+    status,
+    radioVariant,
+  );
+
+  const isPlus = status === 'plus';
+  const isAdd = status === 'add';
+
+  // create, event: 양쪽 끝 정렬
+  // daily: 기존 간격 기반 정렬
+  const alignToEdges =
+    radioVariant === 'create' ||
+    radioVariant === 'event';
+
+  const isMutedLabel =
+    disabled || icon.muted;
+
+  const labelColor = isMutedLabel
+    ? 'text-[var(--Semantic-Text-Disable,rgba(28,22,48,0.30))]'
+    : 'text-[var(--Semantic-Text-Default,#1C1630)]';
+
+  const trailingTextColor =
+    isMutedLabel
+      ? 'text-[var(--Semantic-Text-Disable,rgba(28,22,48,0.30))]'
+      : 'text-[var(--Semantic-Text-Additional,rgba(28,22,48,0.70))]';
+
+  const labelStyle =
+    isPlus || isAdd
+      ? style.addLabel
+      : style.label;
+
+  const leadingAriaLabel =
+    resolveLeadingAriaLabel(
+      label,
+      status,
+    );
+
+  const isPressed =
+    resolveIsPressed(
+      status,
+      radioVariant,
+    );
+
+  return (
+    <div
+      className={`flex min-w-0 items-center ${
+        VARIANT_ITEM_LAYOUT[
+          radioVariant
+        ]
       } ${
         alignToEdges
           ? 'justify-between'
@@ -330,15 +500,17 @@ export default function ChecklistItem({
           onClick={onLeadingClick}
           disabled={disabled}
           className="flex shrink-0 items-center justify-center bg-transparent p-0 disabled:cursor-default"
-          aria-label={leadingAriaLabel}
+          aria-label={
+            leadingAriaLabel
+          }
           aria-pressed={
-            isRadioItem
-              ? isPressed
-              : undefined
+            status === 'plus'
+              ? undefined
+              : isPressed
           }
         >
           <img
-            src={leadingIcon}
+            src={icon.src}
             alt=""
             className="block shrink-0"
           />
@@ -351,14 +523,17 @@ export default function ChecklistItem({
         </span>
       </div>
 
-      {/* create 화면에서는 날짜를 클릭 가능한 Button으로 표시 */}
+      {/* create: 날짜를 공용 Button으로 표시 */}
       {trailing.type === 'date' &&
-        radioVariant === 'create' && (
+        radioVariant ===
+          'create' && (
           <Button
             variant="MediumStrongFit"
             type="button"
             disabled={disabled}
-            onClick={trailing.onClick}
+            onClick={
+              trailing.onClick
+            }
             aria-label={`${label} 날짜 ${trailing.text}`}
             className="ml-auto shrink-0"
           >
@@ -366,15 +541,79 @@ export default function ChecklistItem({
           </Button>
         )}
 
-      {/* event와 daily에서는 날짜를 일반 텍스트로 표시 */}
+      {/* event, daily: 날짜를 텍스트로 표시 */}
       {trailing.type === 'date' &&
-        radioVariant !== 'create' && (
+        radioVariant !==
+          'create' && (
           <span
             className={`ml-auto shrink-0 ${style.date} ${trailingTextColor}`}
           >
             {trailing.text}
           </span>
         )}
+
+      {/* 이전 delete 타입 사용도 계속 지원 */}
+      {trailing.type ===
+        'delete' && (
+        <button
+          type="button"
+          onClick={
+            trailing.onClick
+          }
+          disabled={disabled}
+          className="ml-auto flex shrink-0 items-center justify-center bg-transparent p-0 disabled:cursor-default"
+          aria-label={`${label} 삭제`}
+        >
+          <img
+            src={DELETE_ICON}
+            alt=""
+            className="block shrink-0"
+          />
+        </button>
+      )}
     </div>
+  );
+}
+
+// Checklist의 단일 행 UI
+//
+// radioVariant가 없으면 기존 UI,
+// radioVariant가 있으면 새 화면별 UI를 사용
+export default function ChecklistItem({
+  label,
+  status = 'default',
+  iconSize = 'medium',
+  trailing = { type: 'none' },
+  disabled = false,
+  onLeadingClick,
+  radioVariant,
+}: ChecklistItemProps) {
+  if (!radioVariant) {
+    return (
+      <LegacyChecklistItem
+        label={label}
+        status={status}
+        iconSize={iconSize}
+        trailing={trailing}
+        disabled={disabled}
+        onLeadingClick={
+          onLeadingClick
+        }
+      />
+    );
+  }
+
+  return (
+    <VariantChecklistItem
+      label={label}
+      status={status}
+      iconSize={iconSize}
+      radioVariant={radioVariant}
+      trailing={trailing}
+      disabled={disabled}
+      onLeadingClick={
+        onLeadingClick
+      }
+    />
   );
 }

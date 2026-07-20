@@ -5,15 +5,15 @@ import ChecklistItem from './ChecklistItem';
 import type {
   ChecklistIconSize,
   ChecklistRadioVariant,
+  ChecklistSize,
   ChecklistStatus,
   ChecklistTrailing,
 } from './ChecklistItem';
 
-//Checklist에 전달되는 단일 항목 데이터
+// Checklist에 전달되는 단일 항목 데이터
 export type ChecklistItemData = {
   id: number;
   label: string;
-  //항목의 체크 및 추가 상태
   status?: ChecklistStatus;
   iconSize?: ChecklistIconSize;
   trailing?: ChecklistTrailing;
@@ -21,126 +21,275 @@ export type ChecklistItemData = {
 };
 
 export type ChecklistProps = {
-  //화면에 표시할 Checklist 항목 목록
   items: ChecklistItemData[];
   iconSize?: ChecklistIconSize;
-  //Checklist가 사용되는 화면 유형
+  onLeadingClick?: (
+    id: number,
+  ) => void;
+  onDelete?: (id: number) => void;
+
+  // 전달하지 않으면 기존 Checklist UI를 사용
   radioVariant?: ChecklistRadioVariant;
-  //왼쪽 아이콘 클릭 시 항목 ID와 함께 실행되는 함수
-  onLeadingClick?: (id: number) => void;
 };
 
-//화면 유형별 기본 라디오 아이콘 크기
-//create, event: medium
-//daily: small
-const RADIO_ICON_SIZE: Record<
-  ChecklistRadioVariant,
-  ChecklistIconSize
-> = {
-  create: 'medium',
-  event: 'medium',
-  daily: 'small',
+// 새 화면별 Checklist 외부 레이아웃
+type VariantChecklistLayout = {
+  container: string;
+  item: string;
 };
 
-//화면 유형별 Checklist 전체 너비
-//create, event: 353px
-//daily: 299px
-const CHECKLIST_LAYOUT: Record<
-  ChecklistRadioVariant,
-  string
-> = {
-  create: 'w-[353px]',
-  event: 'w-[353px]',
-  daily: 'w-[299px]',
-};
-
-//화면 유형별 단일 행 외부 레이아웃
-//create:
-//divider를 제외한 행 높이 45px
-//상하 패딩 12px
-//실제 ChecklistItem 콘텐츠 높이 21px
-
-//event:
-//상하 패딩 4px
-
-//daily:
-//별도 패딩 없이 ChecklistItem 크기 사용
-const ITEM_LAYOUT: Record<
-  ChecklistRadioVariant,
-  string
-> = {
-  create:
-    'flex h-[45px] w-full items-center py-3',
-  event:
-    'flex w-full items-center py-1',
-  daily:
-    'flex w-full items-center',
-};
-
-//항목 상태와 화면 유형을 기준으로 실제 사용할 아이콘 크기 결정
-function resolveChecklistIconSize(
+// 아이콘 크기에 따른 스타일 크기를 결정한다.
+function resolveChecklistSize(
   status: ChecklistStatus,
   iconSize: ChecklistIconSize,
+): ChecklistSize {
+  if (status === 'plus') {
+    return 'large';
+  }
+
+  return iconSize === 'medium'
+    ? 'large'
+    : 'medium';
+}
+
+// 기존 Checklist의 단일 행 레이아웃
+// radioVariant를 전달하지 않은 사용처에서 이전 레이아웃을 그대로 사용
+function getLegacyItemLayout(
+  status: ChecklistStatus,
+  iconSize: ChecklistIconSize,
+) {
+  const size = resolveChecklistSize(
+    status,
+    iconSize,
+  );
+
+  if (status === 'plus') {
+    return 'flex h-[46px] w-full max-w-[361px] items-center py-3';
+  }
+
+  if (
+    status === 'add' &&
+    size === 'large'
+  ) {
+    return 'flex h-[46px] w-full max-w-[350px] items-center justify-between py-3 pr-1';
+  }
+
+  if (size === 'large') {
+    return 'flex w-full max-w-[318px] items-center justify-between py-0.5';
+  }
+
+  return 'flex w-full max-w-[318px] items-center gap-2';
+}
+
+// 새 화면별 전체 너비와 단일 행 외부 레이아웃
+function getVariantChecklistLayout(
   radioVariant: ChecklistRadioVariant,
+): VariantChecklistLayout {
+  if (radioVariant === 'create') {
+    return {
+      container:
+        'flex w-[353px] flex-col',
+      item:
+        'flex h-[45px] w-full items-center py-3',
+    };
+  }
+
+  if (radioVariant === 'daily') {
+    return {
+      container:
+        'flex w-[299px] flex-col',
+      item:
+        'flex w-full items-center',
+    };
+  }
+
+  return {
+    container:
+      'flex w-[353px] flex-col',
+    item:
+      'flex w-full items-center py-1',
+  };
+}
+
+// 기존 Checklist에서 사용할 실제 아이콘 크기
+function resolveLegacyIconSize(
+  status: ChecklistStatus,
+  itemIconSize:
+    | ChecklistIconSize
+    | undefined,
+  defaultIconSize: ChecklistIconSize,
 ): ChecklistIconSize {
-  //plus: 항상 small
   if (status === 'plus') {
     return 'small';
   }
 
-  //기본 체크 항목: 화면 유형별 기본 크기 사용
-  if (
-    status === 'default' ||
-    status === 'done'
-  ) {
-    return RADIO_ICON_SIZE[radioVariant];
-  }
-
-  //add: 항목 또는 Checklist에서 전달한 크기 사용
-  return iconSize;
+  return itemIconSize ??
+    defaultIconSize;
 }
 
-//Checklist 목록 컴포넌트
+// 새 화면별 Checklist에서 사용할 아이콘 크기
+function resolveVariantIconSize(
+  status: ChecklistStatus,
+  radioVariant: ChecklistRadioVariant,
+): ChecklistIconSize {
+  if (status === 'plus') {
+    return 'small';
+  }
 
-//items 순회 및 ChecklistItem 렌더링
-//화면 유형별 전체 너비와 행 패딩 설정
-//create 화면 divider 렌더링
-//아이콘 크기 결정
-//항목별 클릭 및 삭제 이벤트 연결
-export default function Checklist({
-  items,
-  iconSize = 'medium',
-  radioVariant = 'event',
-  onLeadingClick,
-}: ChecklistProps) {
+  if (status === 'add') {
+    return 'medium';
+  }
+
+  if (radioVariant === 'daily') {
+    return 'small';
+  }
+
+  return 'medium';
+}
+
+// 기존 delete trailing에 Checklist의 onDelete를 연결
+// 항목 자체의 onClick이 있으면 먼저 실행하고, 그다음 Checklist의 onDelete를 실행
+function resolveTrailing(
+  item: ChecklistItemData,
+  onDelete:
+    | ((id: number) => void)
+    | undefined,
+): ChecklistTrailing {
+  const originalTrailing =
+    item.trailing;
+
+  if (
+    originalTrailing?.type ===
+    'delete'
+  ) {
+    return {
+      type: 'delete',
+      onClick: () => {
+        originalTrailing.onClick?.();
+        onDelete?.(item.id);
+      },
+    };
+  }
+
   return (
-    <div
-      className={`flex flex-col ${CHECKLIST_LAYOUT[radioVariant]}`}
-    >
+    originalTrailing ?? {
+      type: 'none',
+    }
+  );
+}
+
+// 기존 Checklist UI
+// radioVariant를 전달하지 않은 모든 사용처에서 이전 Props와 레이아웃을 그대로 사용
+function LegacyChecklist({
+  items,
+  iconSize,
+  onLeadingClick,
+  onDelete,
+}: Required<
+  Pick<
+    ChecklistProps,
+    'items' | 'iconSize'
+  >
+> &
+  Pick<
+    ChecklistProps,
+    | 'onLeadingClick'
+    | 'onDelete'
+  >) {
+  return (
+    <div className="flex w-full flex-col">
       {items.map((item) => {
-        //status가 전달X ->  기본 체크 상태를 사용
         const status =
           item.status ?? 'default';
 
-        //개별 항목의 iconSize 우선 사용 -> X: Checklist에 전달된 기본 iconSize를 사용
-        const requestedIconSize =
-          item.iconSize ?? iconSize;
+        const resolvedIconSize =
+          resolveLegacyIconSize(
+            status,
+            item.iconSize,
+            iconSize,
+          );
+
+        const trailing =
+          resolveTrailing(
+            item,
+            onDelete,
+          );
+
+        return (
+          <div
+            key={item.id}
+            className={getLegacyItemLayout(
+              status,
+              resolvedIconSize,
+            )}
+          >
+            <ChecklistItem
+              label={item.label}
+              status={status}
+              iconSize={
+                resolvedIconSize
+              }
+              trailing={trailing}
+              disabled={
+                item.disabled
+              }
+              onLeadingClick={() => {
+                onLeadingClick?.(
+                  item.id,
+                );
+              }}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// create, event, daily용 Checklist UI
+// radioVariant를 전달한 새 사용처에서만 사용
+function VariantChecklist({
+  items,
+  radioVariant,
+  onLeadingClick,
+  onDelete,
+}: Required<
+  Pick<
+    ChecklistProps,
+    'items' | 'radioVariant'
+  >
+> &
+  Pick<
+    ChecklistProps,
+    | 'onLeadingClick'
+    | 'onDelete'
+  >) {
+  const layout =
+    getVariantChecklistLayout(
+      radioVariant,
+    );
+
+  return (
+    <div className={layout.container}>
+      {items.map((item) => {
+        const status =
+          item.status ?? 'default';
 
         const resolvedIconSize =
-          resolveChecklistIconSize(
+          resolveVariantIconSize(
             status,
-            requestedIconSize,
             radioVariant,
           );
 
-        const trailing: ChecklistTrailing =
-          item.trailing ?? {
-            type: 'none',
-          };
+        const trailing =
+          resolveTrailing(
+            item,
+            onDelete,
+          );
 
         return (
           <Fragment key={item.id}>
-            {/* create: 각 행 위에 높이 1px의 divider 추가 */}
+            {/* create에서는 각 행 위에 1px divider를 표시한다. */}
             {radioVariant ===
               'create' && (
               <div
@@ -149,13 +298,8 @@ export default function Checklist({
               />
             )}
 
-            {/* 화면 유형별 너비, 높이, 패딩을 담당하는 행 wrapper */}
             <div
-              className={
-                ITEM_LAYOUT[
-                  radioVariant
-                ]
-              }
+              className={layout.item}
             >
               <ChecklistItem
                 label={item.label}
@@ -163,23 +307,72 @@ export default function Checklist({
                 iconSize={
                   resolvedIconSize
                 }
-                radioVariant={
-                  radioVariant
-                }
                 trailing={trailing}
                 disabled={
                   item.disabled
                 }
-                onLeadingClick={() =>
+                radioVariant={
+                  radioVariant
+                }
+                onLeadingClick={() => {
                   onLeadingClick?.(
                     item.id,
-                  )
-                }
+                  );
+                }}
               />
             </div>
           </Fragment>
         );
       })}
     </div>
+  );
+}
+
+// Checklist 목록 컴포넌트
+//
+// 기존 사용법:
+// <Checklist
+//   items={items}
+//   iconSize="medium"
+//   onLeadingClick={handleClick}
+//   onDelete={handleDelete}
+// />
+//
+// 새 화면별 사용법:
+// <Checklist
+//   items={items}
+//   radioVariant="create"
+//   onLeadingClick={handleClick}
+// />
+export default function Checklist({
+  items,
+  iconSize = 'medium',
+  onLeadingClick,
+  onDelete,
+  radioVariant,
+}: ChecklistProps) {
+  // radioVariant가 없으면 기존 코드와 완전히 동일한 방식으로 동작한다.
+  if (!radioVariant) {
+    return (
+      <LegacyChecklist
+        items={items}
+        iconSize={iconSize}
+        onLeadingClick={
+          onLeadingClick
+        }
+        onDelete={onDelete}
+      />
+    );
+  }
+
+  return (
+    <VariantChecklist
+      items={items}
+      radioVariant={radioVariant}
+      onLeadingClick={
+        onLeadingClick
+      }
+      onDelete={onDelete}
+    />
   );
 }
