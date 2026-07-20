@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import Button from '@/components/common/Buttons/Button';
 import Checklist, {
   type ChecklistItemData,
 } from '@/components/common/Checklist/Checklist';
@@ -112,8 +113,8 @@ export default function CreateModal({
             trailing: hasDateTrailing
               ? {
                   type: 'date' as const,
-                text:
-                  item.date ?? '당일',
+                  text:
+                    item.date ?? '당일',
                 }
               : {
                   type: 'none' as const,
@@ -178,10 +179,12 @@ export default function CreateModal({
             className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
           />
 
-          {/* TODO: 공용 Button 컴포넌트 구현 후 교체 */}
-          <span className="box-border flex h-9 w-[74px] shrink-0 items-center justify-center whitespace-nowrap text-text-default default-body-strong-medium">
-            전송
-          </span>
+          <Button
+            variant="MediumDefaultFit"
+            disabled
+          >
+            생성
+          </Button>
         </div>
       )}
 
@@ -223,10 +226,9 @@ export default function CreateModal({
               className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
             />
 
-            {/* TODO: 공용 Button 컴포넌트 구현 후 교체 */}
-            <span className="box-border flex h-9 w-[74px] shrink-0 items-center justify-center whitespace-nowrap text-text-default default-body-strong-medium">
-              전송
-            </span>
+            <Button variant="MediumDefaultFit">
+              생성
+            </Button>
           </div>
         </div>
       )}
