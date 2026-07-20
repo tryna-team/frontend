@@ -22,6 +22,15 @@
   width: 100%;
 }
 
+.schedule-card-top-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .schedule-card-left {
   display: flex;
   flex-direction: column;

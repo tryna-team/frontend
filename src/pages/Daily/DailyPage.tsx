@@ -10,7 +10,10 @@ import WeekStrip from '@/features/calendar/components/WeekStrip';
 import ScheduleCard from '@/features/calendar/components/ScheduleCard';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import type { CategoryColor } from '@/features/calendar/types';
-import { generateDailyPath } from '@/routes/paths';
+import {
+  generateDailyPath,
+  generateEventPath,
+} from '@/routes/paths';
 
 import './DailyPage.css';
 
@@ -196,6 +199,15 @@ function DailyPage() {
     navigate(-1);
   };
 
+  // 일정 카드 -> EventView 이동
+  const handleScheduleClick = (
+    eventId: string,
+  ) => {
+    navigate(
+      generateEventPath.view(eventId),
+    );
+  };
+
   // Header: 선택된 날짜 표시
   const displayDate = new Date(
     `${selectedDate}T00:00:00`,
@@ -279,6 +291,11 @@ function DailyPage() {
               startTime={schedule.startTime}
               endTime={schedule.endTime}
               checklist={schedule.checklist}
+              onScheduleClick={() =>
+                handleScheduleClick(
+                  schedule.id,
+                )
+              }
               onToggleItem={(itemId) => handleToggleItem(schedule.id, itemId)}
               linkedSchedule={schedule.linkedSchedule}
             />
