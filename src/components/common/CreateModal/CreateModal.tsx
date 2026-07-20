@@ -1,6 +1,11 @@
-import ChecklistItem, {
-  type ChecklistStatus,
-} from '@/components/common/Checklist/ChecklistItem';
+import { useMemo } from 'react';
+
+import Button from '@/components/common/Buttons/Button';
+import Checklist, {
+  type ChecklistItemData,
+} from '@/components/common/Checklist/Checklist';
+
+import type { ChecklistStatus } from '@/components/common/Checklist/ChecklistItem';
 
 export type LabelColor =
   | 'apricot'
@@ -11,32 +16,39 @@ export type LabelColor =
   | 'yellow';
 
 export type CalendarStatus =
-  | { type: 'default' }
+  | {
+      type: 'default';
+    }
   | {
       type: 'repeat';
       text: string;
     };
 
 export type LabelStatus =
-  | { type: 'default' }
+  | {
+      type: 'default';
+    }
   | {
       type: 'selected';
       label: string;
       color: LabelColor;
     };
 
-type ChecklistItemData = {
+// 기존 CreateModal에서 사용하던 체크리스트 데이터 타입을 유지
+type CreateModalChecklistItem = {
   id: number;
   label: string;
   status?: ChecklistStatus;
+  // status=add, done일 때 사용. 없으면 '당일'로 표시
+  date?: string;
 };
 
-type CreateModalProps = {
+export type CreateModalProps = {
   mode?: 'default' | 'recommend';
   inputValue?: string;
   keyword?: string;
   message?: string;
-  checklistItems?: ChecklistItemData[];
+  checklistItems?: CreateModalChecklistItem[];
   calendarStatus?: CalendarStatus;
   labelStatus?: LabelStatus;
   onInputChange?: (value: string) => void;
@@ -44,7 +56,6 @@ type CreateModalProps = {
   onOpenLabel?: () => void;
   onAddChecklist?: () => void;
   onToggleChecklist?: (id: number) => void;
-  onDeleteChecklist?: (id: number) => void;
 };
 
 const COLOR_ICON = {
@@ -55,6 +66,10 @@ const COLOR_ICON = {
   purple: '/icon/color_picker/purple_small.svg',
   yellow: '/icon/color_picker/yellow_small.svg',
 } as const;
+
+// 직접 추가 항목에 사용하는 내부 전용 ID
+// 실제 체크리스트 ID와 겹치지 않도록 음수를 사용
+const ADD_CHECKLIST_ITEM_ID = -1;
 
 export default function CreateModal({
   mode = 'default',
@@ -69,14 +84,69 @@ export default function CreateModal({
   onOpenLabel,
   onAddChecklist,
   onToggleChecklist,
-  onDeleteChecklist,
 }: CreateModalProps) {
-  const isRecommendMode = mode === 'recommend';
+  const isRecommendMode =
+    mode === 'recommend';
 
   const calendarText =
     calendarStatus.type === 'default'
       ? '오늘 · 반복 없음'
       : `${calendarStatus.text}마다`;
+
+  // CreateModal에서 전달받은 기존 체크리스트 데이터를 공용 Checklist 컴포넌트의 데이터 형식으로 변환
+  const renderedChecklistItems =
+    useMemo<ChecklistItemData[]>(() => {
+      const recommendedItems =
+        checklistItems.map((item) => {
+          const status =
+            item.status ?? 'add';
+          const hasDateTrailing =
+            status === 'add' ||
+            status === 'done';
+
+          return {
+            id: item.id,
+            label: item.label,
+            status,
+            trailing: hasDateTrailing
+              ? {
+                  type: 'date' as const,
+                  text:
+                    item.date ?? '당일',
+                }
+              : {
+                  type: 'none' as const,
+                },
+          };
+        });
+
+      const addItem: ChecklistItemData = {
+        id: ADD_CHECKLIST_ITEM_ID,
+        label: '직접 추가',
+        status: 'plus',
+        trailing: {
+          type: 'none',
+        },
+      };
+
+      return [
+        ...recommendedItems,
+        addItem,
+      ];
+    }, [checklistItems]);
+
+  const handleChecklistClick = (
+    id: number,
+  ) => {
+    if (
+      id === ADD_CHECKLIST_ITEM_ID
+    ) {
+      onAddChecklist?.();
+      return;
+    }
+
+    onToggleChecklist?.(id);
+  };
 
   return (
     <section className="flex w-full max-w-[385px] flex-col items-start gap-0.5 rounded-[24px] border border-[rgba(28,22,48,0.05)] bg-background-white p-3">
@@ -85,15 +155,21 @@ export default function CreateModal({
           <input
             type="text"
             value={inputValue}
-            onChange={(event) => onInputChange?.(event.target.value)}
+            onChange={(event) =>
+              onInputChange?.(
+                event.target.value,
+              )
+            }
             placeholder="어떤 일 인가요?"
             className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
           />
 
-          {/* TODO: 공용 Button 컴포넌트 구현 후 교체 */}
-          <span className="box-border flex h-9 w-[74px] shrink-0 items-center justify-center whitespace-nowrap text-text-default default-body-strong-medium">
-            전송
-          </span>
+          <Button
+            variant="MediumDefaultFit"
+            disabled
+          >
+            생성
+          </Button>
         </div>
       )}
 
@@ -109,54 +185,32 @@ export default function CreateModal({
             </p>
           </div>
 
-          <div className="border-b border-divider-default" />
-
-          <div className="flex w-full flex-col">
-            {checklistItems.map((item) => (
-              <div key={item.id}>
-                <div className="flex h-[46px] w-full items-center justify-between py-3 pr-1">
-                  <ChecklistItem
-                    label={item.label}
-                    status={item.status ?? 'add'}
-                    iconSize="medium"
-                    trailing={{
-                      type: 'delete',
-                      onClick: () => onDeleteChecklist?.(item.id),
-                    }}
-                    onLeadingClick={() =>
-                      onToggleChecklist?.(item.id)
-                    }
-                  />
-                </div>
-
-                <div className="border-b border-divider-default" />
-              </div>
-            ))}
-
-            <div className="flex h-[46px] w-full items-center py-3">
-              <ChecklistItem
-                label="직접 추가"
-                status="plus"
-                iconSize="small"
-                trailing={{ type: 'none' }}
-                onLeadingClick={onAddChecklist}
-              />
-            </div>
-          </div>
+          <Checklist
+            items={
+              renderedChecklistItems
+            }
+            radioVariant="create"
+            onLeadingClick={
+              handleChecklistClick
+            }
+          />
 
           <div className="flex w-full items-center justify-between self-stretch pl-2">
             <input
               type="text"
               value={inputValue}
-              onChange={(event) => onInputChange?.(event.target.value)}
+              onChange={(event) =>
+                onInputChange?.(
+                  event.target.value,
+                )
+              }
               placeholder="어떤 일 인가요?"
               className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
             />
 
-            {/* TODO: 공용 Button 컴포넌트 구현 후 교체 */}
-            <span className="box-border flex h-9 w-[74px] shrink-0 items-center justify-center whitespace-nowrap text-text-default default-body-strong-medium">
-              전송
-            </span>
+            <Button variant="MediumDefaultFit">
+              생성
+            </Button>
           </div>
         </div>
       )}
@@ -189,7 +243,8 @@ export default function CreateModal({
             className="block shrink-0"
           />
 
-          {labelStatus.type === 'default' ? (
+          {labelStatus.type ===
+          'default' ? (
             <span className="whitespace-nowrap">
               레이블 없음
             </span>
@@ -200,7 +255,11 @@ export default function CreateModal({
               </span>
 
               <img
-                src={COLOR_ICON[labelStatus.color]}
+                src={
+                  COLOR_ICON[
+                    labelStatus.color
+                  ]
+                }
                 alt=""
                 className="block shrink-0"
               />
