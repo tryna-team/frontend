@@ -1,6 +1,9 @@
 /**
  * 도메인별 엔드포인트 상수 (tryna APISpec 기준)
  * baseURL(/api/v1)은 apis/client.ts에서 관리하므로 여기는 그 이후 path만 정의
+ *
+ * 동적 path parameter는 encodeURIComponent로 인코딩한다 — id/문자열에 특수문자가
+ * 섞여도 URL이 깨지지 않도록 하기 위함.
  */
 export const ENDPOINTS = {
   AUTH: {
@@ -31,14 +34,15 @@ export const ENDPOINTS = {
     // 월간 캘린더 조회 - Query: year, month
     MONTHLY: "/calendars/monthly",
     // 날짜별 일정 목록 조회
-    DATE_EVENTS: (date: string) => `/calendars/dates/${date}/events`,
+    DATE_EVENTS: (date: string) =>
+      `/calendars/dates/${encodeURIComponent(date)}/events`,
     // 외부 캘린더 연동
     EXTERNAL_CONNECTIONS: "/calendars/external/connections",
     // 사용자 외부 캘린더 목록 등록(POST) / 조회(GET)
     EXTERNAL_USER_LIST: "/calendars/external/user-list",
     // 사용자 외부 캘린더 가져오기 on/off
     EXTERNAL_TOGGLE: (externalCalendarId: number | string) =>
-      `/calendars/external/${externalCalendarId}`,
+      `/calendars/external/${encodeURIComponent(externalCalendarId)}`,
     // 일자별 외부 캘린더 일정 목록 조회
     EXTERNAL_EVENTS: "/calendars/external/events",
     // 외부 캘린더 일정 등록 - Query: year, month, date
@@ -46,7 +50,8 @@ export const ENDPOINTS = {
   },
   EVENTS: {
     ROOT: "/events",
-    DETAIL: (eventId: number | string) => `/events/${eventId}`,
+    DETAIL: (eventId: number | string) =>
+      `/events/${encodeURIComponent(eventId)}`,
     // 자연어 일정 입력 및 1차 파싱
     PARSE: "/events/parse",
     // 키워드 검색 - Query: keyword
@@ -54,10 +59,11 @@ export const ENDPOINTS = {
   },
   ACTION_ITEMS: {
     // 준비/실행 항목 저장(POST) / 일정 연결 항목 조회(GET)
-    BY_EVENT: (eventId: number | string) => `/events/${eventId}/action-items`,
+    BY_EVENT: (eventId: number | string) =>
+      `/events/${encodeURIComponent(eventId)}/action-items`,
     // 준비/실행 항목 완료 처리
     STATUS: (actionItemId: number | string) =>
-      `/action-items/${actionItemId}/status`,
+      `/action-items/${encodeURIComponent(actionItemId)}/status`,
     // 캘린더 내 시간형 실행 항목 조회 - Query: date
     CALENDAR_TIMED: "/calendar/action-items/timed",
   },
@@ -68,9 +74,9 @@ export const ENDPOINTS = {
   ALARMS: {
     PUSH_TOKEN: "/alarms/push-token", // POST 등록 / DELETE 삭제(Query: fcmPushToken)
     REMIND_EVENT: (userEventId: number | string) =>
-      `/alarms/remind/event/${userEventId}`,
+      `/alarms/remind/event/${encodeURIComponent(userEventId)}`,
     REMIND_ACTION_ITEM: (actionItemId: number | string) =>
-      `/alarms/remind/action-item/${actionItemId}`,
+      `/alarms/remind/action-item/${encodeURIComponent(actionItemId)}`,
     // 알람 목록 조회 - Query: size, cursor
     LIST: "/alarms-list",
   },
