@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useCalendarStore } from '@/stores';
 import CalendarGrid from '@/components/common/CalendarGrid/CalendarGrid';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
 import { MOCK_SCHEDULES } from '@/features/calendar/mockData';
@@ -26,11 +27,13 @@ const calendarEvents = MOCK_SCHEDULES.map((schedule) => ({
 }));
 
 function HomePage({ onSelectDate }: HomePageProps) {
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  // 오늘이 항상 기본 선택 상태로 시작(useCalendarStore.selectedDate는 string, null 없음)
+  const selectedDate = useCalendarStore((s) => s.selectedDate);
+  const selectDate = useCalendarStore((s) => s.selectDate);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const handleSelectDate = (date: string) => {
-    setSelectedDate(date);
+    selectDate(date);
     onSelectDate?.(date);
   };
 
