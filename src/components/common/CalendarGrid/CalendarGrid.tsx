@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { DateClickArg } from '@fullcalendar/interaction';
 import type { MoreLinkContentArg } from '@fullcalendar/core';
 import { useSwipeable } from 'react-swipeable';
+import { useCalendarStore } from '@/stores';
 import './CalendarGrid.css';
 
 interface CalendarEvent {
@@ -35,7 +36,8 @@ function CalendarGrid({
   initialView = 'dayGridMonth',
 }: CalendarGridProps) {
   const calendarRef = useRef<FullCalendar>(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
+  const currentMonth = useCalendarStore((s) => s.currentMonth);
+  const setMonth = useCalendarStore((s) => s.setMonth);
 
   const handleDateClick = (arg: DateClickArg) => {
     onSelectDate(arg.dateStr);
@@ -102,7 +104,7 @@ function CalendarGrid({
         moreLinkContent={(arg: MoreLinkContentArg) => `+${arg.num}`}
         datesSet={(arg) => {
           const month = arg.view.currentStart.getMonth() + 1;
-          setCurrentMonth(month);
+          setMonth(arg.view.currentStart.getFullYear(), month);
         }}
       />
     </div>
