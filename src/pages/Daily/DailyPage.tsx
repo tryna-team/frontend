@@ -1,11 +1,47 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import {
+  useNavigate,
+  useParams,
+} from 'react-router';
+
 import { useCalendarStore } from '@/stores';
 import Header from '@/components/common/Header/Header';
 import WeekStrip from '@/features/calendar/components/WeekStrip';
 import ScheduleCard from '@/features/calendar/components/ScheduleCard';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import type { CategoryColor } from '@/features/calendar/types';
+import { generateDailyPath } from '@/routes/paths';
+
 import './DailyPage.css';
+
+const DAY_LABELS = [
+  '일',
+  '월',
+  '화',
+  '수',
+  '목',
+  '금',
+  '토',
+] as const;
+
+// URL 날짜가 실제 YYYY-MM-DD 형식인지 확인
+function isValidDateParam(date: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return false;
+  }
+
+  const parsedDate = new Date(
+    `${date}T00:00:00`,
+  );
+  const [year, month, day] =
+    date.split('-').map(Number);
+
+  return (
+    parsedDate.getFullYear() === year &&
+    parsedDate.getMonth() + 1 === month &&
+    parsedDate.getDate() === day
+  );
+}
 
 interface ScheduleItem {
   id: string;
@@ -31,11 +67,9 @@ interface BannerItem {
   date: string;
 }
 
-// TODO: MOCK_SCHEDULES/MOCK_BANNERS의 date가 '2026-06-04'로 고정되어 있음.
-// selectedDate가 useCalendarStore 연동으로 실제 오늘 날짜가 되면서, 오늘이 이 날짜가
-// 아닌 경우 화면이 빈 상태로 보일 수 있음(의도적으로 그대로 둠 — B안, 추후 필요 시
-// 오늘 날짜 기준으로 동적 생성하도록 수정 예정).
-//체크리스트 모크 데이터
+// mock 데이터: 2026-06-04로 고정
+
+// Daily 일정 mock 데이터
 const MOCK_SCHEDULES: ScheduleItem[] = [
   {
     id: '1',
@@ -79,7 +113,7 @@ const MOCK_SCHEDULES: ScheduleItem[] = [
   },
 ];
 
-//배너 모크 데이터
+// Daily 배너 mock 데이터
 const MOCK_BANNERS: BannerItem[] = [
   {
     id: 'b1',
@@ -98,9 +132,80 @@ const MOCK_BANNERS: BannerItem[] = [
 ];
 
 function DailyPage() {
-  const selectedDate = useCalendarStore((s) => s.selectedDate);
+  // Daily 경로의 날짜를 화면 기준값으로 사용
+  const { date: routeDate } =
+    useParams<{ date: string }>();
+  const navigate = useNavigate();
+
+  // 라우터 적용 전: Zustand 날짜만 화면 기준값으로 사용했음
+  // const selectedDate = useCalendarStore((s) => s.selectedDate);
+  const calendarSelectedDate =
+    useCalendarStore(
+      (s) => s.selectedDate,
+    );
   const selectDate = useCalendarStore((s) => s.selectDate);
   const [schedules, setSchedules] = useState<ScheduleItem[]>(MOCK_SCHEDULES);
+
+  const isValidRouteDate =
+    routeDate !== undefined &&
+    isValidDateParam(routeDate);
+
+  const selectedDate =
+    isValidRouteDate
+      ? routeDate
+      : calendarSelectedDate;
+
+  // 직접 접근한 URL 날짜를 Zustand에도 반영
+  useEffect(() => {
+    if (!isValidRouteDate) {
+      navigate(
+        generateDailyPath(
+          calendarSelectedDate,
+        ),
+        { replace: true },
+      );
+      return;
+    }
+
+    if (
+      routeDate !== calendarSelectedDate
+    ) {
+      selectDate(routeDate);
+    }
+  }, [
+    calendarSelectedDate,
+    isValidRouteDate,
+    navigate,
+    routeDate,
+    selectDate,
+  ]);
+
+  // 날짜 선택 시 화면 상태, URL을 함께 갱신
+  const handleSelectDate = (
+    nextDate: string,
+  ) => {
+    selectDate(nextDate);
+    navigate(
+      generateDailyPath(nextDate),
+      { replace: true },
+    );
+  };
+
+  // Header: chevron -> 직전 화면 이동
+  const handleBack = () => {
+    navigate(-1);
+  };
+
+  // Header: 선택된 날짜 표시
+  const displayDate = new Date(
+    `${selectedDate}T00:00:00`,
+  );
+  const monthText = `${
+    displayDate.getMonth() + 1
+  }월`;
+  const titleText = `${monthText} ${displayDate.getDate()}일 (${
+    DAY_LABELS[displayDate.getDay()]
+  })`;
 
   const todaySchedules = schedules.filter((s) => s.date === selectedDate);
   const todayBanners = MOCK_BANNERS.filter((b) => b.date === selectedDate);
@@ -121,15 +226,32 @@ function DailyPage() {
 
   return (
     <div className="daily-page">
-      {/* Mock: Figma(node 1246:16068)의 정적 예시 텍스트를 그대로 적용. selectedDate 연동 없음 */}
+      {/* 라우터 적용 전 mock 데이터
       <Header
         variant="daily"
         title="6월 4일 (목)"
         leading={{ type: 'icon-text', text: '6월' }}
         trailing={{ type: 'none' }}
       />
+      */}
 
-      <WeekStrip selectedDate={selectedDate} onSelectDate={selectDate} />
+      <Header
+        variant="daily"
+        title={titleText}
+        leading={{
+          type: 'icon-text',
+          text: monthText,
+          onClick: handleBack,
+        }}
+        trailing={{ type: 'none' }}
+      />
+
+      {/* 기존: URL을 변경하지 않고 Zustand만 갱신 */}
+      {/* <WeekStrip selectedDate={selectedDate} onSelectDate={selectDate} /> */}
+      <WeekStrip
+        selectedDate={selectedDate}
+        onSelectDate={handleSelectDate}
+      />
 
       {todayBanners.length > 0 && (
         <div className="daily-page-banners">
