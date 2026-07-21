@@ -1,0 +1,16 @@
+.splash-page {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100dvh; /*코드래빗 반영*/
+  padding: 0 116px 0 117px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #FFFFFF;
+}
+
+.splash-page-logo {
+  width: 160px;
+  height: 52px;
+}

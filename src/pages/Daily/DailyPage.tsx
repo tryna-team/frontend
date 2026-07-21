@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useCalendarStore } from '@/stores';
+import Header from '@/components/common/Header/Header';
 import WeekStrip from '@/features/calendar/components/WeekStrip';
 import ScheduleCard from '@/features/calendar/components/ScheduleCard';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
@@ -29,6 +31,11 @@ interface BannerItem {
   date: string;
 }
 
+// TODO: MOCK_SCHEDULES/MOCK_BANNERS의 date가 '2026-06-04'로 고정되어 있음.
+// selectedDate가 useCalendarStore 연동으로 실제 오늘 날짜가 되면서, 오늘이 이 날짜가
+// 아닌 경우 화면이 빈 상태로 보일 수 있음(의도적으로 그대로 둠 — B안, 추후 필요 시
+// 오늘 날짜 기준으로 동적 생성하도록 수정 예정).
+//체크리스트 모크 데이터
 const MOCK_SCHEDULES: ScheduleItem[] = [
   {
     id: '1',
@@ -72,6 +79,7 @@ const MOCK_SCHEDULES: ScheduleItem[] = [
   },
 ];
 
+//배너 모크 데이터
 const MOCK_BANNERS: BannerItem[] = [
   {
     id: 'b1',
@@ -90,7 +98,8 @@ const MOCK_BANNERS: BannerItem[] = [
 ];
 
 function DailyPage() {
-  const [selectedDate, setSelectedDate] = useState<string>('2026-06-04');
+  const selectedDate = useCalendarStore((s) => s.selectedDate);
+  const selectDate = useCalendarStore((s) => s.selectDate);
   const [schedules, setSchedules] = useState<ScheduleItem[]>(MOCK_SCHEDULES);
 
   const todaySchedules = schedules.filter((s) => s.date === selectedDate);
@@ -103,16 +112,24 @@ function DailyPage() {
         return {
           ...schedule,
           checklist: schedule.checklist.map((item) =>
-            item.id === itemId ? { ...item, checked: !item.checked } : item
+            item.id === itemId ? { ...item, checked: !item.checked } : item,
           ),
         };
-      })
+      }),
     );
   };
 
   return (
     <div className="daily-page">
-      <WeekStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+      {/* Mock: Figma(node 1246:16068)의 정적 예시 텍스트를 그대로 적용. selectedDate 연동 없음 */}
+      <Header
+        variant="daily"
+        title="6월 4일 (목)"
+        leading={{ type: 'icon-text', text: '6월' }}
+        trailing={{ type: 'none' }}
+      />
+
+      <WeekStrip selectedDate={selectedDate} onSelectDate={selectDate} />
 
       {todayBanners.length > 0 && (
         <div className="daily-page-banners">
