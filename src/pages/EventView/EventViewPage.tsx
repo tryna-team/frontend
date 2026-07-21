@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Navigate,
   useNavigate,
@@ -15,6 +15,7 @@ import DailyScheduleCard, {
 import QuickModal from '@/features/event/components/QuickModal';
 import type { CategoryColor } from '@/features/calendar/types';
 import { PATH } from '@/routes/paths';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 
 import './EventViewPage.css';
 
@@ -127,6 +128,16 @@ function EventViewPage() {
         ),
     );
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const floatingButtonsContent = useMemo(
+    () => (
+      <Button variant="LargeWarningFit" onClick={() => setIsDeleteModalOpen(true)}>
+        이벤트 삭제
+      </Button>
+    ),
+    [],
+  );
+  useFloatingButtons(floatingButtonsContent);
 
   // 기존 effect: 즉시 상태 갱신 -> 연속 렌더링을 만들 수 있었음
   // useEffect(() => {
@@ -251,12 +262,6 @@ function EventViewPage() {
             onCompleteAllClick={handleCompleteAll}
           />
         </div>
-      </div>
-
-      <div className="event-view-page-floating">
-        <Button variant="LargeWarningFit" onClick={() => setIsDeleteModalOpen(true)}>
-          이벤트 삭제
-        </Button>
       </div>
 
       {isDeleteModalOpen && (

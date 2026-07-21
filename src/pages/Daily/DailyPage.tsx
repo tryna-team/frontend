@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   useNavigate,
   useParams,
@@ -15,6 +15,8 @@ import {
   generateEventPath,
   PATH,
 } from '@/routes/paths';
+import Button from '@/components/common/Buttons/Button';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 
 import './DailyPage.css';
 
@@ -194,6 +196,23 @@ function DailyPage() {
       { replace: true },
     );
   };
+
+  const floatingButtonsContent = useMemo(
+    () => (
+      <div className="flex w-full items-center justify-between">
+        <Button
+          variant="LargeStrongFit"
+          onClick={() => navigate(generateDailyPath(new Date().toLocaleDateString('sv-SE')))}
+        >
+          오늘
+        </Button>
+        {/* TODO: CreateModal 연결 (별도 작업으로 이월) */}
+        <Button variant="MainCTAButton" />
+      </div>
+    ),
+    [navigate],
+  );
+  useFloatingButtons(floatingButtonsContent);
 
   // Header: chevron -> 직전 화면 이동
   const handleBack = () => {
