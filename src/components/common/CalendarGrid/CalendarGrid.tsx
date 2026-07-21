@@ -36,8 +36,16 @@ function CalendarGrid({
   initialView = 'dayGridMonth',
 }: CalendarGridProps) {
   const calendarRef = useRef<FullCalendar>(null);
+
+  // 기존: header에 월 표시
+  // const currentMonth = useCalendarStore((s) => s.currentMonth);
+  // 저장된 연도와 월을 캘린더 초기 화면에 사용
+  const currentYear = useCalendarStore((s) => s.currentYear);
   const currentMonth = useCalendarStore((s) => s.currentMonth);
   const setMonth = useCalendarStore((s) => s.setMonth);
+
+  // Home으로 돌아올 때 이전에 보던 월을 복원
+  const initialCalendarDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
 
   const handleDateClick = (arg: DateClickArg) => {
     onSelectDate(arg.dateStr);
@@ -92,6 +100,7 @@ function CalendarGrid({
         ref={calendarRef}
         plugins={[dayGridPlugin, interactionPlugin]}
         initialView={initialView}
+        initialDate={initialCalendarDate}
         locale="ko"
         events={events}
         dateClick={handleDateClick}
