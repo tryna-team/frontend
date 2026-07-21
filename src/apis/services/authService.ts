@@ -1,7 +1,7 @@
 import { apiClient } from "../client";
 import { ENDPOINTS } from "../endpoints";
 import { getDeviceId } from "../../utils/deviceId";
-import { useAuthStore } from "../../store/authStore";
+import { useAuthStore } from "../../stores/authStore";
 import type {
   SocialLoginRequest,
   SocialLoginResponseData,

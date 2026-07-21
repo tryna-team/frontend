@@ -6,7 +6,7 @@ import axios, {
 } from "axios";
 import type { ApiResponse } from "./types/common";
 import type { ReissueResponseData } from "./types/auth";
-import { getAuthState, useAuthStore } from "../store/authStore";
+import { getAuthState, useAuthStore } from "../stores/authStore";
 import { getDeviceId } from "../utils/deviceId";
 import { ENDPOINTS } from "./endpoints";
 
