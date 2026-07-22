@@ -1,3 +1,5 @@
+import AppRouter from '@/routes/AppRouter';
+
 import './App.css';
 
 function App() {
@@ -11,7 +13,9 @@ function App() {
     // 뷰포트가 아니라 이 프레임을 기준으로 위치를 잡게 됨 — BottomSheet/ToastPopup처럼
     // fixed inset-0을 쓰는 오버레이가 전체 화면이 아니라 이 앱 프레임(390~402px) 폭
     // 안에서만 뜨도록 하기 위한 의도적인 처리.
-    <div className="mx-auto min-h-[840px] w-full min-w-[390px] max-w-[402px] transform-gpu bg-background"></div>
+    <div className="mx-auto min-h-[840px] w-full min-w-[390px] max-w-[402px] transform-gpu bg-background">
+      <AppRouter />
+    </div>
   );
 }
 
