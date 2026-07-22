@@ -216,40 +216,29 @@ export default function CreateModal({
       )}
 
       <div className="flex w-full items-center gap-4 px-1 py-1">
-        <button
-          type="button"
+        <Button
+          variant="IconTextSmall"
+          icon="icons/calendar_small.svg"
           onClick={onOpenCalendar}
-          className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
         >
-          <img
-            src="/icon/icons/calendar_small.svg"
-            alt=""
-            className="block shrink-0"
-          />
-
           <span className="whitespace-nowrap">
             {calendarText}
           </span>
-        </button>
+        </Button>
 
-        <button
-          type="button"
+        <Button
+          variant="IconTextSmall"
+          icon="icons/label_small.svg"
           onClick={onOpenLabel}
-          className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+          className="min-w-0"
         >
-          <img
-            src="/icon/icons/label_small.svg"
-            alt=""
-            className="block shrink-0"
-          />
-
           {labelStatus.type ===
           'default' ? (
             <span className="whitespace-nowrap">
               레이블 없음
             </span>
           ) : (
-            <div className="flex min-w-0 items-center gap-xsmall">
+            <span className="flex min-w-0 items-center gap-xsmall">
               <span className="max-w-[80px] truncate">
                 {labelStatus.label}
               </span>
@@ -263,9 +252,9 @@ export default function CreateModal({
                 alt=""
                 className="block shrink-0"
               />
-            </div>
+            </span>
           )}
-        </button>
+        </Button>
       </div>
     </section>
   );
