@@ -207,7 +207,7 @@ function DailyPage() {
           variant="LargeStrongFit"
           onClick={() => {
             goToToday();
-            navigate(generateDailyPath(new Date().toLocaleDateString('sv-SE')));
+            navigate(generateDailyPath(new Date().toLocaleDateString('sv-SE')), { replace: true });
           }}
         >
           오늘
