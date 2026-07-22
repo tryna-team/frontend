@@ -92,5 +92,6 @@ export type AuthStatus = 'unauthenticated' | 'guest' | 'member';
 export interface TrynaUser {
   id: string;
   email: string;
+  //이거 대문자임 provider,
   provider: 'google' | 'apple' | null;
 }
