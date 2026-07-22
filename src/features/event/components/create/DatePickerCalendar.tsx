@@ -30,7 +30,7 @@ export default function DatePickerCalendar({
   );
 
   const handleDayClick = (clickedDate: Date) => {
-    onChange(value && isSameDay(clickedDate, value) ? undefined : clickedDate);
+    onChange(clickedDate);
   };
 
   const handlePreviousMonth = () => {
@@ -97,7 +97,7 @@ export default function DatePickerCalendar({
           }}
           modifiers={{
             currentDay: (date) => isSameDay(date, today),
-            selectedDay: (date) => Boolean(value && isSameDay(date, value)),
+            selectedDay: (date) => isSameDay(date, value),
           }}
           modifiersClassNames={{
             currentDay: 'create-calendar-current-day',
