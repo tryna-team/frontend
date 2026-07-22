@@ -16,6 +16,7 @@ import QuickModal from '@/features/event/components/QuickModal';
 import type { CategoryColor } from '@/features/calendar/types';
 import { PATH } from '@/routes/paths';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
+import { useCanGoBack } from '@/hooks/useCanGoBack';
 
 import './EventViewPage.css';
 
@@ -128,6 +129,7 @@ function EventViewPage() {
         ),
     );
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const canGoBack = useCanGoBack();
 
   const floatingButtonsContent = useMemo(
     () => (
@@ -162,20 +164,12 @@ function EventViewPage() {
 
   // Header: chevron -> 직전 화면 이동
   const handleBack = () => {
-    // 기존에는 직접 접근 시 뒤로갈 경로가 없었다.
-    // navigate(-1);
-    const canGoBack =
-      window.history.state?.idx > 0;
-
     if (canGoBack) {
       navigate(-1);
-      return;
+    } else {
+      // 방문 기록이 없으면 Home으로 이동한다.
+      navigate(PATH.HOME, { replace: true });
     }
-
-    // 방문 기록이 없으면 Home으로 이동한다.
-    navigate(PATH.HOME, {
-      replace: true,
-    });
   };
 
   const handleToggleItem = (id: string) => {

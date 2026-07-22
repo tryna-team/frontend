@@ -18,13 +18,7 @@ function App() {
     <div className="mx-auto flex min-h-[max(840px,100dvh)] w-full min-w-[390px] max-w-[402px] flex-col bg-background">
       <FloatingButtonsContext.Provider value={setFloatingContent}>
         {/* Main: 스크롤 콘텐츠 영역. FloatingButtons가 떠 있을 땐 그 높이만큼 하단 여백 예약 */}
-        <div
-          className={
-            floatingContent
-              ? `flex-1 pb-[calc(82px+${FLOATING_BOTTOM_PADDING})]`
-              : 'flex-1'
-          }
-        >
+        <div className={floatingContent ? 'flex-1 main-floating-padding' : 'flex-1'}>
           <AppRouter />
         </div>
 

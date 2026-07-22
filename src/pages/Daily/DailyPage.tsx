@@ -17,6 +17,7 @@ import {
 } from '@/routes/paths';
 import Button from '@/components/common/Buttons/Button';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
+import { useCanGoBack } from '@/hooks/useCanGoBack';
 
 import './DailyPage.css';
 
@@ -150,6 +151,8 @@ function DailyPage() {
       (s) => s.selectedDate,
     );
   const selectDate = useCalendarStore((s) => s.selectDate);
+  const goToToday = useCalendarStore((s) => s.goToToday);
+  const canGoBack = useCanGoBack();
   const [schedules, setSchedules] = useState<ScheduleItem[]>(MOCK_SCHEDULES);
 
   const isValidRouteDate =
@@ -202,7 +205,10 @@ function DailyPage() {
       <div className="flex w-full items-center justify-between">
         <Button
           variant="LargeStrongFit"
-          onClick={() => navigate(generateDailyPath(new Date().toLocaleDateString('sv-SE')))}
+          onClick={() => {
+            goToToday();
+            navigate(generateDailyPath(new Date().toLocaleDateString('sv-SE')));
+          }}
         >
           오늘
         </Button>
@@ -210,25 +216,18 @@ function DailyPage() {
         <Button variant="MainCTAButton" />
       </div>
     ),
-    [navigate],
+    [goToToday, navigate],
   );
   useFloatingButtons(floatingButtonsContent);
 
   // Header: chevron -> 직전 화면 이동
   const handleBack = () => {
-    // 앱 내에 이전 방문 기록이 있는지 확인
-    const canGoBack =
-      window.history.state?.idx > 0;
-
     if (canGoBack) {
       navigate(-1);
-      return;
+    } else {
+      // 방문 기록 X -> Home으로 이동
+      navigate(PATH.HOME, { replace: true });
     }
-
-    // 방문 기록 X -> Home으로 이동
-    navigate(PATH.HOME, {
-      replace: true,
-    });
   };
 
   // 일정 카드 -> EventView 이동
