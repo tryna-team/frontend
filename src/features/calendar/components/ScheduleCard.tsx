@@ -21,6 +21,7 @@ interface ScheduleCardProps {
   startTime: string;
   endTime: string;
   checklist?: ChecklistItemData[];
+  onScheduleClick?: () => void;
   onToggleItem?: (itemId: string) => void;
   linkedSchedule?: LinkedSchedule;
   onLinkedScheduleClick?: () => void;
@@ -33,12 +34,14 @@ function ScheduleCard({
   startTime,
   endTime,
   checklist = [],
+  onScheduleClick,
   onToggleItem,
   linkedSchedule,
   onLinkedScheduleClick,
 }: ScheduleCardProps) {
   return (
     <div className="schedule-card">
+      {/* 기존: 일정 정보 = 정적 영역 => 클릭 X
       <div className="schedule-card-top">
         <div className="schedule-card-left">
           <div className="schedule-card-title">
@@ -58,6 +61,33 @@ function ScheduleCard({
           <span className="schedule-card-time-end">~{endTime}</span>
         </div>
       </div>
+      */}
+
+      {/* 일정 정보: EventView 이동 버튼 */}
+      <button
+        type="button"
+        className="schedule-card-top schedule-card-top-button"
+        onClick={onScheduleClick}
+        aria-label={`${title} 일정 상세 보기`}
+      >
+        <div className="schedule-card-left">
+          <div className="schedule-card-title">
+            <img
+              src={`/icon/alert_indicator/dot_${categoryColor}.svg`}
+              alt=""
+              className="schedule-card-dot"
+            />
+            <span className="schedule-card-title-text">{title}</span>
+          </div>
+          <div className="schedule-card-location-wrap">
+            <span className="schedule-card-location">{location}</span>
+          </div>
+        </div>
+        <div className="schedule-card-time">
+          <span className="schedule-card-time-start">{startTime}</span>
+          <span className="schedule-card-time-end">~{endTime}</span>
+        </div>
+      </button>
 
       {linkedSchedule && (
         onLinkedScheduleClick ? (

@@ -2,6 +2,8 @@
 import { useEffect, useId } from 'react';
 
 import Button from '@/components/common/Buttons/Button';
+import Overlay from '@/components/common/Popup/Overlay';
+import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
 
 type IconType = 'default' | 'warning' | 'danger' | 'information';
 
@@ -47,16 +49,8 @@ export default function Modal({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/20" onClick={onClose}>
-      {/* 코드래빗 적용_role/aria-modal/aria-labelledby/aria-describedby로 다이얼로그임을 스크린 리더에 안내 */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-        className="flex flex-col gap-6 items-center w-full bg-background-white rounded-t-medium shadow-[0px_0px_20px_0px_rgba(0,0,0,0.08)] pt-5 pb-8 px-5 overflow-clip"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Overlay className="flex items-end justify-center" onClick={onClose}>
+      <Frame className="gap-6 pt-5 pb-8 px-5" aria-labelledby={titleId} aria-describedby={descriptionId}>
         {/* 콘텐츠 영역 */}
         <div className="flex flex-col gap-2 items-start w-full">
           <img src={ICON_MAP[icon]} alt={icon} className="size-23 shrink-0 -m-2" />
@@ -77,7 +71,7 @@ export default function Modal({
             </Button>
           )}
         </div>
-      </div>
-    </div>
+      </Frame>
+    </Overlay>
   );
 }
