@@ -132,9 +132,20 @@
 
 /* Weekday Header */
 
+.create-date-picker
+  .rdp-month_grid
+  > thead {
+  display: block;
+  width: 100%;
+}
+
 .create-date-picker .rdp-weekdays,
 .create-date-picker .rdp-week {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(
+    7,
+    40px
+  );
   width: 100%;
   box-sizing: border-box;
   justify-content: space-between;
@@ -142,14 +153,18 @@
 }
 
 .create-date-picker .rdp-weekdays {
-  width: 321px;
+  grid-template-columns: repeat(
+    7,
+    42px
+  );
+  width: 100%;
   height: 18px;
-  box-sizing: content-box;
-  padding: 0 16px;
+  align-items: center;
+  align-self: stretch;
 }
 
 .create-date-picker .rdp-weekday {
-  width: 40px;
+  width: 42px;
   height: 18px;
   padding: 0;
   color: var(
