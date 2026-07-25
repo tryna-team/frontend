@@ -3,7 +3,13 @@
 // 정책서(A~G 그룹) + tryna APISpec(Notion)의 필드명을 그대로 따른다.
 // ============================================================
 
-export type EventSource = 'internal' | 'external'; // tryna 자체 생성 / 외부 캘린더 연동
+export type EventSourceType =
+  | 'USER_NATURAL_LANGUAGE'
+  | 'USER_MANUAL_EDIT'
+  | 'EXTERNAL_CALENDAR'
+  | 'EXTERNAL_BASED_INTERNAL';
+
+export type EventStatus = 'DRAFT' | 'CONFIRMED' | 'NEEDS_CONFIRMATION' | 'DELETED';
 
 /**
  * G102 "외부 캘린더 연동 설정"에서 실제로 연결할 수 있는 캘린더 서비스 목록.
@@ -19,8 +25,8 @@ export type EventSource = 'internal' | 'external'; // tryna 자체 생성 / 외�
  * "새로 추가된 값을 처리 안 했다"는 TypeScript 에러가 떠서,
  * 빠뜨린 지점을 컴파일 타임에 바로 찾을 수 있다.
  *
- * 참고: TrynaUser.provider(소셜 로그인 제공자)와 값이 겹치지만 의미가 다른
- * 별개의 개념이라 일부러 통합하지 않았다. 로그인 제공자와 캘린더 연동
+ * 참고: apis/types/auth.ts의 SocialProvider(소셜 로그인 제공자)와 값이 겹치지만
+ * 의미가 다른 별개의 개념이라 일부러 통합하지 않았다. 로그인 제공자와 캘린더 연동
  * 제공자는 앞으로 서로 다른 목록으로 발전할 수 있다(예: 카카오 로그인은
  * 추가되어도 카카오 캘린더 연동은 없을 수 있음).
  */
@@ -35,32 +41,47 @@ export interface CalendarLabel {
   source: 'gmail' | 'tryna' | 'external';
 }
 
-/** B/C 그룹 - 캘린더에 표시되는 일정 (events 테이블) */
+/**
+ * B/C 그룹 - 캘린더에 표시되는 일정 (GET /calendars/main, /calendars/dates/{date}/events
+ * 등 목록 조회 응답의 EventSummary 스키마 기준).
+ * 상세 조회(GET /events/{eventId})에만 있는 description/eventType/externalEventId/provider
+ * 등은 여기 포함하지 않는다 — 상세 데이터는 필요해질 때 React Query 등으로 별도 관리.
+ */
 export interface EventItem {
-  eventId: string;
+  eventId: number;
   title: string;
-  date: string; // 'YYYY-MM-DD'
-  time?: string | null; // 'HH:mm', 없으면 종일/시간 미정
-  place?: string | null;
-  sourceText: string; // 자연어 원문 (C102 파싱 원본)
-  source: EventSource;
-  labelId?: string | null;
-  recurrence?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
-  createdAt?: string;
+  startDate: string; // 'YYYY-MM-DD'
+  startTime: string | null;
+  endDate: string;
+  endTime: string | null;
+  isAllDay: boolean;
+  location?: string | null;
+  sourceType: EventSourceType;
+  status: EventStatus;
 }
 
-/** D104 정책: 일정에 딸린 준비/실행 항목의 두 가지 유형 */
-export type ActionItemType = 'TIMED_ACTION' | 'CHECKLIST'; // 시간형 실행 항목 / 비시간형 준비 항목
-export type ActionItemStatus = 'pending' | 'done';
+/** D104 정책: 일정에 딸린 준비/실행 항목의 유형 (GET .../action-items 응답 Item.itemType 기준) */
+export type ActionItemType = 'TIMED_ACTION' | 'UNTIMED_PREP' | 'UNRESOLVED';
 
-/** E105 저장 데이터 예시(actionItemId, parentEventId, itemType, displayDate, status)를 그대로 반영 */
-export interface ActionItem {
-  actionItemId: string;
-  parentEventId: string;
+/** GET .../action-items, GET .../timed 목록 조회 응답의 Item — 여긴 status 필드가 없음 주의 */
+export interface ActionItemEntry {
   title: string;
   itemType: ActionItemType;
-  displayDate?: string | null; // TIMED_ACTION일 때만 사용 (D-day 등 실행 날짜)
-  status: ActionItemStatus;
+  displayDate: string | null;
+  displayTime: string | null;
+  offsetDays: number;
+  createdBy: 'SYSTEM' | 'USER' | 'USER_EDITED';
+  sourceTemplateId: string | null;
+}
+
+/** PATCH /action-items/{actionItemId}/status 응답 — 목록 조회 Item과 별개 구조 */
+export type ActionItemStatus = 'PENDING' | 'COMPLETED' | 'NEEDS_CONFIRMATION' | 'DELETED';
+
+export interface ActionItemStatusUpdate {
+  actionItemId: number;
+  parentEventId: number;
+  actionItemStatus: ActionItemStatus;
+  completedAt: string | null;
 }
 
 /**
@@ -77,7 +98,7 @@ export interface RecommendationCandidate {
   edited: boolean; // E102 제안 항목 수정 여부
 }
 
-/** C102 "일정 기본 정보 1차 파싱" 결과 예시와 동일한 필드 구성 */
+/** C102 "일정 기본 정보 1차 파싱" 결과 (POST /events/parse 응답 EventParseResponse 기준) */
 export interface ParsedEventCandidate {
   sourceText: string;
   titleCandidate: string | null;
@@ -85,13 +106,7 @@ export interface ParsedEventCandidate {
   timeCandidate: string | null;
   placeCandidate: string | null;
   eventTypeCandidate: string | null;
-}
-
-export type AuthStatus = 'unauthenticated' | 'guest' | 'member';
-
-export interface TrynaUser {
-  id: string;
-  email: string;
-  //이거 대문자임 provider,
-  provider: 'google' | 'apple' | null;
+  isAllDayCandidate: boolean;
+  needsConfirmation: boolean;
+  warnings: { code: string; message: string }[];
 }

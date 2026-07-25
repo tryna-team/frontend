@@ -1,5 +1,5 @@
 // ============================================================
-// store/useUIStore.ts
+// stores/uiStore.ts
 // 커버: 4그룹(기능 안내 CTA 바텀시트) / 5그룹(에러 처리 바텀시트·토스트) / 3그룹(삭제 확인 팝업)
 // ============================================================
 //
@@ -13,8 +13,6 @@ import { create } from 'zustand';
 export type BottomSheetType =
   | 'loginRequired' // 4-1 / A104
   | 'notificationPermission' // 4-2 / A107
-  | 'externalCalendarPermission' // 4-3 / A107
-  | 'externalCalendarConnect' // A103 초기 캘린더 연동 제안 (Empty State)
   | 'permissionReset' // 5-1 권한 재설정
   | 'networkError' // 5-2 네트워크 오류
   | 'eventLoadError' // 5-3 일정 오류
@@ -24,7 +22,6 @@ export type BottomSheetType =
 export type ToastType =
   | 'loginFailed' // 5-4
   | 'eventLoadFailed' // 5-5
-  | 'unsupportedCalendar' // 5-6
   | null;
 
 interface UIState {

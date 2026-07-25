@@ -11,6 +11,7 @@
 
 export type SocialProvider = "GOOGLE" | "KAKAO" | "APPLE";
 
+// TODO: GET /users/status는 "NONE"도 반환함 (비인증 상태) — 아직 이 타입에 미반영
 export type UserRole = "GUEST" | "USER";
 
 /**
