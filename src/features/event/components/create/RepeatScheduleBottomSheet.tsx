@@ -104,6 +104,25 @@ export default function RepeatScheduleBottomSheet({
     />
   );
 
+  // 반복 행과 닫기 버튼을 하나의 하단 아이템으로 구성한다.
+  const repeatAndCloseLayout = (
+    <div className="flex w-full flex-col items-center gap-10 pb-4">
+      <EventScheduleRow
+        type="repeat"
+        leading="반복"
+        repeat={repeat}
+        onRepeatClick={onRepeatClick}
+      />
+
+      <Button
+        variant="LargeDefaultFull"
+        onClick={onClose}
+      >
+        닫기
+      </Button>
+    </div>
+  );
+
   return (
     <Overlay className="flex items-end justify-center" onClick={onClose}>
       <Frame className="gap-2 !bg-white px-4 pt-5 pb-1" aria-labelledby={titleId}>
@@ -145,20 +164,11 @@ export default function RepeatScheduleBottomSheet({
         </div>
 
         {/* 반복 행과 닫기 버튼을 하단 영역에 함께 배치한다. */}
-        <ContentBox title="" variant="bottom">
-            <div className="flex w-full flex-col items-center gap-10 pt-3 pb-4">
-              <EventScheduleRow
-                type="repeat"
-                leading="반복"
-                repeat={repeat}
-                onRepeatClick={onRepeatClick}
-              />
-
-              <Button variant="LargeDefaultFull" onClick={onClose}>
-                닫기
-              </Button>
-            </div>
-        </ContentBox>
+        <div className={CONTENT_BOX_LAYOUT_CLASS}>
+          <ContentBox title="" variant="bottom">
+            {repeatAndCloseLayout}
+          </ContentBox>
+        </div>
       </Frame>
     </Overlay>
   );
