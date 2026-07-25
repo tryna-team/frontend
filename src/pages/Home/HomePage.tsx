@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { useCalendarStore } from '@/stores';
@@ -6,6 +6,8 @@ import CalendarGrid from '@/components/common/CalendarGrid/CalendarGrid';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
 import { MOCK_SCHEDULES } from '@/features/calendar/mockData';
 import { generateDailyPath } from '@/routes/paths';
+import Button from '@/components/common/Buttons/Button';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 
 import './HomePage.css';
 
@@ -38,6 +40,7 @@ function HomePage() {
   // 기본 선택 = 오늘 (useCalendarStore.selectedDate는 string, null 없음)
   const selectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
+  const goToToday = useCalendarStore((s) => s.goToToday);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const handleSelectDate = (date: string) => {
@@ -47,6 +50,20 @@ function HomePage() {
     // onSelectDate?.(date);
     navigate(generateDailyPath(date));
   };
+
+  const floatingButtonsContent = useMemo(
+    () => (
+      <div className="flex w-full items-center justify-between">
+        <Button variant="LargeStrongFit" onClick={goToToday}>
+          오늘
+        </Button>
+        {/* TODO: CreateModal 연결 (별도 작업으로 이월) */}
+        <Button variant="MainCTAButton" />
+      </div>
+    ),
+    [goToToday],
+  );
+  useFloatingButtons(floatingButtonsContent);
 
   return (
     <div className="home-page">

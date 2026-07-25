@@ -1,9 +1,6 @@
 .home-page {
+  /* App.tsx가 프레임 크기/배경을 담당. SearchOverlay(absolute)의 위치 기준(containing
+     block)으로 position: relative만 유지 */
   position: relative;
   width: 100%;
-  max-width: 430px;
-  height: 100%;
-  min-height: 100dvh;
-  margin: 0 auto;
-  background: #FFFFFF;
 }

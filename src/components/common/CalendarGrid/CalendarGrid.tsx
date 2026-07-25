@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -44,8 +44,13 @@ function CalendarGrid({
   const currentMonth = useCalendarStore((s) => s.currentMonth);
   const setMonth = useCalendarStore((s) => s.setMonth);
 
-  // Home으로 돌아올 때 이전에 보던 월을 복원
+  // Home으로 돌아올 때 이전에 보던 월을 복원 (마운트 시 1회)
   const initialCalendarDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+
+  // "오늘" 버튼처럼 스토어의 연/월이 바깥에서 바뀌면 마운트된 캘린더 뷰도 그 달로 이동
+  useEffect(() => {
+    calendarRef.current?.getApi().gotoDate(new Date(currentYear, currentMonth - 1, 1));
+  }, [currentYear, currentMonth]);
 
   const handleDateClick = (arg: DateClickArg) => {
     onSelectDate(arg.dateStr);

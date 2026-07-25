@@ -82,7 +82,7 @@ export const gapClassNames = {
 } as const;
 
 export const mainCTAButtonClassNames =
-  "fixed right-5 bottom-5 z-50 size-16 rounded-medium p-1.5 bg-transparent hover:bg-transparent border-none shadow-none active:translate-y-0";
+  "size-16 rounded-medium p-1.5 bg-transparent hover:bg-transparent border-none shadow-none active:translate-y-0";
 
 // Icon/IconText 전용: 아이콘(혹은 아이콘+텍스트) 크기와 무관하게 버튼의 절대적인 터치 영역을 지정.
 export const hitAreaPresetPx = {

@@ -1,7 +1,6 @@
 .daily-page {
+  /* App.tsx가 프레임 크기/배경을 담당 */
   box-sizing: border-box;
-  min-height: 100vh;
-  background-color: #FFFFFF;
 }
 .daily-page-banners {
   display: flex;
