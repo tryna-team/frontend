@@ -9,8 +9,10 @@ import Overlay from '@/components/common/Popup/Overlay';
 
 import DatePickerCalendar from './DatePickerCalendar';
 import EventScheduleRow, { type RepeatOption } from './EventScheduleRow';
+import TimePickerDial, { type TimePickerValue } from './TimePickerDial';
 
 type ActiveDateField = 'start' | 'end';
+type ActiveTimeField = 'start' | 'end';
 
 // 공용 ContentBox를 일정 아이템 박스로 사용한다.
 const CONTENT_BOX_LAYOUT_CLASS =
@@ -26,11 +28,27 @@ export type RepeatScheduleBottomSheetProps = {
   onEndDateChange?: (date: Date) => void;
   onStartTimeClick?: () => void;
   onEndTimeClick?: () => void;
+  onStartTimeChange?: (value: TimePickerValue) => void;
+  onEndTimeChange?: (value: TimePickerValue) => void;
   onRepeatClick?: () => void;
   onClose: () => void;
 };
 
 const formatScheduleDate = (date: Date) => format(date, 'yyyy. MM. dd.');
+
+const parseTimePickerValue = (time: string): TimePickerValue => {
+  const match = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+
+  if (!match) {
+    return { meridiem: 'AM', hour: 9, minute: 0 };
+  }
+
+  return {
+    meridiem: match[3].toUpperCase() === 'PM' ? 'PM' : 'AM',
+    hour: Number(match[1]),
+    minute: Math.min(55, Math.round(Number(match[2]) / 5) * 5),
+  };
+};
 
 export default function RepeatScheduleBottomSheet({
   startDate,
@@ -42,11 +60,20 @@ export default function RepeatScheduleBottomSheet({
   onEndDateChange,
   onStartTimeClick,
   onEndTimeClick,
+  onStartTimeChange,
+  onEndTimeChange,
   onRepeatClick,
   onClose,
 }: RepeatScheduleBottomSheetProps) {
   const titleId = useId();
   const [activeDateField, setActiveDateField] = useState<ActiveDateField>('start');
+  const [activeTimeField, setActiveTimeField] = useState<ActiveTimeField | null>(null);
+  const [startTimeValue, setStartTimeValue] = useState<TimePickerValue>(() =>
+    parseTimePickerValue(startTime),
+  );
+  const [endTimeValue, setEndTimeValue] = useState<TimePickerValue>(() =>
+    parseTimePickerValue(endTime),
+  );
 
   const activeDate = activeDateField === 'start' ? startDate : endDate;
 
@@ -73,26 +100,78 @@ export default function RepeatScheduleBottomSheet({
     onEndDateChange?.(date);
   };
 
+  const handleTimeClick = (field: ActiveTimeField) => {
+    setActiveDateField(field);
+    setActiveTimeField((currentField) =>
+      currentField === field ? null : field,
+    );
+
+    if (field === 'start') {
+      onStartTimeClick?.();
+      return;
+    }
+
+    onEndTimeClick?.();
+  };
+
+  const handleStartTimeChange = (value: TimePickerValue) => {
+    setStartTimeValue(value);
+    onStartTimeChange?.(value);
+  };
+
+  const handleEndTimeChange = (value: TimePickerValue) => {
+    setEndTimeValue(value);
+    onEndTimeChange?.(value);
+  };
+
   const startRow = (
-    <EventScheduleRow
-      type="date-time"
-      leading="시작"
-      date={formatScheduleDate(startDate)}
-      time={startTime}
-      onDateClick={() => setActiveDateField('start')}
-      onTimeClick={onStartTimeClick}
-    />
+    <div className="relative">
+      <EventScheduleRow
+        type="date-time"
+        leading="시작"
+        date={formatScheduleDate(startDate)}
+        time={startTime}
+        onDateClick={() => {
+          setActiveDateField('start');
+          setActiveTimeField(null);
+        }}
+        onTimeClick={() => handleTimeClick('start')}
+      />
+
+      {activeTimeField === 'start' && (
+        <div className="absolute right-padding-xsmall bottom-full z-20">
+          <TimePickerDial
+            value={startTimeValue}
+            onChange={handleStartTimeChange}
+          />
+        </div>
+      )}
+    </div>
   );
 
   const endRow = (
-    <EventScheduleRow
-      type="date-time"
-      leading="종료"
-      date={formatScheduleDate(endDate)}
-      time={endTime}
-      onDateClick={() => setActiveDateField('end')}
-      onTimeClick={onEndTimeClick}
-    />
+    <div className="relative">
+      <EventScheduleRow
+        type="date-time"
+        leading="종료"
+        date={formatScheduleDate(endDate)}
+        time={endTime}
+        onDateClick={() => {
+          setActiveDateField('end');
+          setActiveTimeField(null);
+        }}
+        onTimeClick={() => handleTimeClick('end')}
+      />
+
+      {activeTimeField === 'end' && (
+        <div className="absolute right-padding-xsmall bottom-full z-20">
+          <TimePickerDial
+            value={endTimeValue}
+            onChange={handleEndTimeChange}
+          />
+        </div>
+      )}
+    </div>
   );
 
   const calendar = (
