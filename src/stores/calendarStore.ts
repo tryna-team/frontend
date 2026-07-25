@@ -64,8 +64,6 @@ export const useCalendarStore = create<CalendarState>((set) => ({
   selectedLabelId: null,
 
   // 월 이동: currentYear/currentMonth만 바꾼다. selectedDate는 건드리지 않으므로
-  // "3월 15일 보다가 4월로 넘기면 selectedDate는 여전히 3월 15일"로 남는 점 주의
-  // (필요하면 여기서 selectedDate도 해당 월 1일 등으로 같이 리셋하도록 정책 확인 필요)
   setMonth: (year, month) => set({ currentYear: year, currentMonth: month }),
 
   // "오늘" 버튼: 연/월/선택날짜 세 값을 한 번에 오늘 기준으로 되돌림
@@ -86,21 +84,33 @@ export const useCalendarStore = create<CalendarState>((set) => ({
   // 서버에서 받아온 레이블 배열로 캐시를 통째로 교체 (최초 로드, 새로고침 시 사용)
   setLabels: (labels) => set({ labels }),
 
-  // update-or-insert: id가 이미 있으면 해당 항목만 교체, 없으면 배열 끝에 추가.
+  // update-or-insert: labelId가 이미 있으면 해당 항목만 교체, 없으면 배열 끝에 추가.
   // "레이블 생성"과 "레이블 수정"을 액션 하나로 함께 처리하기 위한 설계.
+  // ⚠️ 실제 API 연동 시 라벨_정책서.md의 삭제 정책(소속 일정 기본 라벨로 이동 등)은
+  // 여기 반영 안 돼있음 — 단순 클라이언트 캐시 갱신만 함.
   upsertLabel: (label) =>
     set((state) => {
-      const exists = state.labels.some((l) => l.id === label.id);
+      const exists = state.labels.some((l) => l.labelId === label.labelId);
       return {
         labels: exists
-          ? state.labels.map((l) => (l.id === label.id ? label : l))
+          ? state.labels.map((l) => (l.labelId === label.labelId ? label : l))
           : [...state.labels, label],
       };
     }),
 
-  // 삭제된 레이블 id를 배열에서 필터링해서 제거
+  // 삭제된 레이블 labelId를 배열에서 필터링해서 제거.
+  // 가드 역할: 라벨_정책서.md 12번(실패 및 예외 정책) "기본 라벨 삭제 → 삭제 거부"를
+  // 서버 API 없이도 클라이언트에서 선제적으로 막기 위함 — 기본 라벨은 "라벨 미지정
+  // 일정이 귀속되는 서랍" 역할이라 지워지면 안 됨. 대상이 기본 라벨이면 아무 것도
+  // 하지 않고 상태를 그대로 반환한다(단, "소속 일정을 기본 라벨로 이동" 같은 나머지
+  // 삭제 정책은 이벤트 데이터를 안 갖고 있는 이 스토어 밖의 일이라 여전히 미반영).
   removeLabel: (labelId) =>
-    set((state) => ({ labels: state.labels.filter((l) => l.id !== labelId) })),
+    set((state) => {
+      const target = state.labels.find((l) => l.labelId === labelId);
+      if (target?.isDefault) return state;
+
+      return { labels: state.labels.filter((l) => l.labelId !== labelId) };
+    }),
 
   // 레이블 수정 화면 진입 시 대상 id 지정, 화면 나갈 때 null로 초기화
   selectLabel: (labelId) => set({ selectedLabelId: labelId }),

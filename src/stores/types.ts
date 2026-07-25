@@ -32,13 +32,18 @@ export type EventStatus = 'DRAFT' | 'CONFIRMED' | 'NEEDS_CONFIRMATION' | 'DELETE
  */
 export type CalendarProvider = 'google' | 'apple';
 
-/** 레이블 = 캘린더 그룹 (Gmail 계정, tryna 그룹, 커스텀 그룹 등) */
+/**
+ * B108 라벨_정책서.md 기준 (라벨 = tryna 일정의 최상위 카테고리, MVP는 기본/사용자 라벨만 지원).
+ * ⚠️ 아직 swagger(실제 백엔드)엔 라벨 관련 API가 없어 필드명이 최종 확정된 건 아님 —
+ * 실제 API가 나오면 이 타입이 정확히 일치하는지 다시 확인해야 한다.
+ */
 export interface CalendarLabel {
-  id: string;
-  title: string;
+  labelId: string;
+  name: string;
   color: string; // 6가지 프리셋 색상 중 하나
-  notificationEnabled: boolean;
-  source: 'gmail' | 'tryna' | 'external';
+  isDefault: boolean; // 기본 라벨 여부 — 삭제 불가, 미지정 일정이 여기로 귀속됨
+  isVisible: boolean; // 캘린더 화면 표시 여부 (숨겨도 일정 데이터는 유지됨)
+  sortOrder: number; // 라벨 설정 화면 표시 순서
 }
 
 /**
@@ -46,6 +51,9 @@ export interface CalendarLabel {
  * 등 목록 조회 응답의 EventSummary 스키마 기준).
  * 상세 조회(GET /events/{eventId})에만 있는 description/eventType/externalEventId/provider
  * 등은 여기 포함하지 않는다 — 상세 데이터는 필요해질 때 React Query 등으로 별도 관리.
+ *
+ * ⚠️ 라벨_정책서.md(B108) 7.1엔 이 일정이 속한 labelId가 언급되지만, swagger엔 아직
+ * 라벨 관련 API/필드가 전혀 없다 — 라벨 API가 실제로 나오면 이 타입에 labelId 추가 필요.
  */
 export interface EventItem {
   eventId: number;
