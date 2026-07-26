@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { FocusEvent, KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 
 import { format, isSameDay, isToday } from 'date-fns';
 
@@ -146,6 +147,10 @@ export default function CreateModal({
   const [endTime, setEndTime] = useState('9:41 AM');
   const [repeat, setRepeat] = useState<RepeatOption>('매주');
   const [hasScheduleChanged, setHasScheduleChanged] = useState(false);
+  const [visualViewportRect, setVisualViewportRect] = useState(() => ({
+    top: window.visualViewport?.offsetTop ?? 0,
+    height: window.visualViewport?.height ?? window.innerHeight,
+  }));
   const recommendationCandidates = useEventCreationStore((state) => state.recommendationCandidates);
   const setRecommendationCandidates = useEventCreationStore(
     (state) => state.setRecommendationCandidates,
@@ -182,6 +187,54 @@ export default function CreateModal({
 
     return () => window.clearTimeout(timerId);
   }, [mode, setRecommendationCandidates, trimmedInput]);
+
+  // 모달이 열려 있는 동안 배경 페이지의 스크롤을 잠근다.
+  useEffect(() => {
+    const scrollY = window.scrollY;
+    const previousOverflow = document.body.style.overflow;
+    const previousPosition = document.body.style.position;
+    const previousTop = document.body.style.top;
+    const previousWidth = document.body.style.width;
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.position = previousPosition;
+      document.body.style.top = previousTop;
+      document.body.style.width = previousWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
+  // 오버레이를 키보드를 제외한 실제 화면 영역에 맞춘다.
+  useEffect(() => {
+    const viewport = window.visualViewport;
+
+    if (!viewport) {
+      return;
+    }
+
+    const updateVisualViewport = () => {
+      setVisualViewportRect({
+        top: viewport.offsetTop,
+        height: viewport.height,
+      });
+    };
+
+    viewport.addEventListener('resize', updateVisualViewport);
+    viewport.addEventListener('scroll', updateVisualViewport);
+    const frameId = window.requestAnimationFrame(updateVisualViewport);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      viewport.removeEventListener('resize', updateVisualViewport);
+      viewport.removeEventListener('scroll', updateVisualViewport);
+    };
+  }, []);
 
   // CreateModal에서 전달받은 기존 체크리스트 데이터를 공용 Checklist 컴포넌트의 데이터 형식으로 변환
   const renderedChecklistItems = useMemo<ChecklistItemData[]>(() => {
@@ -312,18 +365,48 @@ export default function CreateModal({
     onCreateLabel?.();
   };
 
-  return (
+  // App의 transform과 분리해 실제 모바일 viewport를 기준으로 배치한다.
+  return createPortal(
     <>
-      <Overlay className="flex items-end justify-center" onClick={onClose}>
-        <Frame
-          className="!items-start !overflow-visible max-w-[385px] gap-0.5 p-3"
-          aria-labelledby={titleId}
+      <Overlay onClick={onClose}>
+        {/* 키보드를 제외한 화면 영역의 하단에 생성 모달을 맞춘다. */}
+        <div
+          className="absolute right-0 left-0 flex items-end justify-center"
+          style={{
+            top: visualViewportRect.top,
+            height: visualViewportRect.height,
+          }}
         >
-          <h2 id={titleId} className="sr-only">
-            일정 생성
-          </h2>
+          <Frame
+            className="!items-start !overflow-visible max-w-[385px] gap-0.5 p-3"
+            aria-labelledby={titleId}
+          >
+            <h2 id={titleId} className="sr-only">
+              일정 생성
+            </h2>
 
-          {!isRecommendMode && (
+            {isRecommendMode && (
+              <div className="flex w-full flex-col">
+                <div className="flex w-full items-center justify-between px-1 py-2">
+                  <p className="min-w-0 text-text-additional default-body-medium">
+                    <span className="bg-gradient-to-l from-[#29C878] to-[#32E089] bg-clip-text text-transparent default-body-strong-medium">
+                      {recommendationKeyword}
+                    </span>
+
+                    {recommendationMessage}
+                  </p>
+                </div>
+
+                <div onPointerDown={(event) => event.preventDefault()}>
+                  <Checklist
+                    items={renderedChecklistItems}
+                    radioVariant="create"
+                    onLeadingClick={handleChecklistClick}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="flex w-full items-center justify-between self-stretch pl-2">
               <input
                 ref={inputRef}
@@ -337,93 +420,55 @@ export default function CreateModal({
                 className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
               />
 
-              <Button variant="MediumDefaultFit" disabled>
+              <Button variant="MediumDefaultFit" disabled={!isRecommendMode} onClick={onCreate}>
                 생성
               </Button>
             </div>
-          )}
 
-          {isRecommendMode && (
-            <div className="flex w-full flex-col">
-              <div className="flex w-full items-center justify-between px-1 py-2">
-                <p className="min-w-0 text-text-additional default-body-medium">
-                  <span className="bg-gradient-to-l from-[#29C878] to-[#32E089] bg-clip-text text-transparent default-body-strong-medium">
-                    {recommendationKeyword}
-                  </span>
-
-                  {recommendationMessage}
-                </p>
-              </div>
-
-              <Checklist
-                items={renderedChecklistItems}
-                radioVariant="create"
-                onLeadingClick={handleChecklistClick}
-              />
-
-              <div className="flex w-full items-center justify-between self-stretch pl-2">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  autoFocus
-                  value={inputValue}
-                  onChange={(event) => onInputChange?.(event.target.value)}
-                  onBlur={handleInputBlur}
-                  onKeyDown={handleInputKeyDown}
-                  placeholder="어떤 일 인가요?"
-                  className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
-                />
-
-                <Button variant="MediumDefaultFit" onClick={onCreate}>
-                  생성
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <div className="flex w-full items-center gap-4 px-1 py-1">
-            <button
-              type="button"
-              onPointerDown={handleCalendarPointerDown}
-              onClick={handleCalendarClick}
-              className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
-            >
-              <img src="/icon/icons/calendar_small.svg" alt="" className="block shrink-0" />
-
-              <span className="whitespace-nowrap">{calendarText}</span>
-            </button>
-
-            <div className="relative flex min-w-0">
+            <div className="flex w-full items-center gap-4 px-1 py-1">
               <button
                 type="button"
-                onClick={handleLabelClick}
-                className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+                onPointerDown={handleCalendarPointerDown}
+                onClick={handleCalendarClick}
+                className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
               >
-                <img src="/icon/icons/label_small.svg" alt="" className="block shrink-0" />
+                <img src="/icon/icons/calendar_small.svg" alt="" className="block shrink-0" />
 
-                {labelStatus.type === 'default' ? (
-                  <span className="whitespace-nowrap">레이블 없음</span>
-                ) : (
-                  <div className="flex min-w-0 items-center gap-xsmall">
-                    <span className="max-w-[80px] truncate">{labelStatus.label}</span>
-
-                    <img src={COLOR_ICON[labelStatus.color]} alt="" className="block shrink-0" />
-                  </div>
-                )}
+                <span className="whitespace-nowrap">{calendarText}</span>
               </button>
 
-              {isLabelModalOpen && (
-                <div className="absolute bottom-[calc(100%+8px)] left-0 z-30">
-                  <LabelModal
-                    labels={labels}
-                    onSelectLabel={handleSelectLabel}
-                    onCreateLabel={handleCreateLabel}
-                  />
-                </div>
-              )}
+              <div className="relative flex min-w-0">
+                <button
+                  type="button"
+                  onClick={handleLabelClick}
+                  className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+                >
+                  <img src="/icon/icons/label_small.svg" alt="" className="block shrink-0" />
+
+                  {labelStatus.type === 'default' ? (
+                    <span className="whitespace-nowrap">레이블 없음</span>
+                  ) : (
+                    <div className="flex min-w-0 items-center gap-xsmall">
+                      <span className="max-w-[80px] truncate">{labelStatus.label}</span>
+
+                      <img src={COLOR_ICON[labelStatus.color]} alt="" className="block shrink-0" />
+                    </div>
+                  )}
+                </button>
+
+                {isLabelModalOpen && (
+                  <div className="absolute bottom-[calc(100%+8px)] left-0 z-30">
+                    <LabelModal
+                      labels={labels}
+                      onSelectLabel={handleSelectLabel}
+                      onCreateLabel={handleCreateLabel}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </Frame>
+          </Frame>
+        </div>
       </Overlay>
 
       {isScheduleOpen && (
@@ -450,6 +495,7 @@ export default function CreateModal({
           onClose={handleScheduleClose}
         />
       )}
-    </>
+    </>,
+    document.body,
   );
 }
