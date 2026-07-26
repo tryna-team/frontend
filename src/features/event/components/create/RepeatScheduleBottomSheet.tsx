@@ -3,6 +3,8 @@ import { useEffect, useId, useState } from 'react';
 import { format } from 'date-fns';
 
 import Button from '@/components/common/Buttons/Button';
+import LabelModal from '@/components/common/LabelModal/LabelModal';
+import type { RepeatType } from '@/components/common/LabelModal/LabelItem';
 import ContentBox from '@/components/common/Popup/BottomSheet/Layout/ContentBox';
 import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
 import Overlay from '@/components/common/Popup/Overlay';
@@ -31,6 +33,7 @@ export type RepeatScheduleBottomSheetProps = {
   onStartTimeChange?: (value: TimePickerValue) => void;
   onEndTimeChange?: (value: TimePickerValue) => void;
   onRepeatClick?: () => void;
+  onRepeatChange?: (repeat: RepeatOption) => void;
   onClose: () => void;
 };
 
@@ -50,6 +53,13 @@ const parseTimePickerValue = (time: string): TimePickerValue => {
   };
 };
 
+const REPEAT_OPTION: Record<RepeatType, RepeatOption> = {
+  daily: '매일',
+  weekly: '매주',
+  monthly: '매월',
+  yearly: '매년',
+};
+
 export default function RepeatScheduleBottomSheet({
   startDate,
   endDate,
@@ -63,6 +73,7 @@ export default function RepeatScheduleBottomSheet({
   onStartTimeChange,
   onEndTimeChange,
   onRepeatClick,
+  onRepeatChange,
   onClose,
 }: RepeatScheduleBottomSheetProps) {
   const titleId = useId();
@@ -74,6 +85,8 @@ export default function RepeatScheduleBottomSheet({
   const [endTimeValue, setEndTimeValue] = useState<TimePickerValue>(() =>
     parseTimePickerValue(endTime),
   );
+  const [isRepeatOpen, setIsRepeatOpen] = useState(false);
+  const [selectedRepeat, setSelectedRepeat] = useState<RepeatOption>(repeat);
 
   const activeDate = activeDateField === 'start' ? startDate : endDate;
 
@@ -102,6 +115,7 @@ export default function RepeatScheduleBottomSheet({
 
   const handleTimeClick = (field: ActiveTimeField) => {
     setActiveDateField(field);
+    setIsRepeatOpen(false);
     setActiveTimeField((currentField) =>
       currentField === field ? null : field,
     );
@@ -124,6 +138,20 @@ export default function RepeatScheduleBottomSheet({
     onEndTimeChange?.(value);
   };
 
+  const handleRepeatClick = () => {
+    setActiveTimeField(null);
+    setIsRepeatOpen((isOpen) => !isOpen);
+    onRepeatClick?.();
+  };
+
+  const handleRepeatSelect = (repeatType: RepeatType) => {
+    const nextRepeat = REPEAT_OPTION[repeatType];
+
+    setSelectedRepeat(nextRepeat);
+    setIsRepeatOpen(false);
+    onRepeatChange?.(nextRepeat);
+  };
+
   const startRow = (
     <div className="relative">
       <EventScheduleRow
@@ -134,6 +162,7 @@ export default function RepeatScheduleBottomSheet({
         onDateClick={() => {
           setActiveDateField('start');
           setActiveTimeField(null);
+          setIsRepeatOpen(false);
         }}
         onTimeClick={() => handleTimeClick('start')}
       />
@@ -159,6 +188,7 @@ export default function RepeatScheduleBottomSheet({
         onDateClick={() => {
           setActiveDateField('end');
           setActiveTimeField(null);
+          setIsRepeatOpen(false);
         }}
         onTimeClick={() => handleTimeClick('end')}
       />
@@ -186,12 +216,26 @@ export default function RepeatScheduleBottomSheet({
   // 반복 행과 닫기 버튼을 하나의 하단 아이템으로 구성한다.
   const repeatAndCloseLayout = (
     <div className="flex w-full flex-col items-center gap-10 pb-4">
-      <EventScheduleRow
-        type="repeat"
-        leading="반복"
-        repeat={repeat}
-        onRepeatClick={onRepeatClick}
-      />
+      <div className="relative">
+        <EventScheduleRow
+          type="repeat"
+          leading="반복"
+          repeat={selectedRepeat}
+          onRepeatClick={handleRepeatClick}
+        />
+
+        {isRepeatOpen && (
+          <div className="absolute right-padding-xsmall bottom-[47px] z-30">
+            <LabelModal
+              type="repeat"
+              selectedDate={startDate}
+              onSelectRepeat={
+                handleRepeatSelect
+              }
+            />
+          </div>
+        )}
+      </div>
 
       <Button
         variant="LargeDefaultFull"
@@ -243,7 +287,9 @@ export default function RepeatScheduleBottomSheet({
         </div>
 
         {/* 반복 행과 닫기 버튼을 하단 영역에 함께 배치한다. */}
-        <div className={CONTENT_BOX_LAYOUT_CLASS}>
+        <div
+          className={`${CONTENT_BOX_LAYOUT_CLASS} [&>div]:!overflow-visible`}
+        >
           <ContentBox title="" variant="bottom">
             {repeatAndCloseLayout}
           </ContentBox>
