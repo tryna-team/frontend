@@ -45,6 +45,7 @@ function HomePage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
+  const [initialCreateDate, setInitialCreateDate] = useState<Date | null>(null);
 
   const handleSelectDate = (date: string) => {
     selectDate(date);
@@ -58,6 +59,18 @@ function HomePage() {
     window.alert('일정 생성 API 연결 예정입니다.');
     setCreateInputValue('');
     setIsCreateModalOpen(false);
+    setInitialCreateDate(null);
+  };
+
+  const handleLongPressDate = (date: string) => {
+    selectDate(date);
+    setInitialCreateDate(new Date(`${date}T00:00:00`));
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCreateModalClose = () => {
+    setIsCreateModalOpen(false);
+    setInitialCreateDate(null);
   };
 
   const floatingButtonsContent = useMemo(
@@ -80,6 +93,7 @@ function HomePage() {
         events={calendarEvents}
         selectedDate={selectedDate}
         onSelectDate={handleSelectDate}
+        onLongPressDate={handleLongPressDate}
         onSearchClick={() => setIsSearchOpen(true)}
         onViewToggleClick={() => {}}
         onSettingsClick={() => {}}
@@ -92,10 +106,11 @@ function HomePage() {
       {isCreateModalOpen && (
         <CreateModal
           inputValue={createInputValue}
+          initialScheduleDate={initialCreateDate ?? undefined}
           onInputChange={setCreateInputValue}
           onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
           onCreate={handleCreate}
-          onClose={() => setIsCreateModalOpen(false)}
+          onClose={handleCreateModalClose}
         />
       )}
     </div>

@@ -52,6 +52,7 @@ export type CreateModalProps = {
   keyword?: string;
   message?: string;
   checklistItems?: CreateModalChecklistItem[];
+  initialScheduleDate?: Date;
   calendarStatus?: CalendarStatus;
   labelStatus?: LabelStatus;
   labels?: LabelItemData[];
@@ -120,6 +121,7 @@ export default function CreateModal({
   keyword = '',
   message = '',
   checklistItems = [],
+  initialScheduleDate,
   calendarStatus = { type: 'default' },
   labelStatus = { type: 'default' },
   labels = [],
@@ -141,8 +143,8 @@ export default function CreateModal({
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [recommendedInput, setRecommendedInput] = useState('');
-  const [startDate, setStartDate] = useState(() => new Date());
-  const [endDate, setEndDate] = useState(() => new Date());
+  const [startDate, setStartDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
+  const [endDate, setEndDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
   const [startTime, setStartTime] = useState('9:41 AM');
   const [endTime, setEndTime] = useState('9:41 AM');
   const [repeat, setRepeat] = useState<RepeatOption>('매주');
@@ -165,10 +167,13 @@ export default function CreateModal({
 
   const propCalendarText =
     calendarStatus.type === 'default' ? '오늘 · 반복 없음' : `${calendarStatus.text}마다`;
+  const initialCalendarText = initialScheduleDate
+    ? `${formatTriggerDate(startDate)} · 반복 없음`
+    : propCalendarText;
   const selectedDateText = isSameDay(startDate, endDate)
     ? formatTriggerDate(startDate)
     : `${formatTriggerDate(startDate)}~${format(endDate, 'M.d')}`;
-  const calendarText = hasScheduleChanged ? `${selectedDateText} · ${repeat}` : propCalendarText;
+  const calendarText = hasScheduleChanged ? `${selectedDateText} · ${repeat}` : initialCalendarText;
 
   // 입력이 멈춘 뒤 mock 추천 화면으로 전환한다.
   useEffect(() => {

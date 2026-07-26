@@ -284,6 +284,7 @@ function DailyPage() {
       {isCreateModalOpen && (
         <CreateModal
           inputValue={createInputValue}
+          initialScheduleDate={displayDate}
           onInputChange={setCreateInputValue}
           onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
           onCreate={handleCreate}
