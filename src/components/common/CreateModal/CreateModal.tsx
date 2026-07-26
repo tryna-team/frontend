@@ -1,8 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import Button from '@/components/common/Buttons/Button';
 import Checklist, { type ChecklistItemData } from '@/components/common/Checklist/Checklist';
 import LabelModal, { type LabelItemData } from '@/components/common/LabelModal/LabelModal';
+import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
+import Overlay from '@/components/common/Popup/Overlay';
+import { RepeatScheduleBottomSheet, type RepeatOption } from '@/features/event/components/create';
+import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial';
 
 import type { ChecklistStatus } from '@/components/common/Checklist/ChecklistItem';
 
@@ -52,6 +56,7 @@ export type CreateModalProps = {
   onCreateLabel?: () => void;
   onAddChecklist?: () => void;
   onToggleChecklist?: (id: number) => void;
+  onClose?: () => void;
 };
 
 const COLOR_ICON = {
@@ -66,6 +71,33 @@ const COLOR_ICON = {
 // 직접 추가 항목에 사용하는 내부 전용 ID
 // 실제 체크리스트 ID와 겹치지 않도록 음수를 사용
 const ADD_CHECKLIST_ITEM_ID = -1;
+
+// 백엔드 연결 전 추천 화면을 확인하기 위한 임시 데이터
+const MOCK_CHECKLIST_ITEMS: CreateModalChecklistItem[] = [
+  {
+    id: 1,
+    label: '일정 세부 내용 확인하기',
+    status: 'add',
+    date: '당일',
+  },
+  {
+    id: 2,
+    label: '필요한 준비물 챙기기',
+    status: 'add',
+    date: '전날',
+  },
+  {
+    id: 3,
+    label: '참석자에게 일정 공유하기',
+    status: 'add',
+    date: '당일',
+  },
+];
+
+const MOCK_RECOMMENDATION_DELAY = 2000;
+
+const formatTime = ({ meridiem, hour, minute }: TimePickerValue) =>
+  `${hour}:${String(minute).padStart(2, '0')} ${meridiem}`;
 
 export default function CreateModal({
   mode = 'default',
@@ -83,17 +115,51 @@ export default function CreateModal({
   onCreateLabel,
   onAddChecklist,
   onToggleChecklist,
+  onClose,
 }: CreateModalProps) {
+  const titleId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const keepKeyboardOpenRef = useRef(true);
+  const isScheduleOpeningRef = useRef(false);
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [recommendedInput, setRecommendedInput] = useState('');
+  const [startDate, setStartDate] = useState(() => new Date());
+  const [endDate, setEndDate] = useState(() => new Date());
+  const [startTime, setStartTime] = useState('9:41 AM');
+  const [endTime, setEndTime] = useState('9:41 AM');
+  const [repeat, setRepeat] = useState<RepeatOption>('매주');
 
-  const isRecommendMode = mode === 'recommend';
+  const trimmedInput = inputValue.trim();
+  const isRecommendMode =
+    mode === 'recommend' || (trimmedInput !== '' && recommendedInput === trimmedInput);
+  const effectiveChecklistItems = checklistItems.length > 0 ? checklistItems : MOCK_CHECKLIST_ITEMS;
+  const recommendationKeyword = keyword || trimmedInput;
+  const recommendationMessage = message || '에 필요한 체크리스트를 추천했어요.';
 
   const calendarText =
     calendarStatus.type === 'default' ? '오늘 · 반복 없음' : `${calendarStatus.text}마다`;
 
+  // 입력이 멈춘 뒤 mock 추천 화면으로 전환한다.
+  useEffect(() => {
+    if (mode === 'recommend') {
+      return;
+    }
+
+    if (!trimmedInput) {
+      return;
+    }
+
+    const timerId = window.setTimeout(() => {
+      setRecommendedInput(trimmedInput);
+    }, MOCK_RECOMMENDATION_DELAY);
+
+    return () => window.clearTimeout(timerId);
+  }, [mode, trimmedInput]);
+
   // CreateModal에서 전달받은 기존 체크리스트 데이터를 공용 Checklist 컴포넌트의 데이터 형식으로 변환
   const renderedChecklistItems = useMemo<ChecklistItemData[]>(() => {
-    const recommendedItems = checklistItems.map((item) => {
+    const recommendedItems = effectiveChecklistItems.map((item) => {
       const status = item.status ?? 'add';
       const hasDateTrailing = status === 'add' || status === 'done';
 
@@ -122,7 +188,7 @@ export default function CreateModal({
     };
 
     return [...recommendedItems, addItem];
-  }, [checklistItems]);
+  }, [effectiveChecklistItems]);
 
   const handleChecklistClick = (id: number) => {
     if (id === ADD_CHECKLIST_ITEM_ID) {
@@ -138,6 +204,44 @@ export default function CreateModal({
     onOpenLabel?.();
   };
 
+  const handleCalendarClick = () => {
+    if (isScheduleOpeningRef.current) {
+      return;
+    }
+
+    isScheduleOpeningRef.current = true;
+    keepKeyboardOpenRef.current = false;
+    setIsLabelModalOpen(false);
+    setIsScheduleOpen(true);
+    inputRef.current?.blur();
+    onOpenCalendar?.();
+  };
+
+  // 생성 모달 안에서는 입력 포커스를 유지한다.
+  const handleInputBlur = () => {
+    window.requestAnimationFrame(() => {
+      if (keepKeyboardOpenRef.current) {
+        inputRef.current?.focus();
+      }
+    });
+  };
+
+  // 스케줄 설정 화면에서는 키보드를 내린다.
+  const handleCalendarPointerDown = () => {
+    handleCalendarClick();
+  };
+
+  // 생성 모달로 돌아오면 키보드를 다시 연다.
+  const handleScheduleClose = () => {
+    setIsScheduleOpen(false);
+    isScheduleOpeningRef.current = false;
+    keepKeyboardOpenRef.current = true;
+
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  };
+
   const handleSelectLabel = (id: number) => {
     setIsLabelModalOpen(false);
     onSelectLabel?.(id);
@@ -149,96 +253,130 @@ export default function CreateModal({
   };
 
   return (
-    <section className="flex w-full max-w-[385px] flex-col items-start gap-0.5 rounded-[24px] border border-[rgba(28,22,48,0.05)] bg-background-white p-3">
-      {!isRecommendMode && (
-        <div className="flex w-full items-center justify-between self-stretch pl-2">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(event) => onInputChange?.(event.target.value)}
-            placeholder="어떤 일 인가요?"
-            className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
-          />
-
-          <Button variant="MediumDefaultFit" disabled>
-            생성
-          </Button>
-        </div>
-      )}
-
-      {isRecommendMode && (
-        <div className="flex w-full flex-col">
-          <div className="flex w-full items-center justify-between px-1 py-2">
-            <p className="min-w-0 text-text-additional default-body-medium">
-              <span className="bg-gradient-to-l from-[#29C878] to-[#32E089] bg-clip-text text-transparent default-body-strong-medium">
-                {keyword}
-              </span>
-
-              {message}
-            </p>
-          </div>
-
-          <Checklist
-            items={renderedChecklistItems}
-            radioVariant="create"
-            onLeadingClick={handleChecklistClick}
-          />
-
-          <div className="flex w-full items-center justify-between self-stretch pl-2">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(event) => onInputChange?.(event.target.value)}
-              placeholder="어떤 일 인가요?"
-              className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
-            />
-
-            <Button variant="MediumDefaultFit">생성</Button>
-          </div>
-        </div>
-      )}
-
-      <div className="flex w-full items-center gap-4 px-1 py-1">
-        <button
-          type="button"
-          onClick={onOpenCalendar}
-          className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+    <>
+      <Overlay className="flex items-end justify-center" onClick={onClose}>
+        <Frame
+          className="!items-start !overflow-visible max-w-[385px] gap-0.5 p-3"
+          aria-labelledby={titleId}
         >
-          <img src="/icon/icons/calendar_small.svg" alt="" className="block shrink-0" />
+          <h2 id={titleId} className="sr-only">
+            일정 생성
+          </h2>
 
-          <span className="whitespace-nowrap">{calendarText}</span>
-        </button>
-
-        <div className="relative flex min-w-0">
-          <button
-            type="button"
-            onClick={handleLabelClick}
-            className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
-          >
-            <img src="/icon/icons/label_small.svg" alt="" className="block shrink-0" />
-
-            {labelStatus.type === 'default' ? (
-              <span className="whitespace-nowrap">레이블 없음</span>
-            ) : (
-              <div className="flex min-w-0 items-center gap-xsmall">
-                <span className="max-w-[80px] truncate">{labelStatus.label}</span>
-
-                <img src={COLOR_ICON[labelStatus.color]} alt="" className="block shrink-0" />
-              </div>
-            )}
-          </button>
-
-          {isLabelModalOpen && (
-            <div className="absolute bottom-[calc(100%+8px)] left-0 z-30">
-              <LabelModal
-                labels={labels}
-                onSelectLabel={handleSelectLabel}
-                onCreateLabel={handleCreateLabel}
+          {!isRecommendMode && (
+            <div className="flex w-full items-center justify-between self-stretch pl-2">
+              <input
+                ref={inputRef}
+                type="text"
+                autoFocus
+                value={inputValue}
+                onChange={(event) => onInputChange?.(event.target.value)}
+                onBlur={handleInputBlur}
+                placeholder="어떤 일 인가요?"
+                className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
               />
+
+              <Button variant="MediumDefaultFit" disabled>
+                생성
+              </Button>
             </div>
           )}
-        </div>
-      </div>
-    </section>
+
+          {isRecommendMode && (
+            <div className="flex w-full flex-col">
+              <div className="flex w-full items-center justify-between px-1 py-2">
+                <p className="min-w-0 text-text-additional default-body-medium">
+                  <span className="bg-gradient-to-l from-[#29C878] to-[#32E089] bg-clip-text text-transparent default-body-strong-medium">
+                    {recommendationKeyword}
+                  </span>
+
+                  {recommendationMessage}
+                </p>
+              </div>
+
+              <Checklist
+                items={renderedChecklistItems}
+                radioVariant="create"
+                onLeadingClick={handleChecklistClick}
+              />
+
+              <div className="flex w-full items-center justify-between self-stretch pl-2">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  autoFocus
+                  value={inputValue}
+                  onChange={(event) => onInputChange?.(event.target.value)}
+                  onBlur={handleInputBlur}
+                  placeholder="어떤 일 인가요?"
+                  className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
+                />
+
+                <Button variant="MediumDefaultFit">생성</Button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex w-full items-center gap-4 px-1 py-1">
+            <button
+              type="button"
+              onPointerDown={handleCalendarPointerDown}
+              onClick={handleCalendarClick}
+              className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+            >
+              <img src="/icon/icons/calendar_small.svg" alt="" className="block shrink-0" />
+
+              <span className="whitespace-nowrap">{calendarText}</span>
+            </button>
+
+            <div className="relative flex min-w-0">
+              <button
+                type="button"
+                onClick={handleLabelClick}
+                className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+              >
+                <img src="/icon/icons/label_small.svg" alt="" className="block shrink-0" />
+
+                {labelStatus.type === 'default' ? (
+                  <span className="whitespace-nowrap">레이블 없음</span>
+                ) : (
+                  <div className="flex min-w-0 items-center gap-xsmall">
+                    <span className="max-w-[80px] truncate">{labelStatus.label}</span>
+
+                    <img src={COLOR_ICON[labelStatus.color]} alt="" className="block shrink-0" />
+                  </div>
+                )}
+              </button>
+
+              {isLabelModalOpen && (
+                <div className="absolute bottom-[calc(100%+8px)] left-0 z-30">
+                  <LabelModal
+                    labels={labels}
+                    onSelectLabel={handleSelectLabel}
+                    onCreateLabel={handleCreateLabel}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </Frame>
+      </Overlay>
+
+      {isScheduleOpen && (
+        <RepeatScheduleBottomSheet
+          startDate={startDate}
+          endDate={endDate}
+          startTime={startTime}
+          endTime={endTime}
+          repeat={repeat}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          onStartTimeChange={(value) => setStartTime(formatTime(value))}
+          onEndTimeChange={(value) => setEndTime(formatTime(value))}
+          onRepeatChange={setRepeat}
+          onClose={handleScheduleClose}
+        />
+      )}
+    </>
   );
 }

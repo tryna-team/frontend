@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 
 import { useCalendarStore } from '@/stores';
 import CalendarGrid from '@/components/common/CalendarGrid/CalendarGrid';
+import CreateModal from '@/components/common/CreateModal/CreateModal';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
 import { MOCK_SCHEDULES } from '@/features/calendar/mockData';
 import { generateDailyPath } from '@/routes/paths';
@@ -42,6 +43,8 @@ function HomePage() {
   const selectDate = useCalendarStore((s) => s.selectDate);
   const goToToday = useCalendarStore((s) => s.goToToday);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createInputValue, setCreateInputValue] = useState('');
 
   const handleSelectDate = (date: string) => {
     selectDate(date);
@@ -57,8 +60,8 @@ function HomePage() {
         <Button variant="LargeStrongFit" onClick={goToToday}>
           오늘
         </Button>
-        {/* TODO: CreateModal 연결 (별도 작업으로 이월) */}
-        <Button variant="MainCTAButton" />
+        {/* 생성 모달을 현재 화면 위에 연다. */}
+        <Button variant="MainCTAButton" onClick={() => setIsCreateModalOpen(true)} />
       </div>
     ),
     [goToToday],
@@ -77,9 +80,15 @@ function HomePage() {
       />
 
       {isSearchOpen && (
-        <SearchOverlay
-          isOpen={isSearchOpen}
-          onClose={() => setIsSearchOpen(false)}
+        <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      )}
+
+      {isCreateModalOpen && (
+        <CreateModal
+          inputValue={createInputValue}
+          onInputChange={setCreateInputValue}
+          onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
+          onClose={() => setIsCreateModalOpen(false)}
         />
       )}
     </div>
