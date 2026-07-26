@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 
-import { format } from 'date-fns';
+import { format, isAfter, isBefore } from 'date-fns';
 
 import Button from '@/components/common/Buttons/Button';
 import LabelModal from '@/components/common/LabelModal/LabelModal';
@@ -103,22 +103,29 @@ export default function RepeatScheduleBottomSheet({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  // 활성화된 일정의 날짜를 변경한다.
+  // 날짜 순서를 유지하며 활성 일정의 날짜를 변경한다.
   const handleDateChange = (date: Date) => {
     if (activeDateField === 'start') {
       onStartDateChange?.(date);
+
+      if (isAfter(date, endDate)) {
+        onEndDateChange?.(date);
+      }
+
       return;
     }
 
     onEndDateChange?.(date);
+
+    if (isBefore(date, startDate)) {
+      onStartDateChange?.(date);
+    }
   };
 
   const handleTimeClick = (field: ActiveTimeField) => {
     setActiveDateField(field);
     setIsRepeatOpen(false);
-    setActiveTimeField((currentField) =>
-      currentField === field ? null : field,
-    );
+    setActiveTimeField((currentField) => (currentField === field ? null : field));
 
     if (field === 'start') {
       onStartTimeClick?.();
@@ -169,10 +176,7 @@ export default function RepeatScheduleBottomSheet({
 
       {activeTimeField === 'start' && (
         <div className="absolute right-padding-xsmall bottom-full z-20">
-          <TimePickerDial
-            value={startTimeValue}
-            onChange={handleStartTimeChange}
-          />
+          <TimePickerDial value={startTimeValue} onChange={handleStartTimeChange} />
         </div>
       )}
     </div>
@@ -195,10 +199,7 @@ export default function RepeatScheduleBottomSheet({
 
       {activeTimeField === 'end' && (
         <div className="absolute right-padding-xsmall bottom-full z-20">
-          <TimePickerDial
-            value={endTimeValue}
-            onChange={handleEndTimeChange}
-          />
+          <TimePickerDial value={endTimeValue} onChange={handleEndTimeChange} />
         </div>
       )}
     </div>
@@ -229,18 +230,13 @@ export default function RepeatScheduleBottomSheet({
             <LabelModal
               type="repeat"
               selectedDate={startDate}
-              onSelectRepeat={
-                handleRepeatSelect
-              }
+              onSelectRepeat={handleRepeatSelect}
             />
           </div>
         )}
       </div>
 
-      <Button
-        variant="LargeDefaultFull"
-        onClick={onClose}
-      >
+      <Button variant="LargeDefaultFull" onClick={onClose}>
         닫기
       </Button>
     </div>
@@ -287,9 +283,7 @@ export default function RepeatScheduleBottomSheet({
         </div>
 
         {/* 반복 행과 닫기 버튼을 하단 영역에 함께 배치한다. */}
-        <div
-          className={`${CONTENT_BOX_LAYOUT_CLASS} [&>div]:!overflow-visible`}
-        >
+        <div className={`${CONTENT_BOX_LAYOUT_CLASS} [&>div]:!overflow-visible`}>
           <ContentBox title="" variant="bottom">
             {repeatAndCloseLayout}
           </ContentBox>
