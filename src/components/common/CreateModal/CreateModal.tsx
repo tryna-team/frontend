@@ -110,6 +110,15 @@ const MOCK_RECOMMENDATION_CANDIDATES: RecommendationCandidate[] = [
 
 const MOCK_RECOMMENDATION_DELAY = 2000;
 
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
 const formatTime = ({ meridiem, hour, minute }: TimePickerValue) =>
   `${hour}:${String(minute).padStart(2, '0')} ${meridiem}`;
 
@@ -136,7 +145,9 @@ export default function CreateModal({
   onClose,
 }: CreateModalProps) {
   const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const labelButtonRef = useRef<HTMLButtonElement>(null);
   const keepKeyboardOpenRef = useRef(true);
   const isScheduleOpeningRef = useRef(false);
   const isKeyboardNavigationRef = useRef(false);
@@ -214,6 +225,69 @@ export default function CreateModal({
       window.scrollTo(0, scrollY);
     };
   }, []);
+
+  // Tab 포커스를 생성 모달 안에서 순환시키고 Escape로 닫는다.
+  useEffect(() => {
+    const handleDialogKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (isScheduleOpen) {
+        return;
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+
+        if (isLabelModalOpen) {
+          setIsLabelModalOpen(false);
+          window.requestAnimationFrame(() => {
+            labelButtonRef.current?.focus();
+          });
+          return;
+        }
+
+        onClose?.();
+        return;
+      }
+
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const dialog = dialogRef.current;
+
+      if (!dialog) {
+        return;
+      }
+
+      const focusableElements = Array.from(
+        dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+      );
+
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      const activeElement = document.activeElement;
+      const isFocusOutside = !dialog.contains(activeElement);
+
+      if (event.shiftKey && (activeElement === firstElement || isFocusOutside)) {
+        event.preventDefault();
+        lastElement.focus();
+        return;
+      }
+
+      if (!event.shiftKey && (activeElement === lastElement || isFocusOutside)) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleDialogKeyDown);
+
+    return () => document.removeEventListener('keydown', handleDialogKeyDown);
+  }, [isLabelModalOpen, isScheduleOpen, onClose]);
 
   // 오버레이를 키보드를 제외한 실제 화면 영역에 맞춘다.
   useEffect(() => {
@@ -370,111 +444,121 @@ export default function CreateModal({
     onCreateLabel?.();
   };
 
-  // App의 transform과 분리해 실제 모바일 viewport를 기준으로 배치한다.
-  return createPortal(
+  return (
     <>
-      <Overlay onClick={onClose}>
-        {/* 키보드를 제외한 화면 영역의 하단에 생성 모달을 맞춘다. */}
-        <div
-          className="absolute right-0 left-0 flex items-end justify-center"
-          style={{
-            top: visualViewportRect.top,
-            height: visualViewportRect.height,
-          }}
-        >
-          <Frame
-            className="!items-start !overflow-visible max-w-[385px] gap-0.5 p-3"
-            aria-labelledby={titleId}
-          >
-            <h2 id={titleId} className="sr-only">
-              일정 생성
-            </h2>
-
-            {isRecommendMode && (
-              <div className="flex w-full flex-col">
-                <div className="flex w-full items-center justify-between px-1 py-2">
-                  <p className="min-w-0 text-text-additional default-body-medium">
-                    <span className="bg-gradient-to-l from-[#29C878] to-[#32E089] bg-clip-text text-transparent default-body-strong-medium">
-                      {recommendationKeyword}
-                    </span>
-
-                    {recommendationMessage}
-                  </p>
-                </div>
-
-                <div onPointerDown={(event) => event.preventDefault()}>
-                  <Checklist
-                    items={renderedChecklistItems}
-                    radioVariant="create"
-                    onLeadingClick={handleChecklistClick}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex w-full items-center justify-between self-stretch pl-2">
-              <input
-                ref={inputRef}
-                type="text"
-                autoFocus
-                value={inputValue}
-                onChange={(event) => onInputChange?.(event.target.value)}
-                onBlur={handleInputBlur}
-                onKeyDown={handleInputKeyDown}
-                placeholder="어떤 일 인가요?"
-                className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
-              />
-
-              <Button variant="MediumDefaultFit" disabled={!isRecommendMode} onClick={onCreate}>
-                생성
-              </Button>
-            </div>
-
-            <div className="flex w-full items-center gap-4 px-1 py-1">
-              <button
-                type="button"
-                onPointerDown={handleCalendarPointerDown}
-                onClick={handleCalendarClick}
-                className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+      {/* 생성 모달만 Portal로 분리하고 반복 바텀시트는 앱 레이아웃을 따른다. */}
+      {!isScheduleOpen &&
+        createPortal(
+          <Overlay onClick={onClose}>
+            {/* 키보드를 제외한 화면 영역의 하단에 생성 모달을 맞춘다. */}
+            <div
+              ref={dialogRef}
+              className="absolute right-0 left-0 flex items-end justify-center"
+              style={{
+                top: visualViewportRect.top,
+                height: visualViewportRect.height,
+              }}
+            >
+              <Frame
+                className="!items-start !overflow-visible max-w-[385px] gap-0.5 p-3"
+                aria-labelledby={titleId}
               >
-                <img src="/icon/icons/calendar_small.svg" alt="" className="block shrink-0" />
+                <h2 id={titleId} className="sr-only">
+                  일정 생성
+                </h2>
 
-                <span className="whitespace-nowrap">{calendarText}</span>
-              </button>
+                {isRecommendMode && (
+                  <div className="flex w-full flex-col">
+                    <div className="flex w-full items-center justify-between px-1 py-2">
+                      <p className="min-w-0 text-text-additional default-body-medium">
+                        <span className="bg-gradient-to-l from-[#29C878] to-[#32E089] bg-clip-text text-transparent default-body-strong-medium">
+                          {recommendationKeyword}
+                        </span>
 
-              <div className="relative flex min-w-0">
-                <button
-                  type="button"
-                  onClick={handleLabelClick}
-                  className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
-                >
-                  <img src="/icon/icons/label_small.svg" alt="" className="block shrink-0" />
-
-                  {labelStatus.type === 'default' ? (
-                    <span className="whitespace-nowrap">레이블 없음</span>
-                  ) : (
-                    <div className="flex min-w-0 items-center gap-xsmall">
-                      <span className="max-w-[80px] truncate">{labelStatus.label}</span>
-
-                      <img src={COLOR_ICON[labelStatus.color]} alt="" className="block shrink-0" />
+                        {recommendationMessage}
+                      </p>
                     </div>
-                  )}
-                </button>
 
-                {isLabelModalOpen && (
-                  <div className="absolute bottom-[calc(100%+8px)] left-0 z-30">
-                    <LabelModal
-                      labels={labels}
-                      onSelectLabel={handleSelectLabel}
-                      onCreateLabel={handleCreateLabel}
-                    />
+                    <div onPointerDown={(event) => event.preventDefault()}>
+                      <Checklist
+                        items={renderedChecklistItems}
+                        radioVariant="create"
+                        onLeadingClick={handleChecklistClick}
+                      />
+                    </div>
                   </div>
                 )}
-              </div>
+
+                <div className="flex w-full items-center justify-between self-stretch pl-2">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    autoFocus
+                    value={inputValue}
+                    onChange={(event) => onInputChange?.(event.target.value)}
+                    onBlur={handleInputBlur}
+                    onKeyDown={handleInputKeyDown}
+                    placeholder="어떤 일 인가요?"
+                    className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
+                  />
+
+                  <Button variant="MediumDefaultFit" disabled={!isRecommendMode} onClick={onCreate}>
+                    생성
+                  </Button>
+                </div>
+
+                <div className="flex w-full items-center gap-4 px-1 py-1">
+                  <button
+                    type="button"
+                    onPointerDown={handleCalendarPointerDown}
+                    onClick={handleCalendarClick}
+                    className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+                  >
+                    <img src="/icon/icons/calendar_small.svg" alt="" className="block shrink-0" />
+
+                    <span className="whitespace-nowrap">{calendarText}</span>
+                  </button>
+
+                  <div className="relative flex min-w-0">
+                    <button
+                      ref={labelButtonRef}
+                      type="button"
+                      onClick={handleLabelClick}
+                      className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+                    >
+                      <img src="/icon/icons/label_small.svg" alt="" className="block shrink-0" />
+
+                      {labelStatus.type === 'default' ? (
+                        <span className="whitespace-nowrap">레이블 없음</span>
+                      ) : (
+                        <div className="flex min-w-0 items-center gap-xsmall">
+                          <span className="max-w-[80px] truncate">{labelStatus.label}</span>
+
+                          <img
+                            src={COLOR_ICON[labelStatus.color]}
+                            alt=""
+                            className="block shrink-0"
+                          />
+                        </div>
+                      )}
+                    </button>
+
+                    {isLabelModalOpen && (
+                      <div className="absolute bottom-[calc(100%+8px)] left-0 z-30">
+                        <LabelModal
+                          labels={labels}
+                          onSelectLabel={handleSelectLabel}
+                          onCreateLabel={handleCreateLabel}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Frame>
             </div>
-          </Frame>
-        </div>
-      </Overlay>
+          </Overlay>,
+          document.body,
+        )}
 
       {isScheduleOpen && (
         <RepeatScheduleBottomSheet
@@ -500,7 +584,6 @@ export default function CreateModal({
           onClose={handleScheduleClose}
         />
       )}
-    </>,
-    document.body,
+    </>
   );
 }
