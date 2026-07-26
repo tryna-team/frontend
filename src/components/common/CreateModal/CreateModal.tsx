@@ -1,19 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import Button from '@/components/common/Buttons/Button';
-import Checklist, {
-  type ChecklistItemData,
-} from '@/components/common/Checklist/Checklist';
+import Checklist, { type ChecklistItemData } from '@/components/common/Checklist/Checklist';
+import LabelModal, { type LabelItemData } from '@/components/common/LabelModal/LabelModal';
 
 import type { ChecklistStatus } from '@/components/common/Checklist/ChecklistItem';
 
-export type LabelColor =
-  | 'apricot'
-  | 'blue'
-  | 'green'
-  | 'pink'
-  | 'purple'
-  | 'yellow';
+export type LabelColor = 'apricot' | 'blue' | 'green' | 'pink' | 'purple' | 'yellow';
 
 export type CalendarStatus =
   | {
@@ -51,9 +44,12 @@ export type CreateModalProps = {
   checklistItems?: CreateModalChecklistItem[];
   calendarStatus?: CalendarStatus;
   labelStatus?: LabelStatus;
+  labels?: LabelItemData[];
   onInputChange?: (value: string) => void;
   onOpenCalendar?: () => void;
   onOpenLabel?: () => void;
+  onSelectLabel?: (id: number) => void;
+  onCreateLabel?: () => void;
   onAddChecklist?: () => void;
   onToggleChecklist?: (id: number) => void;
 };
@@ -79,73 +75,77 @@ export default function CreateModal({
   checklistItems = [],
   calendarStatus = { type: 'default' },
   labelStatus = { type: 'default' },
+  labels = [],
   onInputChange,
   onOpenCalendar,
   onOpenLabel,
+  onSelectLabel,
+  onCreateLabel,
   onAddChecklist,
   onToggleChecklist,
 }: CreateModalProps) {
-  const isRecommendMode =
-    mode === 'recommend';
+  const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
+
+  const isRecommendMode = mode === 'recommend';
 
   const calendarText =
-    calendarStatus.type === 'default'
-      ? '오늘 · 반복 없음'
-      : `${calendarStatus.text}마다`;
+    calendarStatus.type === 'default' ? '오늘 · 반복 없음' : `${calendarStatus.text}마다`;
 
   // CreateModal에서 전달받은 기존 체크리스트 데이터를 공용 Checklist 컴포넌트의 데이터 형식으로 변환
-  const renderedChecklistItems =
-    useMemo<ChecklistItemData[]>(() => {
-      const recommendedItems =
-        checklistItems.map((item) => {
-          const status =
-            item.status ?? 'add';
-          const hasDateTrailing =
-            status === 'add' ||
-            status === 'done';
+  const renderedChecklistItems = useMemo<ChecklistItemData[]>(() => {
+    const recommendedItems = checklistItems.map((item) => {
+      const status = item.status ?? 'add';
+      const hasDateTrailing = status === 'add' || status === 'done';
 
-          return {
-            id: item.id,
-            label: item.label,
-            status,
-            trailing: hasDateTrailing
-              ? {
-                  type: 'date' as const,
-                  text:
-                    item.date ?? '당일',
-                }
-              : {
-                  type: 'none' as const,
-                },
-          };
-        });
-
-      const addItem: ChecklistItemData = {
-        id: ADD_CHECKLIST_ITEM_ID,
-        label: '직접 추가',
-        status: 'plus',
-        trailing: {
-          type: 'none',
-        },
+      return {
+        id: item.id,
+        label: item.label,
+        status,
+        trailing: hasDateTrailing
+          ? {
+              type: 'date' as const,
+              text: item.date ?? '당일',
+            }
+          : {
+              type: 'none' as const,
+            },
       };
+    });
 
-      return [
-        ...recommendedItems,
-        addItem,
-      ];
-    }, [checklistItems]);
+    const addItem: ChecklistItemData = {
+      id: ADD_CHECKLIST_ITEM_ID,
+      label: '직접 추가',
+      status: 'plus',
+      trailing: {
+        type: 'none',
+      },
+    };
 
-  const handleChecklistClick = (
-    id: number,
-  ) => {
-    if (
-      id === ADD_CHECKLIST_ITEM_ID
-    ) {
+    return [...recommendedItems, addItem];
+  }, [checklistItems]);
+
+  const handleChecklistClick = (id: number) => {
+    if (id === ADD_CHECKLIST_ITEM_ID) {
       onAddChecklist?.();
       return;
     }
 
     onToggleChecklist?.(id);
+  };
+
+  const handleLabelClick = () => {
+    setIsLabelModalOpen((isOpen) => !isOpen);
+    onOpenLabel?.();
+  };
+
+  const handleSelectLabel = (id: number) => {
+    setIsLabelModalOpen(false);
+    onSelectLabel?.(id);
+  };
+
+  const handleCreateLabel = () => {
+    setIsLabelModalOpen(false);
+    onCreateLabel?.();
   };
 
   return (
@@ -155,19 +155,12 @@ export default function CreateModal({
           <input
             type="text"
             value={inputValue}
-            onChange={(event) =>
-              onInputChange?.(
-                event.target.value,
-              )
-            }
+            onChange={(event) => onInputChange?.(event.target.value)}
             placeholder="어떤 일 인가요?"
             className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
           />
 
-          <Button
-            variant="MediumDefaultFit"
-            disabled
-          >
+          <Button variant="MediumDefaultFit" disabled>
             생성
           </Button>
         </div>
@@ -186,31 +179,21 @@ export default function CreateModal({
           </div>
 
           <Checklist
-            items={
-              renderedChecklistItems
-            }
+            items={renderedChecklistItems}
             radioVariant="create"
-            onLeadingClick={
-              handleChecklistClick
-            }
+            onLeadingClick={handleChecklistClick}
           />
 
           <div className="flex w-full items-center justify-between self-stretch pl-2">
             <input
               type="text"
               value={inputValue}
-              onChange={(event) =>
-                onInputChange?.(
-                  event.target.value,
-                )
-              }
+              onChange={(event) => onInputChange?.(event.target.value)}
               placeholder="어떤 일 인가요?"
               className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
             />
 
-            <Button variant="MediumDefaultFit">
-              생성
-            </Button>
+            <Button variant="MediumDefaultFit">생성</Button>
           </div>
         </div>
       )}
@@ -221,51 +204,40 @@ export default function CreateModal({
           onClick={onOpenCalendar}
           className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
         >
-          <img
-            src="/icon/icons/calendar_small.svg"
-            alt=""
-            className="block shrink-0"
-          />
+          <img src="/icon/icons/calendar_small.svg" alt="" className="block shrink-0" />
 
-          <span className="whitespace-nowrap">
-            {calendarText}
-          </span>
+          <span className="whitespace-nowrap">{calendarText}</span>
         </button>
 
-        <button
-          type="button"
-          onClick={onOpenLabel}
-          className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
-        >
-          <img
-            src="/icon/icons/label_small.svg"
-            alt=""
-            className="block shrink-0"
-          />
+        <div className="relative flex min-w-0">
+          <button
+            type="button"
+            onClick={handleLabelClick}
+            className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+          >
+            <img src="/icon/icons/label_small.svg" alt="" className="block shrink-0" />
 
-          {labelStatus.type ===
-          'default' ? (
-            <span className="whitespace-nowrap">
-              레이블 없음
-            </span>
-          ) : (
-            <div className="flex min-w-0 items-center gap-xsmall">
-              <span className="max-w-[80px] truncate">
-                {labelStatus.label}
-              </span>
+            {labelStatus.type === 'default' ? (
+              <span className="whitespace-nowrap">레이블 없음</span>
+            ) : (
+              <div className="flex min-w-0 items-center gap-xsmall">
+                <span className="max-w-[80px] truncate">{labelStatus.label}</span>
 
-              <img
-                src={
-                  COLOR_ICON[
-                    labelStatus.color
-                  ]
-                }
-                alt=""
-                className="block shrink-0"
+                <img src={COLOR_ICON[labelStatus.color]} alt="" className="block shrink-0" />
+              </div>
+            )}
+          </button>
+
+          {isLabelModalOpen && (
+            <div className="absolute bottom-[calc(100%+8px)] left-0 z-30">
+              <LabelModal
+                labels={labels}
+                onSelectLabel={handleSelectLabel}
+                onCreateLabel={handleCreateLabel}
               />
             </div>
           )}
-        </button>
+        </div>
       </div>
     </section>
   );
