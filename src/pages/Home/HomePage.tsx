@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { useQuery } from '@tanstack/react-query';
 import { useCalendarStore } from '@/stores';
 import CalendarGrid from '@/components/common/CalendarGrid/CalendarGrid';
+import CreateModal from '@/components/common/CreateModal/CreateModal';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
 import { generateDailyPath } from '@/routes/paths';
+import Button from '@/components/common/Buttons/Button';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 
 import './HomePage.css';
 
@@ -32,7 +35,10 @@ function HomePage() {
   // 기본 선택 = 오늘 (useCalendarStore.selectedDate는 string, null 없음)
   const selectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
+  const goToToday = useCalendarStore((s) => s.goToToday);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createInputValue, setCreateInputValue] = useState('');
 
   // selectedDate("YYYY-MM-DD")에서 year/month 추출 — B101이 요구하는 쿼리 파라미터
   const [year, month] = selectedDate.split('-').map(Number);
@@ -58,6 +64,26 @@ function HomePage() {
     navigate(generateDailyPath(date));
   };
 
+  const handleCreate = () => {
+    window.alert('일정 생성 API 연결 예정입니다.');
+    setCreateInputValue('');
+    setIsCreateModalOpen(false);
+  };
+
+  const floatingButtonsContent = useMemo(
+    () => (
+      <div className="flex w-full items-center justify-between">
+        <Button variant="LargeStrongFit" onClick={goToToday}>
+          오늘
+        </Button>
+        {/* 생성 모달을 현재 화면 위에 연다. */}
+        <Button variant="MainCTAButton" onClick={() => setIsCreateModalOpen(true)} />
+      </div>
+    ),
+    [goToToday],
+  );
+  useFloatingButtons(floatingButtonsContent);
+
   return (
     <div className="home-page">
       <CalendarGrid
@@ -70,9 +96,16 @@ function HomePage() {
       />
 
       {isSearchOpen && (
-        <SearchOverlay
-          isOpen={isSearchOpen}
-          onClose={() => setIsSearchOpen(false)}
+        <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      )}
+
+      {isCreateModalOpen && (
+        <CreateModal
+          inputValue={createInputValue}
+          onInputChange={setCreateInputValue}
+          onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
+          onCreate={handleCreate}
+          onClose={() => setIsCreateModalOpen(false)}
         />
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Navigate,
   useNavigate,
@@ -15,6 +15,8 @@ import DailyScheduleCard, {
 import QuickModal from '@/features/event/components/QuickModal';
 import type { CategoryColor } from '@/features/calendar/types';
 import { PATH } from '@/routes/paths';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
+import { useCanGoBack } from '@/hooks/useCanGoBack';
 
 import './EventViewPage.css';
 
@@ -127,6 +129,17 @@ function EventViewPage() {
         ),
     );
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const canGoBack = useCanGoBack();
+
+  const floatingButtonsContent = useMemo(
+    () => (
+      <Button variant="LargeWarningFit" onClick={() => setIsDeleteModalOpen(true)}>
+        이벤트 삭제
+      </Button>
+    ),
+    [],
+  );
+  useFloatingButtons(floatingButtonsContent);
 
   // 기존 effect: 즉시 상태 갱신 -> 연속 렌더링을 만들 수 있었음
   // useEffect(() => {
@@ -151,20 +164,12 @@ function EventViewPage() {
 
   // Header: chevron -> 직전 화면 이동
   const handleBack = () => {
-    // 기존에는 직접 접근 시 뒤로갈 경로가 없었다.
-    // navigate(-1);
-    const canGoBack =
-      window.history.state?.idx > 0;
-
     if (canGoBack) {
       navigate(-1);
-      return;
+    } else {
+      // 방문 기록이 없으면 Home으로 이동한다.
+      navigate(PATH.HOME, { replace: true });
     }
-
-    // 방문 기록이 없으면 Home으로 이동한다.
-    navigate(PATH.HOME, {
-      replace: true,
-    });
   };
 
   const handleToggleItem = (id: string) => {
@@ -251,12 +256,6 @@ function EventViewPage() {
             onCompleteAllClick={handleCompleteAll}
           />
         </div>
-      </div>
-
-      <div className="event-view-page-floating">
-        <Button variant="LargeWarningFit" onClick={() => setIsDeleteModalOpen(true)}>
-          이벤트 삭제
-        </Button>
       </div>
 
       {isDeleteModalOpen && (
