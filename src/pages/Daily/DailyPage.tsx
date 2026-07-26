@@ -158,6 +158,12 @@ function DailyPage() {
     navigate(generateDailyPath(nextDate), { replace: true });
   };
 
+  const handleCreate = () => {
+    window.alert('일정 생성 API 연결 예정입니다.');
+    setCreateInputValue('');
+    setIsCreateModalOpen(false);
+  };
+
   const floatingButtonsContent = useMemo(
     () => (
       <div className="flex w-full items-center justify-between">
@@ -280,6 +286,7 @@ function DailyPage() {
           inputValue={createInputValue}
           onInputChange={setCreateInputValue}
           onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
+          onCreate={handleCreate}
           onClose={() => setIsCreateModalOpen(false)}
         />
       )}

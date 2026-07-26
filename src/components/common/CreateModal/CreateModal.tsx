@@ -1,4 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { FocusEvent, KeyboardEvent } from 'react';
+
+import { format, isSameDay, isToday } from 'date-fns';
 
 import Button from '@/components/common/Buttons/Button';
 import Checklist, { type ChecklistItemData } from '@/components/common/Checklist/Checklist';
@@ -58,6 +61,7 @@ export type CreateModalProps = {
   onCreateLabel?: () => void;
   onAddChecklist?: () => void;
   onToggleChecklist?: (id: number) => void;
+  onCreate?: () => void;
   onClose?: () => void;
 };
 
@@ -107,6 +111,8 @@ const MOCK_RECOMMENDATION_DELAY = 2000;
 const formatTime = ({ meridiem, hour, minute }: TimePickerValue) =>
   `${hour}:${String(minute).padStart(2, '0')} ${meridiem}`;
 
+const formatTriggerDate = (date: Date) => (isToday(date) ? '오늘' : format(date, 'M.d'));
+
 export default function CreateModal({
   mode = 'default',
   inputValue = '',
@@ -123,12 +129,14 @@ export default function CreateModal({
   onCreateLabel,
   onAddChecklist,
   onToggleChecklist,
+  onCreate,
   onClose,
 }: CreateModalProps) {
   const titleId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const keepKeyboardOpenRef = useRef(true);
   const isScheduleOpeningRef = useRef(false);
+  const isKeyboardNavigationRef = useRef(false);
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [recommendedInput, setRecommendedInput] = useState('');
@@ -137,6 +145,7 @@ export default function CreateModal({
   const [startTime, setStartTime] = useState('9:41 AM');
   const [endTime, setEndTime] = useState('9:41 AM');
   const [repeat, setRepeat] = useState<RepeatOption>('매주');
+  const [hasScheduleChanged, setHasScheduleChanged] = useState(false);
   const recommendationCandidates = useEventCreationStore((state) => state.recommendationCandidates);
   const setRecommendationCandidates = useEventCreationStore(
     (state) => state.setRecommendationCandidates,
@@ -149,8 +158,12 @@ export default function CreateModal({
   const recommendationKeyword = keyword || trimmedInput;
   const recommendationMessage = message || '에 필요한 체크리스트를 추천했어요.';
 
-  const calendarText =
+  const propCalendarText =
     calendarStatus.type === 'default' ? '오늘 · 반복 없음' : `${calendarStatus.text}마다`;
+  const selectedDateText = isSameDay(startDate, endDate)
+    ? formatTriggerDate(startDate)
+    : `${formatTriggerDate(startDate)}~${format(endDate, 'M.d')}`;
+  const calendarText = hasScheduleChanged ? `${selectedDateText} · ${repeat}` : propCalendarText;
 
   // 입력이 멈춘 뒤 mock 추천 화면으로 전환한다.
   useEffect(() => {
@@ -251,12 +264,26 @@ export default function CreateModal({
   };
 
   // 생성 모달 안에서는 입력 포커스를 유지한다.
-  const handleInputBlur = () => {
+  const handleInputBlur = (event: FocusEvent<HTMLInputElement>) => {
+    if (isKeyboardNavigationRef.current && event.relatedTarget instanceof HTMLElement) {
+      isKeyboardNavigationRef.current = false;
+      return;
+    }
+
+    isKeyboardNavigationRef.current = false;
+
     window.requestAnimationFrame(() => {
       if (keepKeyboardOpenRef.current) {
         inputRef.current?.focus();
       }
     });
+  };
+
+  // Tab 이동은 다른 컨트롤의 포커스를 유지한다.
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Tab') {
+      isKeyboardNavigationRef.current = true;
+    }
   };
 
   // 스케줄 설정 화면에서는 키보드를 내린다.
@@ -305,6 +332,7 @@ export default function CreateModal({
                 value={inputValue}
                 onChange={(event) => onInputChange?.(event.target.value)}
                 onBlur={handleInputBlur}
+                onKeyDown={handleInputKeyDown}
                 placeholder="어떤 일 인가요?"
                 className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
               />
@@ -341,11 +369,14 @@ export default function CreateModal({
                   value={inputValue}
                   onChange={(event) => onInputChange?.(event.target.value)}
                   onBlur={handleInputBlur}
+                  onKeyDown={handleInputKeyDown}
                   placeholder="어떤 일 인가요?"
                   className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
                 />
 
-                <Button variant="MediumDefaultFit">생성</Button>
+                <Button variant="MediumDefaultFit" onClick={onCreate}>
+                  생성
+                </Button>
               </div>
             </div>
           )}
@@ -402,11 +433,20 @@ export default function CreateModal({
           startTime={startTime}
           endTime={endTime}
           repeat={repeat}
-          onStartDateChange={setStartDate}
-          onEndDateChange={setEndDate}
+          onStartDateChange={(date) => {
+            setStartDate(date);
+            setHasScheduleChanged(true);
+          }}
+          onEndDateChange={(date) => {
+            setEndDate(date);
+            setHasScheduleChanged(true);
+          }}
           onStartTimeChange={(value) => setStartTime(formatTime(value))}
           onEndTimeChange={(value) => setEndTime(formatTime(value))}
-          onRepeatChange={setRepeat}
+          onRepeatChange={(nextRepeat) => {
+            setRepeat(nextRepeat);
+            setHasScheduleChanged(true);
+          }}
           onClose={handleScheduleClose}
         />
       )}
