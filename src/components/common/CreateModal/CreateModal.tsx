@@ -7,6 +7,8 @@ import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
 import Overlay from '@/components/common/Popup/Overlay';
 import { RepeatScheduleBottomSheet, type RepeatOption } from '@/features/event/components/create';
 import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial';
+import { useEventCreationStore } from '@/stores';
+import type { RecommendationCandidate } from '@/stores/types';
 
 import type { ChecklistStatus } from '@/components/common/Checklist/ChecklistItem';
 
@@ -72,25 +74,31 @@ const COLOR_ICON = {
 // 실제 체크리스트 ID와 겹치지 않도록 음수를 사용
 const ADD_CHECKLIST_ITEM_ID = -1;
 
-// 백엔드 연결 전 추천 화면을 확인하기 위한 임시 데이터
-const MOCK_CHECKLIST_ITEMS: CreateModalChecklistItem[] = [
+// 백엔드 연결 전 추천 응답을 대신하는 임시 데이터
+const MOCK_RECOMMENDATION_CANDIDATES: RecommendationCandidate[] = [
   {
-    id: 1,
-    label: '일정 세부 내용 확인하기',
-    status: 'add',
-    date: '당일',
+    candidateId: 'mock-1',
+    title: '일정 세부 내용 확인하기',
+    itemType: 'CHECKLIST',
+    displayDate: '당일',
+    selected: true,
+    edited: false,
   },
   {
-    id: 2,
-    label: '필요한 준비물 챙기기',
-    status: 'add',
-    date: '전날',
+    candidateId: 'mock-2',
+    title: '필요한 준비물 챙기기',
+    itemType: 'CHECKLIST',
+    displayDate: '전날',
+    selected: true,
+    edited: false,
   },
   {
-    id: 3,
-    label: '참석자에게 일정 공유하기',
-    status: 'add',
-    date: '당일',
+    candidateId: 'mock-3',
+    title: '참석자에게 일정 공유하기',
+    itemType: 'CHECKLIST',
+    displayDate: '당일',
+    selected: true,
+    edited: false,
   },
 ];
 
@@ -129,11 +137,15 @@ export default function CreateModal({
   const [startTime, setStartTime] = useState('9:41 AM');
   const [endTime, setEndTime] = useState('9:41 AM');
   const [repeat, setRepeat] = useState<RepeatOption>('매주');
+  const recommendationCandidates = useEventCreationStore((state) => state.recommendationCandidates);
+  const setRecommendationCandidates = useEventCreationStore(
+    (state) => state.setRecommendationCandidates,
+  );
+  const toggleCandidateSelected = useEventCreationStore((state) => state.toggleCandidateSelected);
 
   const trimmedInput = inputValue.trim();
   const isRecommendMode =
     mode === 'recommend' || (trimmedInput !== '' && recommendedInput === trimmedInput);
-  const effectiveChecklistItems = checklistItems.length > 0 ? checklistItems : MOCK_CHECKLIST_ITEMS;
   const recommendationKeyword = keyword || trimmedInput;
   const recommendationMessage = message || '에 필요한 체크리스트를 추천했어요.';
 
@@ -151,14 +163,25 @@ export default function CreateModal({
     }
 
     const timerId = window.setTimeout(() => {
+      setRecommendationCandidates(MOCK_RECOMMENDATION_CANDIDATES);
       setRecommendedInput(trimmedInput);
     }, MOCK_RECOMMENDATION_DELAY);
 
     return () => window.clearTimeout(timerId);
-  }, [mode, trimmedInput]);
+  }, [mode, setRecommendationCandidates, trimmedInput]);
 
   // CreateModal에서 전달받은 기존 체크리스트 데이터를 공용 Checklist 컴포넌트의 데이터 형식으로 변환
   const renderedChecklistItems = useMemo<ChecklistItemData[]>(() => {
+    const effectiveChecklistItems =
+      checklistItems.length > 0
+        ? checklistItems
+        : recommendationCandidates.map((candidate, index) => ({
+            id: index + 1,
+            label: candidate.title,
+            status: candidate.selected ? ('add' as const) : ('done' as const),
+            date: candidate.displayDate ?? '당일',
+          }));
+
     const recommendedItems = effectiveChecklistItems.map((item) => {
       const status = item.status ?? 'add';
       const hasDateTrailing = status === 'add' || status === 'done';
@@ -188,11 +211,21 @@ export default function CreateModal({
     };
 
     return [...recommendedItems, addItem];
-  }, [effectiveChecklistItems]);
+  }, [checklistItems, recommendationCandidates]);
 
   const handleChecklistClick = (id: number) => {
     if (id === ADD_CHECKLIST_ITEM_ID) {
       onAddChecklist?.();
+      return;
+    }
+
+    if (checklistItems.length === 0) {
+      const candidate = recommendationCandidates[id - 1];
+
+      if (candidate) {
+        toggleCandidateSelected(candidate.candidateId);
+      }
+
       return;
     }
 
