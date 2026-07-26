@@ -1,7 +1,6 @@
 import Button from '@/components/common/Buttons/Button';
 
 // ChecklistItem의 현재 상태
-//
 // plus: 직접 추가 항목
 // default: event, daily의 미완료 항목
 // done: 기존 Checklist 및 event, daily의 완료 항목 / create의 선택하지 않은 추천 항목
@@ -12,16 +11,13 @@ export type ChecklistStatus =
   | 'done'
   | 'add';
 
-// 체크 아이콘 크기
-//
-// medium: 기존 큰 Checklist = create, event
-// small: 기존 작은 Checklist = daily
+// medium: create, event
+// small: daily
 export type ChecklistIconSize =
   | 'medium'
   | 'small';
 
 // 아이콘 크기에 따라 결정되는 ChecklistItem 스타일 크기
-//
 // large: medium 아이콘과 큰 본문 텍스트
 // medium: small 아이콘과 작은 본문 텍스트
 export type ChecklistSize =
@@ -327,6 +323,10 @@ function LegacyChecklistItem({
       iconSize,
     );
 
+  // small 아이콘은 상태 확인용으로만 사용한다.
+  const isLeadingDisabled =
+    disabled || iconSize === 'small';
+
   return (
     <div
       className={`flex min-w-0 items-center ${
@@ -345,7 +345,7 @@ function LegacyChecklistItem({
         <button
           type="button"
           onClick={onLeadingClick}
-          disabled={disabled}
+          disabled={isLeadingDisabled}
           className="flex shrink-0 items-center justify-center bg-transparent p-0 disabled:cursor-default"
           aria-label={
             leadingAriaLabel
@@ -475,6 +475,10 @@ function VariantChecklistItem({
       radioVariant,
     );
 
+  // small 아이콘은 상태 확인용으로만 사용한다.
+  const isLeadingDisabled =
+    disabled || iconSize === 'small';
+
   return (
     <div
       className={`flex min-w-0 items-center ${
@@ -498,7 +502,7 @@ function VariantChecklistItem({
         <button
           type="button"
           onClick={onLeadingClick}
-          disabled={disabled}
+          disabled={isLeadingDisabled}
           className="flex shrink-0 items-center justify-center bg-transparent p-0 disabled:cursor-default"
           aria-label={
             leadingAriaLabel

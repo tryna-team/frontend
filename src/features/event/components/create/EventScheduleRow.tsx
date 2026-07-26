@@ -34,7 +34,7 @@ export default function EventScheduleRow(
   props: EventScheduleRowProps,
 ) {
   return (
-    <div className="flex h-[52px] w-[329px] items-center justify-between bg-transparent px-padding-xsmall">
+    <div className="box-content flex h-[52px] w-[329px] items-center justify-between bg-transparent pr-padding-xsmall pl-padding-medium">
       <span className="shrink-0 text-text-default default-body-large">
         {props.leading}
       </span>
