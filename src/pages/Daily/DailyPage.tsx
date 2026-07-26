@@ -4,6 +4,7 @@ import {
   useParams,
 } from 'react-router';
 import { useSwipeable } from 'react-swipeable';
+import { useCanGoBack } from '@/hooks/useCanGoBack';
 
 import { useCalendarStore } from '@/stores';
 import Header from '@/components/common/Header/Header';
@@ -152,6 +153,7 @@ function DailyPage() {
   const { date: routeDate } =
     useParams<{ date: string }>();
   const navigate = useNavigate();
+  const canGoBack = useCanGoBack();
 
   const calendarSelectedDate =
     useCalendarStore(
@@ -228,11 +230,9 @@ function DailyPage() {
   });
 
   // Header: chevron -> 직전 화면 이동
+  // window.history.state.idx는 React Router 내부 비공개 값이라 버전에 따라 깨질 수 있음
+  // (CodeRabbit 리뷰 반영) — EventViewPage에서 이미 쓰던 공개 API 기반 useCanGoBack으로 통일
   const handleBack = () => {
-    // 앱 내에 이전 방문 기록이 있는지 확인
-    const canGoBack =
-      window.history.state?.idx > 0;
-
     if (canGoBack) {
       navigate(-1);
       return;
