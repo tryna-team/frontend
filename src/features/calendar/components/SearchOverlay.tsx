@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router';
 import { Button } from "@/components/common/Buttons";
 import { MOCK_SCHEDULES } from '@/features/calendar/mockData';
+import { generateEventPath } from '@/routes/paths';
 import './SearchOverlay.css';
 
 function formatDateHeader(dateStr: string, isFirst: boolean): string {
@@ -21,6 +23,7 @@ interface SearchOverlayProps {
 }
 
 function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
 
   const hasQuery = query.trim() !== '';
@@ -49,6 +52,12 @@ const groupedResults = useMemo(() => {
     onClose();
   };
 
+  // 검색 결과 클릭 -> 일정 상세 페이지(EventView) 이동, 오버레이는 닫음
+  const handleResultClick = (eventId: string) => {
+    handleClose();
+    navigate(generateEventPath.view(eventId));
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -61,6 +70,11 @@ const groupedResults = useMemo(() => {
             placeholder="일정을 검색하세요."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.currentTarget.blur(); // 포커스 해제 -> 모바일 키보드 닫힘
+              }
+            }}
             autoFocus
           />
           <button
@@ -88,7 +102,19 @@ const groupedResults = useMemo(() => {
                   </h3>
                   <ul className="search-overlay-result-list">
                     {group.items.map((item) => (
-                      <li key={item.id} className="search-overlay-result-item">
+                      <li
+                        key={item.id}
+                        className="search-overlay-result-item"
+                        onClick={() => handleResultClick(item.id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault(); // role="button"이라 Space의 기본 스크롤 동작을 브라우저가 안 막아줌 — 직접 방지
+                            handleResultClick(item.id);
+                          }
+                        }}
+                      >
                         <img
                           src={`/icon/alert_indicator/dot_${item.categoryColor}.svg`}
                           alt=""
