@@ -46,17 +46,26 @@ function HomePage() {
 
   // ⚠️ B101의 selectedDateEvents는 선택한 날짜 하루의 일정만 준다.
   // 그 달 전체 일정 제목까지 필요하면 별도 API(월간 조회 등)가 필요할 수 있음 — 추후 확인
-  const calendarEvents = (data?.selectedDateEvents ?? []).map((event) => ({
-    title: event.title,
-    date: selectedDate,
-    backgroundColor: CATEGORY_COLOR_MAP.yellow, // TODO: 카테고리 색상 필드 응답에 있는지 확인
-    textColor: '#1C1630',
-    borderColor: 'transparent',
-  }));
+  //
+  // placeholderData(keepPreviousData)로 이전 날짜의 응답을 화면에 계속 보여주는 동안,
+  // 그 이벤트들에 "새로 선택된" selectedDate를 그대로 찍으면 실제로는 이전 날짜 일정인데
+  // 새 날짜 일정인 것처럼 잘못 표시될 수 있다 (CodeRabbit 리뷰 반영).
+  // 그래서 응답 자체에 서버가 echo해주는 data.selectedDate가 지금 선택된 날짜와
+  // 일치할 때만 렌더링하고, 아직 새 응답이 안 왔으면(= 이전 날짜 응답이면) 빈 배열로 둔다.
+  const isFreshForSelectedDate = data?.selectedDate === selectedDate;
+  const calendarEvents = isFreshForSelectedDate
+    ? (data?.selectedDateEvents ?? []).map((event) => ({
+        title: event.title,
+        date: selectedDate,
+        backgroundColor: CATEGORY_COLOR_MAP.yellow, // TODO: 카테고리 색상 필드 응답에 있는지 확인
+        textColor: '#1C1630',
+        borderColor: 'transparent',
+      }))
+    : [];
 
   const handleSelectDate = (date: string) => {
     selectDate(date);
-    // 기존 부모 callback 방식 -> 라우터 이동으로 대체
+  
     navigate(generateDailyPath(date));
   };
 

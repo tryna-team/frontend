@@ -110,6 +110,7 @@ const groupedResults = useMemo(() => {
                         tabIndex={0}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault(); // role="button"이라 Space의 기본 스크롤 동작을 브라우저가 안 막아줌 — 직접 방지
                             handleResultClick(item.id);
                           }
                         }}
