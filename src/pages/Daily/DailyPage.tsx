@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   useNavigate,
   useParams,
 } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
 import { useSwipeable } from 'react-swipeable';
 import { useCanGoBack } from '@/hooks/useCanGoBack';
 
@@ -12,6 +13,8 @@ import WeekStrip from '@/features/calendar/components/WeekStrip';
 import ScheduleCard from '@/features/calendar/components/ScheduleCard';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import type { CategoryColor } from '@/features/calendar/types';
+import { queryKeys } from '@/hooks/queries/queryKeys';
+import { calendarService } from '@/apis/services/calendarService';
 import {
   generateDailyPath,
   generateEventPath,
@@ -84,53 +87,12 @@ interface BannerItem {
   date: string;
 }
 
-// mock 데이터: 2026-06-04로 고정
-
-// Daily 일정 mock 데이터
-const MOCK_SCHEDULES: ScheduleItem[] = [
-  {
-    id: '1',
-    categoryColor: 'green',
-    title: '동아리 정기 미팅',
-    location: '매주 스타벅스 여의도점',
-    startTime: '18:00',
-    endTime: '18:30',
-    date: '2026-06-04',
-    checklist: [
-      { id: '1-1', text: '회의록 검토 및 의견 정리', checked: false },
-      { id: '1-2', text: '회의 장소 확인', checked: false },
-    ],
-  },
-  {
-    id: '2',
-    categoryColor: 'pink',
-    title: '꽃 픽업',
-    location: '플라워아워',
-    startTime: '18:00',
-    endTime: '18:30',
-    date: '2026-06-04',
-    linkedSchedule: {
-      date: '오늘',
-      time: '20:00',
-      title: '아빠 생신 식사',
-    },
-  },
-  {
-    id: '3',
-    categoryColor: 'apricot',
-    title: '아빠 생신 식사',
-    location: '여의도 켄싱턴 호텔',
-    startTime: '20:00',
-    endTime: '21:00',
-    date: '2026-06-04',
-    checklist: [
-      { id: '3-1', text: '선물 사기', checked: true },
-      { id: '3-2', text: '꽃 픽업', checked: true },
-    ],
-  },
-];
+// ⚠️ B103(날짜별 일정 목록 조회) 응답에는 카테고리 색상 정보가 없다.
+// 실제 색상 매핑이 필요하면 라벨/카테고리 도메인 API 확인 후 반영 필요 — 우선 고정값 사용.
+const DEFAULT_CATEGORY_COLOR: CategoryColor = 'blue';
 
 // Daily 배너 mock 데이터
+// ⚠️ 배너(D-day 등)에 대응하는 API가 아직 없어 mock 유지. action-items 또는 별도 도메인 확인 필요.
 const MOCK_BANNERS: BannerItem[] = [
   {
     id: 'b1',
@@ -160,7 +122,6 @@ function DailyPage() {
       (s) => s.selectedDate,
     );
   const selectDate = useCalendarStore((s) => s.selectDate);
-  const [schedules, setSchedules] = useState<ScheduleItem[]>(MOCK_SCHEDULES);
 
   const isValidRouteDate =
     routeDate !== undefined &&
@@ -170,6 +131,33 @@ function DailyPage() {
     isValidRouteDate
       ? routeDate
       : calendarSelectedDate;
+
+  // B103 날짜별 일정 목록 조회 — 실 서버 검증 완료 (07/25)
+  const { data } = useQuery({
+    queryKey: queryKeys.calendars.dateEvents(selectedDate),
+    queryFn: () => calendarService.getDateEvents(selectedDate),
+  });
+
+  // 응답의 date와 화면에 표시 중인 selectedDate가 다르면(아직 새 데이터 도착 전) 빈 배열 처리.
+  // HomePage에서 겪었던 것과 동일한 이유 — 이전 날짜 데이터가 새 날짜인 것처럼 보이는 것 방지.
+  const isFreshForSelectedDate = data?.date === selectedDate;
+
+  // checklist, linkedSchedule은 B103 응답에 없는 필드.
+  // action-items(체크리스트) 연동은 담당 범위 밖 — 다른 담당자가 별도로 진행.
+  // 여기서는 B103(날짜별 일정 목록)을 화면에 띄우는 것까지만 담당.
+  const todaySchedules: ScheduleItem[] = isFreshForSelectedDate
+    ? (data?.events ?? []).map((event) => ({
+        id: String(event.eventId),
+        categoryColor: DEFAULT_CATEGORY_COLOR,
+        title: event.title,
+        location: event.location ?? '',
+        startTime: event.startTime ?? '',
+        endTime: event.endTime ?? '',
+        date: selectedDate,
+      }))
+    : [];
+
+  const todayBanners = MOCK_BANNERS.filter((b) => b.date === selectedDate);
 
   // 직접 접근한 URL 날짜를 Zustand에도 반영
   useEffect(() => {
@@ -264,23 +252,6 @@ function DailyPage() {
     DAY_LABELS[displayDate.getDay()]
   })`;
 
-  const todaySchedules = schedules.filter((s) => s.date === selectedDate);
-  const todayBanners = MOCK_BANNERS.filter((b) => b.date === selectedDate);
-
-  const handleToggleItem = (scheduleId: string, itemId: string) => {
-    setSchedules((prev) =>
-      prev.map((schedule) => {
-        if (schedule.id !== scheduleId || !schedule.checklist) return schedule;
-        return {
-          ...schedule,
-          checklist: schedule.checklist.map((item) =>
-            item.id === itemId ? { ...item, checked: !item.checked } : item,
-          ),
-        };
-      }),
-    );
-  };
-
   return (
     <div className="daily-page">
       <Header
@@ -332,7 +303,9 @@ function DailyPage() {
                     schedule.id,
                   )
                 }
-                onToggleItem={(itemId) => handleToggleItem(schedule.id, itemId)}
+                // 체크리스트가 API에 아직 없어 토글은 당분간 동작 없음 (no-op)
+                // action-items 도메인 연동 시 실제 토글 mutation으로 교체 필요
+                onToggleItem={() => {}}
                 linkedSchedule={schedule.linkedSchedule}
               />
             ))
