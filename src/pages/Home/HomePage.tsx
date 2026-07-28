@@ -1,15 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
-
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useCalendarStore } from '@/stores';
 import CalendarGrid from '@/components/common/CalendarGrid/CalendarGrid';
-import CreateModal from '@/components/common/CreateModal/CreateModal';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
-import { MOCK_SCHEDULES } from '@/features/calendar/mockData';
+import { queryKeys } from '@/hooks/queries/queryKeys';
+import { calendarService } from '@/apis/services/calendarService';
 import { generateDailyPath } from '@/routes/paths';
-import Button from '@/components/common/Buttons/Button';
-import { useFloatingButtons } from '@/hooks/useFloatingButtons';
-
 import './HomePage.css';
 
 // 라우터 적용 전: 부모 = 날짜 선택 이후의 화면 전환을 처리
@@ -27,52 +24,41 @@ const CATEGORY_COLOR_MAP: Record<string, string> = {
   yellow: '#FDFEE4',
 };
 
-const calendarEvents = MOCK_SCHEDULES.map((schedule) => ({
-  title: schedule.title,
-  date: schedule.date,
-  backgroundColor: CATEGORY_COLOR_MAP[schedule.categoryColor] ?? CATEGORY_COLOR_MAP.yellow,
-  textColor: '#1C1630',
-  borderColor: 'transparent',
-}));
-
 function HomePage() {
   const navigate = useNavigate();
 
   // 기본 선택 = 오늘 (useCalendarStore.selectedDate는 string, null 없음)
   const selectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
-  const goToToday = useCalendarStore((s) => s.goToToday);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [createInputValue, setCreateInputValue] = useState('');
+
+  // selectedDate("YYYY-MM-DD")에서 year/month 추출 — B101이 요구하는 쿼리 파라미터
+  const [year, month] = selectedDate.split('-').map(Number);
+
+  const { data } = useQuery({
+    queryKey: queryKeys.calendars.main(year, month, selectedDate),
+    queryFn: () => calendarService.getMain(year, month, selectedDate),
+    // 날짜가 바뀔 때마다 queryKey가 바뀌어 매번 새 쿼리로 취급됨 —
+    // 기본값이면 새 데이터 오기 전까지 data가 undefined가 되어 "일정 없음"이 잠깐 깜빡임.
+    // 새 데이터가 도착하기 전까지는 이전 날짜의 데이터를 그대로 보여줘서 깜빡임 방지.
+    placeholderData: keepPreviousData,
+  });
+
+  // ⚠️ B101의 selectedDateEvents는 선택한 날짜 하루의 일정만 준다.
+  // 그 달 전체 일정 제목까지 필요하면 별도 API(월간 조회 등)가 필요할 수 있음 — 추후 확인
+  const calendarEvents = (data?.selectedDateEvents ?? []).map((event) => ({
+    title: event.title,
+    date: selectedDate,
+    backgroundColor: CATEGORY_COLOR_MAP.yellow, // TODO: 카테고리 색상 필드 응답에 있는지 확인
+    textColor: '#1C1630',
+    borderColor: 'transparent',
+  }));
 
   const handleSelectDate = (date: string) => {
     selectDate(date);
-
     // 기존 부모 callback 방식 -> 라우터 이동으로 대체
-    // onSelectDate?.(date);
     navigate(generateDailyPath(date));
   };
-
-  const handleCreate = () => {
-    window.alert('일정 생성 API 연결 예정입니다.');
-    setCreateInputValue('');
-    setIsCreateModalOpen(false);
-  };
-
-  const floatingButtonsContent = useMemo(
-    () => (
-      <div className="flex w-full items-center justify-between">
-        <Button variant="LargeStrongFit" onClick={goToToday}>
-          오늘
-        </Button>
-        {/* 생성 모달을 현재 화면 위에 연다. */}
-        <Button variant="MainCTAButton" onClick={() => setIsCreateModalOpen(true)} />
-      </div>
-    ),
-    [goToToday],
-  );
-  useFloatingButtons(floatingButtonsContent);
 
   return (
     <div className="home-page">
@@ -86,16 +72,9 @@ function HomePage() {
       />
 
       {isSearchOpen && (
-        <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-      )}
-
-      {isCreateModalOpen && (
-        <CreateModal
-          inputValue={createInputValue}
-          onInputChange={setCreateInputValue}
-          onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
-          onCreate={handleCreate}
-          onClose={() => setIsCreateModalOpen(false)}
+        <SearchOverlay
+          isOpen={isSearchOpen}
+          onClose={() => setIsSearchOpen(false)}
         />
       )}
     </div>
