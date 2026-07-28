@@ -70,6 +70,11 @@ const groupedResults = useMemo(() => {
             placeholder="일정을 검색하세요."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.currentTarget.blur(); // 포커스 해제 -> 모바일 키보드 닫힘
+              }
+            }}
             autoFocus
           />
           <button
