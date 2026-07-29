@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type PointerEvent } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -20,6 +20,7 @@ interface CalendarGridProps {
   events: CalendarEvent[];
   selectedDate: string | null;
   onSelectDate: (date: string) => void;
+  onLongPressDate?: (date: string) => void;
   onSearchClick?: () => void;
   onViewToggleClick?: () => void;
   onSettingsClick?: () => void;
@@ -30,12 +31,20 @@ function CalendarGrid({
   events,
   selectedDate,
   onSelectDate,
+  onLongPressDate,
   onSearchClick,
   onViewToggleClick,
   onSettingsClick,
   initialView = 'dayGridMonth',
 }: CalendarGridProps) {
   const calendarRef = useRef<FullCalendar>(null);
+  const longPressTimerRef = useRef<number | null>(null);
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const pointerCaptureRef = useRef<{
+    element: HTMLDivElement;
+    pointerId: number;
+  } | null>(null);
+  const suppressDateClickRef = useRef(false);
 
   // 기존: header에 월 표시
   // const currentMonth = useCalendarStore((s) => s.currentMonth);
@@ -52,8 +61,86 @@ function CalendarGrid({
     calendarRef.current?.getApi().gotoDate(new Date(currentYear, currentMonth - 1, 1));
   }, [currentYear, currentMonth]);
 
+  useEffect(
+    () => () => {
+      if (longPressTimerRef.current !== null) {
+        window.clearTimeout(longPressTimerRef.current);
+      }
+    },
+    [],
+  );
+
   const handleDateClick = (arg: DateClickArg) => {
+    // long press 직후 발생하는 click은 Daily 이동으로 전달하지 않는다.
+    if (suppressDateClickRef.current) {
+      return;
+    }
+
     onSelectDate(arg.dateStr);
+  };
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    const dateCell = (event.target as HTMLElement).closest<HTMLElement>('[data-date]');
+    const date = dateCell?.dataset.date;
+
+    if (!date || !onLongPressDate) {
+      return;
+    }
+
+    clearLongPressTimer();
+    pointerStartRef.current = { x: event.clientX, y: event.clientY };
+    pointerCaptureRef.current = {
+      element: event.currentTarget,
+      pointerId: event.pointerId,
+    };
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      suppressDateClickRef.current = true;
+      pointerCaptureRef.current?.element.setPointerCapture(pointerCaptureRef.current.pointerId);
+      onLongPressDate(date);
+
+      // 후속 click이 없더라도 다음 일반 클릭은 정상 처리한다.
+      window.setTimeout(() => {
+        suppressDateClickRef.current = false;
+      }, 1000);
+    }, 500);
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const start = pointerStartRef.current;
+
+    if (!start) {
+      return;
+    }
+
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) {
+      clearLongPressTimer();
+    }
+  };
+
+  const handlePointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+    clearLongPressTimer();
+    pointerStartRef.current = null;
+
+    const capture = pointerCaptureRef.current;
+
+    if (capture?.element.hasPointerCapture(capture.pointerId)) {
+      capture.element.releasePointerCapture(capture.pointerId);
+    }
+
+    pointerCaptureRef.current = null;
+
+    if (suppressDateClickRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
   };
 
   const dayCellClassNames = (arg: { date: Date }) => {
@@ -70,17 +157,27 @@ function CalendarGrid({
   return (
     <div
       {...swipeHandlers}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
+      onClickCapture={(event) => {
+        if (suppressDateClickRef.current) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
+      onContextMenu={(event) => {
+        if ((event.target as HTMLElement).closest('[data-date]')) {
+          event.preventDefault();
+        }
+      }}
       className={`calendar-grid-root ${selectedDate ? 'has-selection' : ''}`}
     >
       <div className="calendar-header">
         <span className="month-number">{currentMonth}</span>
         <div className="calendar-header-icons">
-          <button
-            type="button"
-            className="icon-button"
-            onClick={onSearchClick}
-            aria-label="검색"
-          >
+          <button type="button" className="icon-button" onClick={onSearchClick} aria-label="검색">
             <img src="/icon/search.svg" alt="" />
           </button>
           <button
@@ -91,12 +188,7 @@ function CalendarGrid({
           >
             <img src="/icon/icons/label_small.svg" alt="" />
           </button>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={onSettingsClick}
-            aria-label="설정"
-          >
+          <button type="button" className="icon-button" onClick={onSettingsClick} aria-label="설정">
             <img src="/icon/settings.svg" alt="" />
           </button>
         </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useCalendarStore } from '@/stores';
 import CalendarGrid from '@/components/common/CalendarGrid/CalendarGrid';
+import CreateModal from '@/components/common/CreateModal/CreateModal';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
@@ -31,6 +32,9 @@ function HomePage() {
   const selectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createInputValue, setCreateInputValue] = useState('');
+  const [createDate, setCreateDate] = useState<Date | null>(null);
 
   // selectedDate("YYYY-MM-DD")에서 year/month 추출 — B101이 요구하는 쿼리 파라미터
   const [year, month] = selectedDate.split('-').map(Number);
@@ -65,8 +69,14 @@ function HomePage() {
 
   const handleSelectDate = (date: string) => {
     selectDate(date);
-  
+
     navigate(generateDailyPath(date));
+  };
+
+  const handleLongPressDate = (date: string) => {
+    // 길게 누른 날짜는 이동하지 않고 생성 모달의 초기 날짜로 사용한다.
+    setCreateDate(new Date(`${date}T00:00:00`));
+    setIsCreateModalOpen(true);
   };
 
   return (
@@ -75,15 +85,25 @@ function HomePage() {
         events={calendarEvents}
         selectedDate={selectedDate}
         onSelectDate={handleSelectDate}
+        onLongPressDate={handleLongPressDate}
         onSearchClick={() => setIsSearchOpen(true)}
         onViewToggleClick={() => {}}
         onSettingsClick={() => {}}
       />
 
       {isSearchOpen && (
-        <SearchOverlay
-          isOpen={isSearchOpen}
-          onClose={() => setIsSearchOpen(false)}
+        <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      )}
+
+      {isCreateModalOpen && (
+        <CreateModal
+          inputValue={createInputValue}
+          initialScheduleDate={createDate ?? undefined}
+          onInputChange={setCreateInputValue}
+          onClose={() => {
+            setIsCreateModalOpen(false);
+            setCreateInputValue('');
+          }}
         />
       )}
     </div>
