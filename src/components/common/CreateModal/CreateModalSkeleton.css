@@ -1,0 +1,21 @@
+.create-modal-skeleton {
+  background: linear-gradient(90deg, #666666 0%, #ffffff 100%);
+  background-size: 200% 100%;
+  animation: create-modal-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes create-modal-skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .create-modal-skeleton {
+    animation: none;
+  }
+}

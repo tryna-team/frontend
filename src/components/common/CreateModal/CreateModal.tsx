@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { FocusEvent, KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 
-import { format, isSameDay, isToday } from 'date-fns';
+import { addDays, format, isSameDay, isToday, isValid, parseISO } from 'date-fns';
 
 import Button from '@/components/common/Buttons/Button';
 import Checklist, { type ChecklistItemData } from '@/components/common/Checklist/Checklist';
@@ -12,9 +12,11 @@ import Overlay from '@/components/common/Popup/Overlay';
 import { RepeatScheduleBottomSheet, type RepeatOption } from '@/features/event/components/create';
 import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial';
 import { useEventCreationStore } from '@/stores';
-import type { RecommendationCandidate } from '@/stores/types';
+import type { ActionItemType, RecommendationCandidate } from '@/stores/types';
 
 import type { ChecklistStatus } from '@/components/common/Checklist/ChecklistItem';
+
+import CreateModalSkeleton from './CreateModalSkeleton';
 
 export type LabelColor = 'apricot' | 'blue' | 'green' | 'pink' | 'purple' | 'yellow';
 
@@ -42,6 +44,7 @@ type CreateModalChecklistItem = {
   id: number;
   label: string;
   status?: ChecklistStatus;
+  itemType?: ActionItemType;
   // status=add, done일 때 사용. 없으면 '당일'로 표시
   date?: string;
 };
@@ -80,35 +83,55 @@ const COLOR_ICON = {
 // 실제 체크리스트 ID와 겹치지 않도록 음수를 사용
 const ADD_CHECKLIST_ITEM_ID = -1;
 
-// 백엔드 연결 전 추천 응답을 대신하는 임시 데이터
-const MOCK_RECOMMENDATION_CANDIDATES: RecommendationCandidate[] = [
+const PARSING_DEBOUNCE_DELAY = 300;
+const RECOMMENDATION_DEBOUNCE_DELAY = 1000;
+const MOCK_RECOMMENDATION_RESPONSE_DELAY = 4000;
+
+const parseMockDateText = (input: string) => {
+  if (input.includes('모레')) {
+    return format(addDays(new Date(), 2), 'MM.dd');
+  }
+
+  if (input.includes('내일')) {
+    return format(addDays(new Date(), 1), 'MM.dd');
+  }
+
+  return input.includes('오늘') ? '오늘' : null;
+};
+
+const formatChecklistDate = (date: string | null | undefined, fallbackDate: Date) => {
+  const parsedDate = date ? parseISO(date) : fallbackDate;
+
+  return format(isValid(parsedDate) ? parsedDate : fallbackDate, 'MM. dd.');
+};
+
+// 비시간형은 당일, 시간형은 실제 날짜를 사용한다.
+const createMockRecommendationCandidates = (scheduleDate: Date): RecommendationCandidate[] => [
   {
     candidateId: 'mock-1',
     title: '일정 세부 내용 확인하기',
     itemType: 'CHECKLIST',
-    displayDate: '당일',
+    displayDate: null,
     selected: true,
     edited: false,
   },
   {
     candidateId: 'mock-2',
     title: '필요한 준비물 챙기기',
-    itemType: 'CHECKLIST',
-    displayDate: '전날',
+    itemType: 'TIMED_ACTION',
+    displayDate: format(addDays(scheduleDate, -1), 'yyyy-MM-dd'),
     selected: true,
     edited: false,
   },
   {
     candidateId: 'mock-3',
     title: '참석자에게 일정 공유하기',
-    itemType: 'CHECKLIST',
-    displayDate: '당일',
+    itemType: 'TIMED_ACTION',
+    displayDate: format(scheduleDate, 'yyyy-MM-dd'),
     selected: true,
     edited: false,
   },
 ];
-
-const MOCK_RECOMMENDATION_DELAY = 2000;
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -148,12 +171,15 @@ export default function CreateModal({
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const labelButtonRef = useRef<HTMLButtonElement>(null);
+  const revisionRef = useRef(0);
   const keepKeyboardOpenRef = useRef(true);
   const isScheduleOpeningRef = useRef(false);
   const isKeyboardNavigationRef = useRef(false);
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
-  const [recommendedInput, setRecommendedInput] = useState('');
+  const [isRecommendationLoading, setIsRecommendationLoading] = useState(false);
+  const [hasRecommended, setHasRecommended] = useState(false);
+  const [parsedDateText, setParsedDateText] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
   const [endDate, setEndDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
   const [startTime, setStartTime] = useState('9:41 AM');
@@ -171,8 +197,7 @@ export default function CreateModal({
   const toggleCandidateSelected = useEventCreationStore((state) => state.toggleCandidateSelected);
 
   const trimmedInput = inputValue.trim();
-  const isRecommendMode =
-    mode === 'recommend' || (trimmedInput !== '' && recommendedInput === trimmedInput);
+  const isRecommendMode = mode === 'recommend' || hasRecommended;
   const recommendationKeyword = keyword || trimmedInput;
   const recommendationMessage = message || '에 필요한 체크리스트를 추천했어요.';
 
@@ -184,25 +209,59 @@ export default function CreateModal({
   const selectedDateText = isSameDay(startDate, endDate)
     ? formatTriggerDate(startDate)
     : `${formatTriggerDate(startDate)}~${format(endDate, 'M.d')}`;
-  const calendarText = hasScheduleChanged ? `${selectedDateText} · ${repeat}` : initialCalendarText;
+  const calendarText = hasScheduleChanged
+    ? `${selectedDateText} · ${repeat}`
+    : parsedDateText
+      ? `${parsedDateText} · 반복 없음`
+      : initialCalendarText;
 
-  // 입력이 멈춘 뒤 mock 추천 화면으로 전환한다.
+  // 입력 변경 0.3초 후 날짜 키워드를 mock 파싱한다.
   useEffect(() => {
-    if (mode === 'recommend') {
-      return;
-    }
-
     if (!trimmedInput) {
       return;
     }
 
+    const revision = revisionRef.current;
     const timerId = window.setTimeout(() => {
-      setRecommendationCandidates(MOCK_RECOMMENDATION_CANDIDATES);
-      setRecommendedInput(trimmedInput);
-    }, MOCK_RECOMMENDATION_DELAY);
+      if (revision === revisionRef.current) {
+        setParsedDateText(parseMockDateText(trimmedInput));
+      }
+    }, PARSING_DEBOUNCE_DELAY);
 
     return () => window.clearTimeout(timerId);
-  }, [mode, setRecommendationCandidates, trimmedInput]);
+  }, [trimmedInput]);
+
+  // recommend 전에는 마지막 입력 1초 후 추천 요청을 시작한다.
+  useEffect(() => {
+    if (mode === 'recommend' || hasRecommended || !trimmedInput) {
+      return;
+    }
+
+    const revision = revisionRef.current;
+    let responseTimerId: number | undefined;
+
+    const debounceTimerId = window.setTimeout(() => {
+      setIsRecommendationLoading(true);
+
+      responseTimerId = window.setTimeout(() => {
+        if (revision !== revisionRef.current) {
+          return;
+        }
+
+        setRecommendationCandidates(createMockRecommendationCandidates(startDate));
+        setHasRecommended(true);
+        setIsRecommendationLoading(false);
+      }, MOCK_RECOMMENDATION_RESPONSE_DELAY);
+    }, RECOMMENDATION_DEBOUNCE_DELAY);
+
+    return () => {
+      window.clearTimeout(debounceTimerId);
+
+      if (responseTimerId !== undefined) {
+        window.clearTimeout(responseTimerId);
+      }
+    };
+  }, [hasRecommended, mode, setRecommendationCandidates, startDate, trimmedInput]);
 
   // 모달이 열려 있는 동안 배경 페이지의 스크롤을 잠근다.
   useEffect(() => {
@@ -324,12 +383,15 @@ export default function CreateModal({
             id: index + 1,
             label: candidate.title,
             status: candidate.selected ? ('add' as const) : ('done' as const),
-            date: candidate.displayDate ?? '당일',
+            itemType: candidate.itemType,
+            date: candidate.displayDate ?? undefined,
           }));
 
     const recommendedItems = effectiveChecklistItems.map((item) => {
       const status = item.status ?? 'add';
       const hasDateTrailing = status === 'add' || status === 'done';
+      const trailingText =
+        item.itemType === 'TIMED_ACTION' ? formatChecklistDate(item.date, startDate) : '당일';
 
       return {
         id: item.id,
@@ -338,7 +400,7 @@ export default function CreateModal({
         trailing: hasDateTrailing
           ? {
               type: 'date' as const,
-              text: item.date ?? '당일',
+              text: trailingText,
             }
           : {
               type: 'none' as const,
@@ -356,7 +418,7 @@ export default function CreateModal({
     };
 
     return [...recommendedItems, addItem];
-  }, [checklistItems, recommendationCandidates]);
+  }, [checklistItems, recommendationCandidates, startDate]);
 
   const handleChecklistClick = (id: number) => {
     if (id === ADD_CHECKLIST_ITEM_ID) {
@@ -418,6 +480,18 @@ export default function CreateModal({
     }
   };
 
+  const handleInputChange = (value: string) => {
+    // 입력이 바뀌면 진행 중인 mock 응답을 무효화한다.
+    revisionRef.current += 1;
+    setIsRecommendationLoading(false);
+
+    if (!value.trim()) {
+      setParsedDateText(null);
+    }
+
+    onInputChange?.(value);
+  };
+
   // 스케줄 설정 화면에서는 키보드를 내린다.
   const handleCalendarPointerDown = () => {
     handleCalendarClick();
@@ -467,6 +541,8 @@ export default function CreateModal({
                   일정 생성
                 </h2>
 
+                {isRecommendationLoading && <CreateModalSkeleton />}
+
                 {isRecommendMode && (
                   <div className="flex w-full flex-col">
                     <div className="flex w-full items-center justify-between px-1 py-2">
@@ -495,7 +571,7 @@ export default function CreateModal({
                     type="text"
                     autoFocus
                     value={inputValue}
-                    onChange={(event) => onInputChange?.(event.target.value)}
+                    onChange={(event) => handleInputChange(event.target.value)}
                     onBlur={handleInputBlur}
                     onKeyDown={handleInputKeyDown}
                     placeholder="어떤 일 인가요?"
