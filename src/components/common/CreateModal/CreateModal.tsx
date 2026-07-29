@@ -82,7 +82,6 @@ const COLOR_ICON = {
 // 실제 체크리스트 ID와 겹치지 않도록 음수를 사용
 const ADD_CHECKLIST_ITEM_ID = -1;
 
-const PARSING_DEBOUNCE_DELAY = 300;
 const RECOMMENDATION_DEBOUNCE_DELAY = 1000;
 const MOCK_RECOMMENDATION_RESPONSE_DELAY = 4000;
 
@@ -90,18 +89,6 @@ const formatTime = ({ meridiem, hour, minute }: TimePickerValue) =>
   `${hour}:${String(minute).padStart(2, '0')} ${meridiem}`;
 
 const formatTriggerDate = (date: Date) => (isToday(date) ? '오늘' : format(date, 'M.d'));
-
-const parseMockDateText = (input: string) => {
-  if (input.includes('모레')) {
-    return format(addDays(new Date(), 2), 'MM.dd');
-  }
-
-  if (input.includes('내일')) {
-    return format(addDays(new Date(), 1), 'MM.dd');
-  }
-
-  return input.includes('오늘') ? '오늘' : null;
-};
 
 const formatChecklistDate = (date: string | null | undefined, fallbackDate: Date) => {
   const parsedDate = date ? parseISO(date) : fallbackDate;
@@ -167,7 +154,6 @@ export default function CreateModal({
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [isRecommendationLoading, setIsRecommendationLoading] = useState(false);
   const [hasRecommended, setHasRecommended] = useState(false);
-  const [parsedDateText, setParsedDateText] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(() => initialScheduleDate ?? new Date());
   const [endDate, setEndDate] = useState(() => initialScheduleDate ?? new Date());
   const [startTime, setStartTime] = useState('9:41 AM');
@@ -193,27 +179,7 @@ export default function CreateModal({
   const selectedDateText = isSameDay(startDate, endDate)
     ? formatTriggerDate(startDate)
     : `${formatTriggerDate(startDate)}~${format(endDate, 'M.d')}`;
-  const calendarText = hasScheduleChanged
-    ? `${selectedDateText} · ${repeat}`
-    : parsedDateText
-      ? `${parsedDateText} · 반복 없음`
-      : propCalendarText;
-
-  // 입력 변경 0.3초 후 날짜 키워드를 mock 파싱한다.
-  useEffect(() => {
-    if (!trimmedInput) {
-      return;
-    }
-
-    const revision = revisionRef.current;
-    const timerId = window.setTimeout(() => {
-      if (revision === revisionRef.current) {
-        setParsedDateText(parseMockDateText(trimmedInput));
-      }
-    }, PARSING_DEBOUNCE_DELAY);
-
-    return () => window.clearTimeout(timerId);
-  }, [trimmedInput]);
+  const calendarText = hasScheduleChanged ? `${selectedDateText} · ${repeat}` : propCalendarText;
 
   // recommend 전에는 마지막 입력 1초 후 추천 요청을 시작한다.
   useEffect(() => {
@@ -357,10 +323,6 @@ export default function CreateModal({
     // 입력이 바뀌면 이전 응답을 무효화하고 로딩을 다시 시작한다.
     revisionRef.current += 1;
     setIsRecommendationLoading(false);
-
-    if (!value.trim()) {
-      setParsedDateText(null);
-    }
 
     onInputChange?.(value);
   };
