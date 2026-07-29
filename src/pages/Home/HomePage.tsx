@@ -1,15 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
-
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useCalendarStore } from '@/stores';
 import CalendarGrid from '@/components/common/CalendarGrid/CalendarGrid';
-import CreateModal from '@/components/common/CreateModal/CreateModal';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
-import { MOCK_SCHEDULES } from '@/features/calendar/mockData';
+import { queryKeys } from '@/hooks/queries/queryKeys';
+import { calendarService } from '@/apis/services/calendarService';
 import { generateDailyPath } from '@/routes/paths';
-import Button from '@/components/common/Buttons/Button';
-import { useFloatingButtons } from '@/hooks/useFloatingButtons';
-
 import './HomePage.css';
 
 // 라우터 적용 전: 부모 = 날짜 선택 이후의 화면 전환을 처리
@@ -27,31 +24,51 @@ const CATEGORY_COLOR_MAP: Record<string, string> = {
   yellow: '#FDFEE4',
 };
 
-const calendarEvents = MOCK_SCHEDULES.map((schedule) => ({
-  title: schedule.title,
-  date: schedule.date,
-  backgroundColor: CATEGORY_COLOR_MAP[schedule.categoryColor] ?? CATEGORY_COLOR_MAP.yellow,
-  textColor: '#1C1630',
-  borderColor: 'transparent',
-}));
-
 function HomePage() {
   const navigate = useNavigate();
 
   // 기본 선택 = 오늘 (useCalendarStore.selectedDate는 string, null 없음)
   const selectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
-  const goToToday = useCalendarStore((s) => s.goToToday);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
   const [initialCreateDate, setInitialCreateDate] = useState<Date | null>(null);
 
+  // selectedDate("YYYY-MM-DD")에서 year/month 추출 — B101이 요구하는 쿼리 파라미터
+  const [year, month] = selectedDate.split('-').map(Number);
+
+  const { data } = useQuery({
+    queryKey: queryKeys.calendars.main(year, month, selectedDate),
+    queryFn: () => calendarService.getMain(year, month, selectedDate),
+    // 날짜가 바뀔 때마다 queryKey가 바뀌어 매번 새 쿼리로 취급됨 —
+    // 기본값이면 새 데이터 오기 전까지 data가 undefined가 되어 "일정 없음"이 잠깐 깜빡임.
+    // 새 데이터가 도착하기 전까지는 이전 날짜의 데이터를 그대로 보여줘서 깜빡임 방지.
+    placeholderData: keepPreviousData,
+  });
+
+  // ⚠️ B101의 selectedDateEvents는 선택한 날짜 하루의 일정만 준다.
+  // 그 달 전체 일정 제목까지 필요하면 별도 API(월간 조회 등)가 필요할 수 있음 — 추후 확인
+  //
+  // placeholderData(keepPreviousData)로 이전 날짜의 응답을 화면에 계속 보여주는 동안,
+  // 그 이벤트들에 "새로 선택된" selectedDate를 그대로 찍으면 실제로는 이전 날짜 일정인데
+  // 새 날짜 일정인 것처럼 잘못 표시될 수 있다 (CodeRabbit 리뷰 반영).
+  // 그래서 응답 자체에 서버가 echo해주는 data.selectedDate가 지금 선택된 날짜와
+  // 일치할 때만 렌더링하고, 아직 새 응답이 안 왔으면(= 이전 날짜 응답이면) 빈 배열로 둔다.
+  const isFreshForSelectedDate = data?.selectedDate === selectedDate;
+  const calendarEvents = isFreshForSelectedDate
+    ? (data?.selectedDateEvents ?? []).map((event) => ({
+        title: event.title,
+        date: selectedDate,
+        backgroundColor: CATEGORY_COLOR_MAP.yellow, // TODO: 카테고리 색상 필드 응답에 있는지 확인
+        textColor: '#1C1630',
+        borderColor: 'transparent',
+      }))
+    : [];
+
   const handleSelectDate = (date: string) => {
     selectDate(date);
-
-    // 기존 부모 callback 방식 -> 라우터 이동으로 대체
-    // onSelectDate?.(date);
+  
     navigate(generateDailyPath(date));
   };
 
