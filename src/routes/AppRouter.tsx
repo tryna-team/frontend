@@ -8,6 +8,7 @@ import DailyPage from '@/pages/Daily/DailyPage';
 import EventViewPage from '@/pages/EventView/EventViewPage';
 import HomePage from '@/pages/Home/HomePage';
 import SplashPage from '@/pages/Splash/SplashPage';
+import YearCalendarPage from '@/pages/YearCalendar/YearCalendarPage';
 
 import { PATH } from './paths';
 
@@ -29,6 +30,10 @@ export default function AppRouter() {
       <Route
         path={PATH.EVENT_VIEW}
         element={<EventViewPage />}
+      />
+      <Route
+        path={PATH.YEAR_CALENDAR}
+        element={<YearCalendarPage />}
       />
       <Route
         path="*"
