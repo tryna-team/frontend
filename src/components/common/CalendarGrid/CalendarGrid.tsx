@@ -27,6 +27,7 @@ interface CalendarGridProps {
   onSearchClick?: () => void;
   onViewToggleClick?: () => void;
   onSettingsClick?: () => void;
+  onYearViewClick?: () => void;
   initialView?: string;
 }
 
@@ -41,6 +42,7 @@ function CalendarGrid({
   onSearchClick,
   onViewToggleClick,
   onSettingsClick,
+  onYearViewClick,
   initialView = 'dayGridMonth',
 }: CalendarGridProps) {
   const calendarRef = useRef<FullCalendar>(null);
@@ -150,33 +152,44 @@ function CalendarGrid({
       onPointerLeave={handlePointerUpOrCancel}
     >
       <div className="calendar-header">
-        <span className="month-number">{currentMonth}</span>
-        <div className="calendar-header-icons">
+        <div className="calendar-header-top">
           <button
             type="button"
-            className="icon-button"
-            onClick={onSearchClick}
-            aria-label="검색"
+            className="year-nav-button"
+            onClick={onYearViewClick}
+            aria-label="연간 캘린더로 이동"
           >
-            <img src="/icon/search.svg" alt="" />
+            <img src="/icon/chevron/left_small.svg" alt="" />
+            <span className="year-number">{currentYear}</span>
           </button>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={onViewToggleClick}
-            aria-label="캘린더 뷰 전환"
-          >
-            <img src="/icon/icons/label_small.svg" alt="" />
-          </button>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={onSettingsClick}
-            aria-label="설정"
-          >
-            <img src="/icon/settings.svg" alt="" />
-          </button>
+          <div className="calendar-header-icons">
+            <button
+              type="button"
+              className="icon-button"
+              onClick={onSearchClick}
+              aria-label="검색"
+            >
+              <img src="/icon/search.svg" alt="" />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={onViewToggleClick}
+              aria-label="캘린더 뷰 전환"
+            >
+              <img src="/icon/icons/label_small.svg" alt="" />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={onSettingsClick}
+              aria-label="설정"
+            >
+              <img src="/icon/settings.svg" alt="" />
+            </button>
+          </div>
         </div>
+        <span className="month-number">{currentMonth}</span>
       </div>
       <FullCalendar
         ref={calendarRef}
