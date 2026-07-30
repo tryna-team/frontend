@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -68,10 +68,6 @@ function CalendarGrid({
     queryKey: queryKeys.calendars.monthly(currentYear, currentMonth),
     queryFn: () => calendarService.getMonthly(currentYear, currentMonth),
   });
-
-  const handleDateClick = (arg: DateClickArg) => {
-    onSelectDate(arg.dateStr);
-  };
 
   const dayCellClassNames = (arg: { date: Date }) => {
     const dateStr = arg.date.toLocaleDateString('sv-SE');
