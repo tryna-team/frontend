@@ -7,19 +7,19 @@ import { useSwipeable } from 'react-swipeable';
 import { useCanGoBack } from '@/hooks/useCanGoBack';
 
 import { useCalendarStore } from '@/stores';
-import Header from '@/components/common/Header/Header';
+import Button from '@/components/common/Buttons/Button';
 import CreateModal from '@/components/common/CreateModal/CreateModal';
+import Header from '@/components/common/Header/Header';
 import WeekStrip from '@/features/calendar/components/WeekStrip';
 import ScheduleCard from '@/features/calendar/components/ScheduleCard';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import type { CategoryColor } from '@/features/calendar/types';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import {
   generateDailyPath,
   generateEventPath,
   PATH,
 } from '@/routes/paths';
-import Button from '@/components/common/Buttons/Button';
-import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 
 import './DailyPage.css';
 
@@ -378,6 +378,7 @@ function DailyPage() {
       {isCreateModalOpen && (
         <CreateModal
           inputValue={createInputValue}
+          initialScheduleDate={displayDate}
           onInputChange={setCreateInputValue}
           onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
           onCreate={handleCreate}

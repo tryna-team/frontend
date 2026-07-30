@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
+
 import { useCalendarStore } from '@/stores';
+import Button from '@/components/common/Buttons/Button';
 import CalendarGrid from '@/components/common/CalendarGrid/CalendarGrid';
 import CreateModal from '@/components/common/CreateModal/CreateModal';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
 import { generateDailyPath, PATH } from '@/routes/paths';
-import Button from '@/components/common/Buttons/Button';
-import { useFloatingButtons } from '@/hooks/useFloatingButtons';
+
 import './HomePage.css';
 
 // 라우터 적용 전: 부모 = 날짜 선택 이후의 화면 전환을 처리
@@ -37,7 +39,7 @@ function HomePage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
-  const [, setInitialCreateDate] = useState<Date | null>(null); //사용하지않아서(노란줄) 빌드가 안되고 있어 잠시 지움 
+  const [initialCreateDate, setInitialCreateDate] = useState<Date | null>(null);
 
   // selectedDate("YYYY-MM-DD")에서 year/month 추출 — B101이 요구하는 쿼리 파라미터
   const [year, month] = selectedDate.split('-').map(Number);
@@ -127,8 +129,7 @@ function HomePage() {
       {isCreateModalOpen && (
         <CreateModal
           inputValue={createInputValue}
-          
-          // initialScheduleDate={initialCreateDate ?? undefined}
+          initialScheduleDate={initialCreateDate ?? undefined}
           onInputChange={setCreateInputValue}
           onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
           onCreate={handleCreate}
