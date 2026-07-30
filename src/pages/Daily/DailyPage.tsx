@@ -219,27 +219,6 @@ function DailyPage() {
     setIsCreateModalOpen(false);
   };
 
-  const floatingButtonsContent = useMemo(
-    () => (
-      <div className="flex w-full items-center justify-between">
-        <Button
-          variant="LargeStrongFit"
-          onClick={() => {
-            goToToday();
-            navigate(generateDailyPath(new Date().toLocaleDateString('sv-SE')), { replace: true });
-          }}
-        >
-          오늘
-        </Button>
-
-        {/* 생성 모달을 현재 Daily 화면 위에 연다. */}
-        <Button variant="MainCTAButton" onClick={() => setIsCreateModalOpen(true)} />
-      </div>
-    ),
-    [goToToday, navigate],
-  );
-  useFloatingButtons(floatingButtonsContent);
-
   // 렌더링마다 최신 selectedDate를 담아두는 ref.
   // useSwipeable 핸들러가 클로저의 오래된 selectedDate를 참조하면, 연속으로 빠르게
   // 스와이프할 때 리렌더링 타이밍에 따라 "한 번은 되는데 계속 반복은 안 되는" 증상이
@@ -261,6 +240,29 @@ function DailyPage() {
     preventScrollOnSwipe: true,
     trackMouse: true,
   });
+
+  const floatingButtonsContent = useMemo(
+    () => (
+      <div className="flex w-full items-center justify-between">
+        <Button
+          variant="LargeStrongFit"
+          onClick={() => {
+            goToToday();
+            navigate(
+              generateDailyPath(new Date().toLocaleDateString('sv-SE')),
+              { replace: true },
+            );
+          }}
+        >
+          오늘
+        </Button>
+        {/* 생성 모달을 현재 화면 위에 연다. */}
+        <Button variant="MainCTAButton" onClick={() => setIsCreateModalOpen(true)} />
+      </div>
+    ),
+    [goToToday, navigate],
+  );
+  useFloatingButtons(floatingButtonsContent);
 
   // Header: chevron -> 직전 화면 이동
   // window.history.state.idx는 React Router 내부 비공개 값이라 버전에 따라 깨질 수 있음

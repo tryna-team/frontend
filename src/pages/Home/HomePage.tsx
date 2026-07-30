@@ -10,7 +10,8 @@ import SearchOverlay from '@/features/calendar/components/SearchOverlay';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
-import { generateDailyPath } from '@/routes/paths';
+import { generateDailyPath, PATH } from '@/routes/paths';
+
 import './HomePage.css';
 
 // 라우터 적용 전: 부모 = 날짜 선택 이후의 화면 전환을 처리
@@ -73,7 +74,6 @@ function HomePage() {
 
   const handleSelectDate = (date: string) => {
     selectDate(date);
-  
     navigate(generateDailyPath(date));
   };
 
@@ -119,6 +119,7 @@ function HomePage() {
         onSearchClick={() => setIsSearchOpen(true)}
         onViewToggleClick={() => {}}
         onSettingsClick={() => {}}
+        onYearViewClick={() => navigate(PATH.YEAR_CALENDAR)}
       />
 
       {isSearchOpen && (
