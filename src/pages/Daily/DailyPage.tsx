@@ -145,7 +145,7 @@ function DailyPage() {
   ]);
 
   // B103 날짜별 일정 목록 조회 — mock(MOCK_SCHEDULES) 대신 실 서버 데이터 사용
-  const { data } = useQuery({
+  const { data, isPending, isError } = useQuery({
     queryKey: queryKeys.calendars.dateEvents(selectedDate),
     queryFn: () => calendarService.getDateEvents(selectedDate),
   });
@@ -268,7 +268,7 @@ function DailyPage() {
   const todayBanners = banners.filter((b) => b.date === selectedDate);
 
   // ⚠️ checklist가 API에 없어 현재는 토글할 데이터가 없음 (추후 action-items 연동 시 구현)
-  const handleToggleItem = (_scheduleId: string, _itemId: string) => {};
+  const handleToggleItem = () => {};
 
   return (
     <div className="daily-page">
@@ -304,7 +304,11 @@ function DailyPage() {
         )}
 
         <div className="daily-page-content">
-          {todaySchedules.length === 0 ? (
+          {isPending ? (
+            <p className="daily-page-empty">불러오는 중...</p>
+          ) : isError ? (
+            <p className="daily-page-empty">일정을 불러오지 못했어요</p>
+          ) : todaySchedules.length === 0 ? (
             <p className="daily-page-empty">일정이 없어요</p>
           ) : (
             todaySchedules.map((schedule) => (
@@ -321,7 +325,7 @@ function DailyPage() {
                     schedule.id,
                   )
                 }
-                onToggleItem={(itemId) => handleToggleItem(schedule.id, itemId)}
+                onToggleItem={handleToggleItem}
                 linkedSchedule={schedule.linkedSchedule}
               />
             ))
