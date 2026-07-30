@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 
-import { format, isAfter, isBefore } from 'date-fns';
+import { format, isAfter, isBefore, isSameDay } from 'date-fns';
 
 import Button from '@/components/common/Buttons/Button';
 import LabelModal from '@/components/common/LabelModal/LabelModal';
@@ -53,6 +53,12 @@ const parseTimePickerValue = (time: string): TimePickerValue => {
   };
 };
 
+const toMinutes = ({ meridiem, hour, minute }: TimePickerValue) => {
+  const hour24 = (hour % 12) + (meridiem === 'PM' ? 12 : 0);
+
+  return hour24 * 60 + minute;
+};
+
 const REPEAT_OPTION: Record<RepeatType, RepeatOption> = {
   daily: '매일',
   weekly: '매주',
@@ -90,6 +96,20 @@ export default function RepeatScheduleBottomSheet({
 
   const activeDate = activeDateField === 'start' ? startDate : endDate;
 
+  const alignEndTimeToStart = () => {
+    if (toMinutes(endTimeValue) < toMinutes(startTimeValue)) {
+      setEndTimeValue(startTimeValue);
+      onEndTimeChange?.(startTimeValue);
+    }
+  };
+
+  const alignStartTimeToEnd = () => {
+    if (toMinutes(endTimeValue) < toMinutes(startTimeValue)) {
+      setStartTimeValue(endTimeValue);
+      onStartTimeChange?.(endTimeValue);
+    }
+  };
+
   // Escape 입력으로 바텀시트를 닫는다.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -110,6 +130,9 @@ export default function RepeatScheduleBottomSheet({
 
       if (isAfter(date, endDate)) {
         onEndDateChange?.(date);
+        alignEndTimeToStart();
+      } else if (isSameDay(date, endDate)) {
+        alignEndTimeToStart();
       }
 
       return;
@@ -119,6 +142,9 @@ export default function RepeatScheduleBottomSheet({
 
     if (isBefore(date, startDate)) {
       onStartDateChange?.(date);
+      alignStartTimeToEnd();
+    } else if (isSameDay(date, startDate)) {
+      alignStartTimeToEnd();
     }
   };
 
@@ -138,11 +164,23 @@ export default function RepeatScheduleBottomSheet({
   const handleStartTimeChange = (value: TimePickerValue) => {
     setStartTimeValue(value);
     onStartTimeChange?.(value);
+
+    // 같은 날짜에서 시작 시간이 늦어지면 종료 시간을 함께 맞춘다.
+    if (isSameDay(startDate, endDate) && toMinutes(value) > toMinutes(endTimeValue)) {
+      setEndTimeValue(value);
+      onEndTimeChange?.(value);
+    }
   };
 
   const handleEndTimeChange = (value: TimePickerValue) => {
     setEndTimeValue(value);
     onEndTimeChange?.(value);
+
+    // 같은 날짜에서 종료 시간이 빨라지면 시작 시간을 함께 맞춘다.
+    if (isSameDay(startDate, endDate) && toMinutes(value) < toMinutes(startTimeValue)) {
+      setStartTimeValue(value);
+      onStartTimeChange?.(value);
+    }
   };
 
   const handleRepeatClick = () => {

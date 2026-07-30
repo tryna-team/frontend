@@ -9,7 +9,7 @@ export default function CreateModalSkeleton() {
         <div className="create-modal-skeleton h-[22px] w-[139px] rounded-full" />
       </div>
 
-      <div className="flex w-full flex-col">
+      <div className="flex w-[353px] flex-col">
         {Array.from({ length: SKELETON_ITEM_COUNT }, (_, index) => (
           <div key={index}>
             <div className="h-px w-full shrink-0 bg-divider-default" aria-hidden="true" />

@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
+
 import { useCalendarStore } from '@/stores';
+import Button from '@/components/common/Buttons/Button';
 import CalendarGrid from '@/components/common/CalendarGrid/CalendarGrid';
+import CreateModal from '@/components/common/CreateModal/CreateModal';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
-import { generateDailyPath } from '@/routes/paths';
+import { generateDailyPath, PATH } from '@/routes/paths';
+
 import './HomePage.css';
 
 // 라우터 적용 전: 부모 = 날짜 선택 이후의 화면 전환을 처리
@@ -30,7 +35,11 @@ function HomePage() {
   // 기본 선택 = 오늘 (useCalendarStore.selectedDate는 string, null 없음)
   const selectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
+  const goToToday = useCalendarStore((s) => s.goToToday);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createInputValue, setCreateInputValue] = useState('');
+  const [initialCreateDate, setInitialCreateDate] = useState<Date | null>(null);
 
   // selectedDate("YYYY-MM-DD")에서 year/month 추출 — B101이 요구하는 쿼리 파라미터
   const [year, month] = selectedDate.split('-').map(Number);
@@ -65,9 +74,40 @@ function HomePage() {
 
   const handleSelectDate = (date: string) => {
     selectDate(date);
-  
     navigate(generateDailyPath(date));
   };
+
+  const handleCreate = () => {
+    window.alert('일정 생성 API 연결 예정입니다.');
+    setCreateInputValue('');
+    setIsCreateModalOpen(false);
+    setInitialCreateDate(null);
+  };
+
+  const handleLongPressDate = (date: string) => {
+    selectDate(date);
+    setInitialCreateDate(new Date(`${date}T00:00:00`));
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCreateModalClose = () => {
+    setIsCreateModalOpen(false);
+    setInitialCreateDate(null);
+  };
+
+  const floatingButtonsContent = useMemo(
+    () => (
+      <div className="flex w-full items-center justify-between">
+        <Button variant="LargeStrongFit" onClick={goToToday}>
+          오늘
+        </Button>
+        {/* 생성 모달을 현재 화면 위에 연다. */}
+        <Button variant="MainCTAButton" onClick={() => setIsCreateModalOpen(true)} />
+      </div>
+    ),
+    [goToToday],
+  );
+  useFloatingButtons(floatingButtonsContent);
 
   return (
     <div className="home-page">
@@ -75,15 +115,25 @@ function HomePage() {
         events={calendarEvents}
         selectedDate={selectedDate}
         onSelectDate={handleSelectDate}
+        onLongPressDate={handleLongPressDate}
         onSearchClick={() => setIsSearchOpen(true)}
         onViewToggleClick={() => {}}
         onSettingsClick={() => {}}
+        onYearViewClick={() => navigate(PATH.YEAR_CALENDAR)}
       />
 
       {isSearchOpen && (
-        <SearchOverlay
-          isOpen={isSearchOpen}
-          onClose={() => setIsSearchOpen(false)}
+        <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      )}
+
+      {isCreateModalOpen && (
+        <CreateModal
+          inputValue={createInputValue}
+          initialScheduleDate={initialCreateDate ?? undefined}
+          onInputChange={setCreateInputValue}
+          onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
+          onCreate={handleCreate}
+          onClose={handleCreateModalClose}
         />
       )}
     </div>
