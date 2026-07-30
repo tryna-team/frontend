@@ -37,7 +37,7 @@ function HomePage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
-  const [initialCreateDate, setInitialCreateDate] = useState<Date | null>(null);
+  const [, setInitialCreateDate] = useState<Date | null>(null); //사용하지않아서(노란줄) 빌드가 안되고 있어 잠시 지움 
 
   // selectedDate("YYYY-MM-DD")에서 year/month 추출 — B101이 요구하는 쿼리 파라미터
   const [year, month] = selectedDate.split('-').map(Number);
