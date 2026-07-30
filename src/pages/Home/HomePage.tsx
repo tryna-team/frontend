@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
+
 import { useCalendarStore } from '@/stores';
+import Button from '@/components/common/Buttons/Button';
 import CalendarGrid from '@/components/common/CalendarGrid/CalendarGrid';
+import CreateModal from '@/components/common/CreateModal/CreateModal';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
 import { generateDailyPath } from '@/routes/paths';
@@ -30,6 +34,7 @@ function HomePage() {
   // 기본 선택 = 오늘 (useCalendarStore.selectedDate는 string, null 없음)
   const selectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
+  const goToToday = useCalendarStore((s) => s.goToToday);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');

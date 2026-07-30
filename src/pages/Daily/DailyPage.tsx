@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   useNavigate,
   useParams,
@@ -7,11 +7,14 @@ import { useSwipeable } from 'react-swipeable';
 import { useCanGoBack } from '@/hooks/useCanGoBack';
 
 import { useCalendarStore } from '@/stores';
+import Button from '@/components/common/Buttons/Button';
+import CreateModal from '@/components/common/CreateModal/CreateModal';
 import Header from '@/components/common/Header/Header';
 import WeekStrip from '@/features/calendar/components/WeekStrip';
 import ScheduleCard from '@/features/calendar/components/ScheduleCard';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import type { CategoryColor } from '@/features/calendar/types';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import {
   generateDailyPath,
   generateEventPath,
@@ -160,7 +163,10 @@ function DailyPage() {
       (s) => s.selectedDate,
     );
   const selectDate = useCalendarStore((s) => s.selectDate);
+  const goToToday = useCalendarStore((s) => s.goToToday);
   const [schedules, setSchedules] = useState<ScheduleItem[]>(MOCK_SCHEDULES);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createInputValue, setCreateInputValue] = useState('');
 
   const isValidRouteDate =
     routeDate !== undefined &&
@@ -206,6 +212,33 @@ function DailyPage() {
       { replace: true },
     );
   };
+
+  const handleCreate = () => {
+    window.alert('일정 생성 API 연결 예정입니다.');
+    setCreateInputValue('');
+    setIsCreateModalOpen(false);
+  };
+
+  const floatingButtonsContent = useMemo(
+    () => (
+      <div className="flex w-full items-center justify-between">
+        <Button
+          variant="LargeStrongFit"
+          onClick={() => {
+            goToToday();
+            navigate(generateDailyPath(new Date().toLocaleDateString('sv-SE')), { replace: true });
+          }}
+        >
+          오늘
+        </Button>
+
+        {/* 생성 모달을 현재 Daily 화면 위에 연다. */}
+        <Button variant="MainCTAButton" onClick={() => setIsCreateModalOpen(true)} />
+      </div>
+    ),
+    [goToToday, navigate],
+  );
+  useFloatingButtons(floatingButtonsContent);
 
   // 렌더링마다 최신 selectedDate를 담아두는 ref.
   // useSwipeable 핸들러가 클로저의 오래된 selectedDate를 참조하면, 연속으로 빠르게
@@ -314,16 +347,6 @@ function DailyPage() {
           </div>
         )}
 
-      {isCreateModalOpen && (
-        <CreateModal
-          inputValue={createInputValue}
-          initialScheduleDate={displayDate}
-          onInputChange={setCreateInputValue}
-          onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
-          onCreate={handleCreate}
-          onClose={() => setIsCreateModalOpen(false)}
-        />
-      )}
         <div className="daily-page-content">
           {todaySchedules.length === 0 ? (
             <p className="daily-page-empty">일정이 없어요</p>
@@ -349,6 +372,17 @@ function DailyPage() {
           )}
         </div>
       </div>
+
+      {isCreateModalOpen && (
+        <CreateModal
+          inputValue={createInputValue}
+          initialScheduleDate={displayDate}
+          onInputChange={setCreateInputValue}
+          onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
+          onCreate={handleCreate}
+          onClose={() => setIsCreateModalOpen(false)}
+        />
+      )}
     </div>
   );
 }
