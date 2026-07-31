@@ -130,13 +130,48 @@
 }
 
 .calendar-header {
-  box-sizing: border-box;
   display: flex;
-  height: 48px;
-  padding: 0 20px;
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: stretch;
+  padding: 0 var(--Spacing-Semantic-Page-Padding-Large, 20px);
+  background: var(--Semantic-BackGround-White, #FFF);
+  box-sizing: border-box;
+}
+
+.calendar-header-top {
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  align-self: stretch;
+  height: 42px;
+}
+
+.year-nav-button {
+  display: flex;
+  padding: 8px 4px 8px 0;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.year-nav-button img {
+  width: 20px;
+  height: 20px;
+  opacity: 0.6;
+}
+
+.year-number {
+  color: var(--Semantic-Text-Additional, rgba(28, 22, 48, 0.60));
+  font-family: var(--Default-Title-Medium-FontFamily, Pretendard);
+  font-size: var(--Default-Title-Medium-FontSize, 18px);
+  font-style: normal;
+  font-weight: 500;
+  line-height: var(--Default-Title-Medium-LineHeight, 26px);
+  letter-spacing: var(--Default-Title-Medium-LetterSpacing, -0.18px);
 }
 .month-number {
   font-family: var(--font-brand);
@@ -145,12 +180,15 @@
   line-height: 48px;
   letter-spacing: -0.4px;
   color: var(--color-grey-900);
+  padding: 4px 0 12px;
 }
+
 .calendar-header-icons {
   display: flex;
   align-items: center;
   gap: 12px;
 }
+
 .icon-button {
   background: none;
   border: none;
@@ -160,6 +198,7 @@
   align-items: center;
   justify-content: center;
 }
+
 .icon-button img {
   width: 24px;
   height: 24px;

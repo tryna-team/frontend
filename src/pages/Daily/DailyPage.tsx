@@ -1,23 +1,25 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   useNavigate,
   useParams,
 } from 'react-router';
+import { useSwipeable } from 'react-swipeable';
+import { useCanGoBack } from '@/hooks/useCanGoBack';
 
 import { useCalendarStore } from '@/stores';
+import Button from '@/components/common/Buttons/Button';
+import CreateModal from '@/components/common/CreateModal/CreateModal';
 import Header from '@/components/common/Header/Header';
 import WeekStrip from '@/features/calendar/components/WeekStrip';
 import ScheduleCard from '@/features/calendar/components/ScheduleCard';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import type { CategoryColor } from '@/features/calendar/types';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import {
   generateDailyPath,
   generateEventPath,
   PATH,
 } from '@/routes/paths';
-import Button from '@/components/common/Buttons/Button';
-import { useFloatingButtons } from '@/hooks/useFloatingButtons';
-import { useCanGoBack } from '@/hooks/useCanGoBack';
 
 import './DailyPage.css';
 
@@ -48,6 +50,17 @@ function isValidDateParam(date: string) {
     parsedDate.getMonth() + 1 === month &&
     parsedDate.getDate() === day
   );
+}
+
+// "YYYY-MM-DD" 문자열에 일수를 더하고 다시 "YYYY-MM-DD"로 반환
+// UTC 변환(toISOString) 대신 로컬 기준으로 직접 조립 — 자정 근처 하루 밀림 방지
+function addDays(dateStr: string, delta: number): string {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + delta);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 interface ScheduleItem {
@@ -143,17 +156,17 @@ function DailyPage() {
   const { date: routeDate } =
     useParams<{ date: string }>();
   const navigate = useNavigate();
+  const canGoBack = useCanGoBack();
 
-  // 라우터 적용 전: Zustand 날짜만 화면 기준값으로 사용했음
-  // const selectedDate = useCalendarStore((s) => s.selectedDate);
   const calendarSelectedDate =
     useCalendarStore(
       (s) => s.selectedDate,
     );
   const selectDate = useCalendarStore((s) => s.selectDate);
   const goToToday = useCalendarStore((s) => s.goToToday);
-  const canGoBack = useCanGoBack();
   const [schedules, setSchedules] = useState<ScheduleItem[]>(MOCK_SCHEDULES);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createInputValue, setCreateInputValue] = useState('');
 
   const isValidRouteDate =
     routeDate !== undefined &&
@@ -200,6 +213,34 @@ function DailyPage() {
     );
   };
 
+  const handleCreate = () => {
+    window.alert('일정 생성 API 연결 예정입니다.');
+    setCreateInputValue('');
+    setIsCreateModalOpen(false);
+  };
+
+  // 렌더링마다 최신 selectedDate를 담아두는 ref.
+  // useSwipeable 핸들러가 클로저의 오래된 selectedDate를 참조하면, 연속으로 빠르게
+  // 스와이프할 때 리렌더링 타이밍에 따라 "한 번은 되는데 계속 반복은 안 되는" 증상이
+  // 생길 수 있어서, 핸들러 내부에서는 항상 이 ref를 통해 최신 값을 읽는다.
+  const selectedDateRef = useRef(selectedDate);
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+  }, [selectedDate]);
+
+  // 콘텐츠 영역(배너+일정 목록) 좌우 스와이프 -> 전날/다음날 이동
+  // WeekStrip 자체의 스와이프(주 단위 이동)는 건드리지 않음 — 별개 영역에만 적용
+  const contentSwipeHandlers = useSwipeable({
+    onSwipedLeft: () => {
+      handleSelectDate(addDays(selectedDateRef.current, 1)); // 다음 날
+    },
+    onSwipedRight: () => {
+      handleSelectDate(addDays(selectedDateRef.current, -1)); // 전날
+    },
+    preventScrollOnSwipe: true,
+    trackMouse: true,
+  });
+
   const floatingButtonsContent = useMemo(
     () => (
       <div className="flex w-full items-center justify-between">
@@ -207,13 +248,16 @@ function DailyPage() {
           variant="LargeStrongFit"
           onClick={() => {
             goToToday();
-            navigate(generateDailyPath(new Date().toLocaleDateString('sv-SE')), { replace: true });
+            navigate(
+              generateDailyPath(new Date().toLocaleDateString('sv-SE')),
+              { replace: true },
+            );
           }}
         >
           오늘
         </Button>
-        {/* TODO: CreateModal 연결 (별도 작업으로 이월) */}
-        <Button variant="MainCTAButton" />
+        {/* 생성 모달을 현재 화면 위에 연다. */}
+        <Button variant="MainCTAButton" onClick={() => setIsCreateModalOpen(true)} />
       </div>
     ),
     [goToToday, navigate],
@@ -221,13 +265,18 @@ function DailyPage() {
   useFloatingButtons(floatingButtonsContent);
 
   // Header: chevron -> 직전 화면 이동
+  // window.history.state.idx는 React Router 내부 비공개 값이라 버전에 따라 깨질 수 있음
+  // (CodeRabbit 리뷰 반영) — EventViewPage에서 이미 쓰던 공개 API 기반 useCanGoBack으로 통일
   const handleBack = () => {
     if (canGoBack) {
       navigate(-1);
-    } else {
-      // 방문 기록 X -> Home으로 이동
-      navigate(PATH.HOME, { replace: true });
+      return;
     }
+
+    // 방문 기록 X -> Home으로 이동
+    navigate(PATH.HOME, {
+      replace: true,
+    });
   };
 
   // 일정 카드 -> EventView 이동
@@ -269,15 +318,6 @@ function DailyPage() {
 
   return (
     <div className="daily-page">
-      {/* 라우터 적용 전 mock 데이터
-      <Header
-        variant="daily"
-        title="6월 4일 (목)"
-        leading={{ type: 'icon-text', text: '6월' }}
-        trailing={{ type: 'none' }}
-      />
-      */}
-
       <Header
         variant="daily"
         title={titleText}
@@ -289,50 +329,62 @@ function DailyPage() {
         trailing={{ type: 'none' }}
       />
 
-      {/* 기존: URL을 변경하지 않고 Zustand만 갱신 */}
-      {/* <WeekStrip selectedDate={selectedDate} onSelectDate={selectDate} /> */}
       <WeekStrip
         selectedDate={selectedDate}
         onSelectDate={handleSelectDate}
       />
 
-      {todayBanners.length > 0 && (
-        <div className="daily-page-banners">
-          {todayBanners.map((banner) => (
-            <ScheduleBanner
-              key={banner.id}
-              categoryColor={banner.categoryColor}
-              title={banner.title}
-              dateText={banner.dateText}
-            />
-          ))}
-        </div>
-      )}
-
-      <div className="daily-page-content">
-        {todaySchedules.length === 0 ? (
-          <p className="daily-page-empty">일정이 없어요</p>
-        ) : (
-          todaySchedules.map((schedule) => (
-            <ScheduleCard
-              key={schedule.id}
-              categoryColor={schedule.categoryColor}
-              title={schedule.title}
-              location={schedule.location}
-              startTime={schedule.startTime}
-              endTime={schedule.endTime}
-              checklist={schedule.checklist}
-              onScheduleClick={() =>
-                handleScheduleClick(
-                  schedule.id,
-                )
-              }
-              onToggleItem={(itemId) => handleToggleItem(schedule.id, itemId)}
-              linkedSchedule={schedule.linkedSchedule}
-            />
-          ))
+      {/* 스와이프 핸들러는 여기(배너+콘텐츠 영역)에만 적용 — WeekStrip 스와이프와 분리 */}
+      <div {...contentSwipeHandlers}>
+        {todayBanners.length > 0 && (
+          <div className="daily-page-banners">
+            {todayBanners.map((banner) => (
+              <ScheduleBanner
+                key={banner.id}
+                categoryColor={banner.categoryColor}
+                title={banner.title}
+                dateText={banner.dateText}
+              />
+            ))}
+          </div>
         )}
+
+        <div className="daily-page-content">
+          {todaySchedules.length === 0 ? (
+            <p className="daily-page-empty">일정이 없어요</p>
+          ) : (
+            todaySchedules.map((schedule) => (
+              <ScheduleCard
+                key={schedule.id}
+                categoryColor={schedule.categoryColor}
+                title={schedule.title}
+                location={schedule.location}
+                startTime={schedule.startTime}
+                endTime={schedule.endTime}
+                checklist={schedule.checklist}
+                onScheduleClick={() =>
+                  handleScheduleClick(
+                    schedule.id,
+                  )
+                }
+                onToggleItem={(itemId) => handleToggleItem(schedule.id, itemId)}
+                linkedSchedule={schedule.linkedSchedule}
+              />
+            ))
+          )}
+        </div>
       </div>
+
+      {isCreateModalOpen && (
+        <CreateModal
+          inputValue={createInputValue}
+          initialScheduleDate={displayDate}
+          onInputChange={setCreateInputValue}
+          onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
+          onCreate={handleCreate}
+          onClose={() => setIsCreateModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

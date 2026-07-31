@@ -28,7 +28,6 @@ function getWeekDates(dateStr: string): Date[] {
 
 function WeekStrip({ selectedDate, onSelectDate }: WeekStripProps) {
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
-  const todayStr = useMemo(() => toDateStr(new Date()), []);
 
   const goToWeek = (offsetDays: number) => {
     const base = new Date(selectedDate);
@@ -46,7 +45,10 @@ function WeekStrip({ selectedDate, onSelectDate }: WeekStripProps) {
     <div className="week-strip" {...swipeHandlers}>
       {weekDates.map((date) => {
         const dateStr = toDateStr(date);
-        const isActive = dateStr === selectedDate || dateStr === todayStr;
+        // 선택된 날짜에만 활성 표시(그림자)가 따라가도록 함.
+        // 이전에는 오늘 날짜(todayStr)도 항상 활성으로 표시되어, 오늘과 선택된 날짜가
+        // 다를 때 그림자가 두 곳에 동시에 표시되는 문제가 있었음.
+        const isActive = dateStr === selectedDate;
         const dayOfWeek = date.getDay();
 
         return (

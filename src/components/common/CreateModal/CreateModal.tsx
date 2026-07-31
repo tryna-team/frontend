@@ -1,19 +1,24 @@
-import { useMemo } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { FocusEvent, KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
+
+import { addDays, format, isSameDay, isToday, isValid, parseISO } from 'date-fns';
 
 import Button from '@/components/common/Buttons/Button';
-import Checklist, {
-  type ChecklistItemData,
-} from '@/components/common/Checklist/Checklist';
+import Checklist, { type ChecklistItemData } from '@/components/common/Checklist/Checklist';
+import LabelModal, { type LabelItemData } from '@/components/common/LabelModal/LabelModal';
+import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
+import Overlay from '@/components/common/Popup/Overlay';
+import { RepeatScheduleBottomSheet, type RepeatOption } from '@/features/event/components/create';
+import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial';
+import { useEventCreationStore } from '@/stores';
+import type { ActionItemType, RecommendationCandidate } from '@/stores/types';
 
 import type { ChecklistStatus } from '@/components/common/Checklist/ChecklistItem';
 
-export type LabelColor =
-  | 'apricot'
-  | 'blue'
-  | 'green'
-  | 'pink'
-  | 'purple'
-  | 'yellow';
+import CreateModalSkeleton from './CreateModalSkeleton';
+
+export type LabelColor = 'apricot' | 'blue' | 'green' | 'pink' | 'purple' | 'yellow';
 
 export type CalendarStatus =
   | {
@@ -39,6 +44,7 @@ type CreateModalChecklistItem = {
   id: number;
   label: string;
   status?: ChecklistStatus;
+  itemType?: ActionItemType;
   // status=add, done일 때 사용. 없으면 '당일'로 표시
   date?: string;
 };
@@ -49,13 +55,19 @@ export type CreateModalProps = {
   keyword?: string;
   message?: string;
   checklistItems?: CreateModalChecklistItem[];
+  initialScheduleDate?: Date;
   calendarStatus?: CalendarStatus;
   labelStatus?: LabelStatus;
+  labels?: LabelItemData[];
   onInputChange?: (value: string) => void;
   onOpenCalendar?: () => void;
   onOpenLabel?: () => void;
+  onSelectLabel?: (id: number) => void;
+  onCreateLabel?: () => void;
   onAddChecklist?: () => void;
   onToggleChecklist?: (id: number) => void;
+  onCreate?: () => void;
+  onClose?: () => void;
 };
 
 const COLOR_ICON = {
@@ -71,202 +83,583 @@ const COLOR_ICON = {
 // 실제 체크리스트 ID와 겹치지 않도록 음수를 사용
 const ADD_CHECKLIST_ITEM_ID = -1;
 
+const PARSING_DEBOUNCE_DELAY = 300;
+const RECOMMENDATION_DEBOUNCE_DELAY = 1000;
+const MOCK_RECOMMENDATION_RESPONSE_DELAY = 4000;
+
+const parseMockDateText = (input: string) => {
+  if (input.includes('모레')) {
+    return format(addDays(new Date(), 2), 'MM.dd');
+  }
+
+  if (input.includes('내일')) {
+    return format(addDays(new Date(), 1), 'MM.dd');
+  }
+
+  return input.includes('오늘') ? '오늘' : null;
+};
+
+const formatChecklistDate = (date: string | null | undefined, fallbackDate: Date) => {
+  const parsedDate = date ? parseISO(date) : fallbackDate;
+
+  return format(isValid(parsedDate) ? parsedDate : fallbackDate, 'MM. dd.');
+};
+
+// 비시간형은 당일, 시간형은 실제 날짜를 사용한다.
+const createMockRecommendationCandidates = (scheduleDate: Date): RecommendationCandidate[] => [
+  {
+    candidateId: 'mock-1',
+    title: '일정 세부 내용 확인하기',
+    itemType: 'CHECKLIST',
+    displayDate: null,
+    selected: true,
+    edited: false,
+  },
+  {
+    candidateId: 'mock-2',
+    title: '필요한 준비물 챙기기',
+    itemType: 'TIMED_ACTION',
+    displayDate: format(addDays(scheduleDate, -1), 'yyyy-MM-dd'),
+    selected: true,
+    edited: false,
+  },
+  {
+    candidateId: 'mock-3',
+    title: '참석자에게 일정 공유하기',
+    itemType: 'TIMED_ACTION',
+    displayDate: format(scheduleDate, 'yyyy-MM-dd'),
+    selected: true,
+    edited: false,
+  },
+];
+
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+const formatTime = ({ meridiem, hour, minute }: TimePickerValue) =>
+  `${hour}:${String(minute).padStart(2, '0')} ${meridiem}`;
+
+const formatTriggerDate = (date: Date) => (isToday(date) ? '오늘' : format(date, 'M.d'));
+
 export default function CreateModal({
   mode = 'default',
   inputValue = '',
   keyword = '',
   message = '',
   checklistItems = [],
+  initialScheduleDate,
   calendarStatus = { type: 'default' },
   labelStatus = { type: 'default' },
+  labels = [],
   onInputChange,
   onOpenCalendar,
   onOpenLabel,
+  onSelectLabel,
+  onCreateLabel,
   onAddChecklist,
   onToggleChecklist,
+  onCreate,
+  onClose,
 }: CreateModalProps) {
-  const isRecommendMode =
-    mode === 'recommend';
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const labelButtonRef = useRef<HTMLButtonElement>(null);
+  const revisionRef = useRef(0);
+  const keepKeyboardOpenRef = useRef(true);
+  const isScheduleOpeningRef = useRef(false);
+  const isKeyboardNavigationRef = useRef(false);
+  const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [isRecommendationLoading, setIsRecommendationLoading] = useState(false);
+  const [hasRecommended, setHasRecommended] = useState(false);
+  const [parsedDateText, setParsedDateText] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
+  const [endDate, setEndDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
+  const [startTime, setStartTime] = useState('9:41 AM');
+  const [endTime, setEndTime] = useState('9:41 AM');
+  const [repeat, setRepeat] = useState<RepeatOption>('매주');
+  const [hasScheduleChanged, setHasScheduleChanged] = useState(false);
+  const [visualViewportRect, setVisualViewportRect] = useState(() => ({
+    top: window.visualViewport?.offsetTop ?? 0,
+    height: window.visualViewport?.height ?? window.innerHeight,
+  }));
+  const recommendationCandidates = useEventCreationStore((state) => state.recommendationCandidates);
+  const setRecommendationCandidates = useEventCreationStore(
+    (state) => state.setRecommendationCandidates,
+  );
+  const toggleCandidateSelected = useEventCreationStore((state) => state.toggleCandidateSelected);
 
-  const calendarText =
-    calendarStatus.type === 'default'
-      ? '오늘 · 반복 없음'
-      : `${calendarStatus.text}마다`;
+  const trimmedInput = inputValue.trim();
+  const isRecommendMode = mode === 'recommend' || hasRecommended;
+  const recommendationKeyword = keyword || trimmedInput;
+  const recommendationMessage = message || '에 필요한 체크리스트를 추천했어요.';
+
+  const propCalendarText =
+    calendarStatus.type === 'default' ? '오늘 · 반복 없음' : `${calendarStatus.text}마다`;
+  const initialCalendarText = initialScheduleDate
+    ? `${formatTriggerDate(startDate)} · 반복 없음`
+    : propCalendarText;
+  const selectedDateText = isSameDay(startDate, endDate)
+    ? formatTriggerDate(startDate)
+    : `${formatTriggerDate(startDate)}~${format(endDate, 'M.d')}`;
+  const calendarText = hasScheduleChanged
+    ? `${selectedDateText} · ${repeat}`
+    : parsedDateText
+      ? `${parsedDateText} · 반복 없음`
+      : initialCalendarText;
+
+  // 입력 변경 0.3초 후 날짜 키워드를 mock 파싱한다.
+  useEffect(() => {
+    if (!trimmedInput) {
+      return;
+    }
+
+    const revision = revisionRef.current;
+    const timerId = window.setTimeout(() => {
+      if (revision === revisionRef.current) {
+        setParsedDateText(parseMockDateText(trimmedInput));
+      }
+    }, PARSING_DEBOUNCE_DELAY);
+
+    return () => window.clearTimeout(timerId);
+  }, [trimmedInput]);
+
+  // recommend 전에는 마지막 입력 1초 후 추천 요청을 시작한다.
+  useEffect(() => {
+    if (mode === 'recommend' || hasRecommended || !trimmedInput) {
+      return;
+    }
+
+    const revision = revisionRef.current;
+    let responseTimerId: number | undefined;
+
+    const debounceTimerId = window.setTimeout(() => {
+      setIsRecommendationLoading(true);
+
+      responseTimerId = window.setTimeout(() => {
+        if (revision !== revisionRef.current) {
+          return;
+        }
+
+        setRecommendationCandidates(createMockRecommendationCandidates(startDate));
+        setHasRecommended(true);
+        setIsRecommendationLoading(false);
+      }, MOCK_RECOMMENDATION_RESPONSE_DELAY);
+    }, RECOMMENDATION_DEBOUNCE_DELAY);
+
+    return () => {
+      window.clearTimeout(debounceTimerId);
+
+      if (responseTimerId !== undefined) {
+        window.clearTimeout(responseTimerId);
+      }
+    };
+  }, [hasRecommended, mode, setRecommendationCandidates, startDate, trimmedInput]);
+
+  // 모달이 열려 있는 동안 배경 페이지의 스크롤을 잠근다.
+  useEffect(() => {
+    const scrollY = window.scrollY;
+    const previousOverflow = document.body.style.overflow;
+    const previousPosition = document.body.style.position;
+    const previousTop = document.body.style.top;
+    const previousWidth = document.body.style.width;
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.position = previousPosition;
+      document.body.style.top = previousTop;
+      document.body.style.width = previousWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
+  // Tab 포커스를 생성 모달 안에서 순환시키고 Escape로 닫는다.
+  useEffect(() => {
+    const handleDialogKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (isScheduleOpen) {
+        return;
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+
+        if (isLabelModalOpen) {
+          setIsLabelModalOpen(false);
+          window.requestAnimationFrame(() => {
+            labelButtonRef.current?.focus();
+          });
+          return;
+        }
+
+        onClose?.();
+        return;
+      }
+
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const dialog = dialogRef.current;
+
+      if (!dialog) {
+        return;
+      }
+
+      const focusableElements = Array.from(
+        dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+      );
+
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      const activeElement = document.activeElement;
+      const isFocusOutside = !dialog.contains(activeElement);
+
+      if (event.shiftKey && (activeElement === firstElement || isFocusOutside)) {
+        event.preventDefault();
+        lastElement.focus();
+        return;
+      }
+
+      if (!event.shiftKey && (activeElement === lastElement || isFocusOutside)) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleDialogKeyDown);
+
+    return () => document.removeEventListener('keydown', handleDialogKeyDown);
+  }, [isLabelModalOpen, isScheduleOpen, onClose]);
+
+  // 오버레이를 키보드를 제외한 실제 화면 영역에 맞춘다.
+  useEffect(() => {
+    const viewport = window.visualViewport;
+
+    if (!viewport) {
+      return;
+    }
+
+    const updateVisualViewport = () => {
+      setVisualViewportRect({
+        top: viewport.offsetTop,
+        height: viewport.height,
+      });
+    };
+
+    viewport.addEventListener('resize', updateVisualViewport);
+    viewport.addEventListener('scroll', updateVisualViewport);
+    const frameId = window.requestAnimationFrame(updateVisualViewport);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      viewport.removeEventListener('resize', updateVisualViewport);
+      viewport.removeEventListener('scroll', updateVisualViewport);
+    };
+  }, []);
 
   // CreateModal에서 전달받은 기존 체크리스트 데이터를 공용 Checklist 컴포넌트의 데이터 형식으로 변환
-  const renderedChecklistItems =
-    useMemo<ChecklistItemData[]>(() => {
-      const recommendedItems =
-        checklistItems.map((item) => {
-          const status =
-            item.status ?? 'add';
-          const hasDateTrailing =
-            status === 'add' ||
-            status === 'done';
+  const renderedChecklistItems = useMemo<ChecklistItemData[]>(() => {
+    const effectiveChecklistItems =
+      checklistItems.length > 0
+        ? checklistItems
+        : recommendationCandidates.map((candidate, index) => ({
+            id: index + 1,
+            label: candidate.title,
+            status: candidate.selected ? ('add' as const) : ('done' as const),
+            itemType: candidate.itemType,
+            date: candidate.displayDate ?? undefined,
+          }));
 
-          return {
-            id: item.id,
-            label: item.label,
-            status,
-            trailing: hasDateTrailing
-              ? {
-                  type: 'date' as const,
-                  text:
-                    item.date ?? '당일',
-                }
-              : {
-                  type: 'none' as const,
-                },
-          };
-        });
+    const recommendedItems = effectiveChecklistItems.map((item) => {
+      const status = item.status ?? 'add';
+      const hasDateTrailing = status === 'add' || status === 'done';
+      const trailingText =
+        item.itemType === 'TIMED_ACTION' ? formatChecklistDate(item.date, startDate) : '당일';
 
-      const addItem: ChecklistItemData = {
-        id: ADD_CHECKLIST_ITEM_ID,
-        label: '직접 추가',
-        status: 'plus',
-        trailing: {
-          type: 'none',
-        },
+      return {
+        id: item.id,
+        label: item.label,
+        status,
+        trailing: hasDateTrailing
+          ? {
+              type: 'date' as const,
+              text: trailingText,
+            }
+          : {
+              type: 'none' as const,
+            },
       };
+    });
 
-      return [
-        ...recommendedItems,
-        addItem,
-      ];
-    }, [checklistItems]);
+    const addItem: ChecklistItemData = {
+      id: ADD_CHECKLIST_ITEM_ID,
+      label: '직접 추가',
+      status: 'plus',
+      trailing: {
+        type: 'none',
+      },
+    };
 
-  const handleChecklistClick = (
-    id: number,
-  ) => {
-    if (
-      id === ADD_CHECKLIST_ITEM_ID
-    ) {
+    return [...recommendedItems, addItem];
+  }, [checklistItems, recommendationCandidates, startDate]);
+
+  const handleChecklistClick = (id: number) => {
+    if (id === ADD_CHECKLIST_ITEM_ID) {
       onAddChecklist?.();
+      return;
+    }
+
+    if (checklistItems.length === 0) {
+      const candidate = recommendationCandidates[id - 1];
+
+      if (candidate) {
+        toggleCandidateSelected(candidate.candidateId);
+      }
+
       return;
     }
 
     onToggleChecklist?.(id);
   };
 
+  const handleLabelClick = () => {
+    setIsLabelModalOpen((isOpen) => !isOpen);
+    onOpenLabel?.();
+  };
+
+  const handleCalendarClick = () => {
+    if (isScheduleOpeningRef.current) {
+      return;
+    }
+
+    isScheduleOpeningRef.current = true;
+    keepKeyboardOpenRef.current = false;
+    setIsLabelModalOpen(false);
+    setIsScheduleOpen(true);
+    inputRef.current?.blur();
+    onOpenCalendar?.();
+  };
+
+  // 생성 모달 안에서는 입력 포커스를 유지한다.
+  const handleInputBlur = (event: FocusEvent<HTMLInputElement>) => {
+    if (isKeyboardNavigationRef.current && event.relatedTarget instanceof HTMLElement) {
+      isKeyboardNavigationRef.current = false;
+      return;
+    }
+
+    isKeyboardNavigationRef.current = false;
+
+    window.requestAnimationFrame(() => {
+      if (keepKeyboardOpenRef.current) {
+        inputRef.current?.focus();
+      }
+    });
+  };
+
+  // Tab 이동은 다른 컨트롤의 포커스를 유지한다.
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Tab') {
+      isKeyboardNavigationRef.current = true;
+    }
+  };
+
+  const handleInputChange = (value: string) => {
+    // 입력이 바뀌면 진행 중인 mock 응답을 무효화한다.
+    revisionRef.current += 1;
+    setIsRecommendationLoading(false);
+
+    if (!value.trim()) {
+      setParsedDateText(null);
+    }
+
+    onInputChange?.(value);
+  };
+
+  // 스케줄 설정 화면에서는 키보드를 내린다.
+  const handleCalendarPointerDown = () => {
+    handleCalendarClick();
+  };
+
+  // 생성 모달로 돌아오면 키보드를 다시 연다.
+  const handleScheduleClose = () => {
+    setIsScheduleOpen(false);
+    isScheduleOpeningRef.current = false;
+    keepKeyboardOpenRef.current = true;
+
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  };
+
+  const handleSelectLabel = (id: number) => {
+    setIsLabelModalOpen(false);
+    onSelectLabel?.(id);
+  };
+
+  const handleCreateLabel = () => {
+    setIsLabelModalOpen(false);
+    onCreateLabel?.();
+  };
+
   return (
-    <section className="flex w-full max-w-[385px] flex-col items-start gap-0.5 rounded-[24px] border border-[rgba(28,22,48,0.05)] bg-background-white p-3">
-      {!isRecommendMode && (
-        <div className="flex w-full items-center justify-between self-stretch pl-2">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(event) =>
-              onInputChange?.(
-                event.target.value,
-              )
-            }
-            placeholder="어떤 일 인가요?"
-            className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
-          />
+    <>
+      {/* 생성 모달만 Portal로 분리하고 반복 바텀시트는 앱 레이아웃을 따른다. */}
+      {!isScheduleOpen &&
+        createPortal(
+          <Overlay onClick={onClose}>
+            {/* 키보드를 제외한 화면 영역의 하단에 생성 모달을 맞춘다. */}
+            <div
+              ref={dialogRef}
+              className="absolute right-0 left-0 flex items-end justify-center"
+              style={{
+                top: visualViewportRect.top,
+                height: visualViewportRect.height,
+              }}
+            >
+              <Frame
+                className="!items-start !overflow-visible max-w-[385px] gap-0.5 p-3"
+                aria-labelledby={titleId}
+              >
+                <h2 id={titleId} className="sr-only">
+                  일정 생성
+                </h2>
 
-          <Button
-            variant="MediumDefaultFit"
-            disabled
-          >
-            생성
-          </Button>
-        </div>
-      )}
+                {isRecommendationLoading && <CreateModalSkeleton />}
 
-      {isRecommendMode && (
-        <div className="flex w-full flex-col">
-          <div className="flex w-full items-center justify-between px-1 py-2">
-            <p className="min-w-0 text-text-additional default-body-medium">
-              <span className="bg-gradient-to-l from-[#29C878] to-[#32E089] bg-clip-text text-transparent default-body-strong-medium">
-                {keyword}
-              </span>
+                {isRecommendMode && (
+                  <div className="flex w-full flex-col">
+                    <div className="flex w-full items-center justify-between px-1 py-2">
+                      <p className="min-w-0 text-text-additional default-body-medium">
+                        <span className="bg-gradient-to-l from-[#29C878] to-[#32E089] bg-clip-text text-transparent default-body-strong-medium">
+                          {recommendationKeyword}
+                        </span>
 
-              {message}
-            </p>
-          </div>
+                        {recommendationMessage}
+                      </p>
+                    </div>
 
-          <Checklist
-            items={
-              renderedChecklistItems
-            }
-            radioVariant="create"
-            onLeadingClick={
-              handleChecklistClick
-            }
-          />
+                    <div onPointerDown={(event) => event.preventDefault()}>
+                      <Checklist
+                        items={renderedChecklistItems}
+                        radioVariant="create"
+                        onLeadingClick={handleChecklistClick}
+                      />
+                    </div>
+                  </div>
+                )}
 
-          <div className="flex w-full items-center justify-between self-stretch pl-2">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(event) =>
-                onInputChange?.(
-                  event.target.value,
-                )
-              }
-              placeholder="어떤 일 인가요?"
-              className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
-            />
+                <div className="flex w-full items-center justify-between self-stretch pl-2">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    autoFocus
+                    value={inputValue}
+                    onChange={(event) => handleInputChange(event.target.value)}
+                    onBlur={handleInputBlur}
+                    onKeyDown={handleInputKeyDown}
+                    placeholder="어떤 일 인가요?"
+                    className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
+                  />
 
-            <Button variant="MediumDefaultFit">
-              생성
-            </Button>
-          </div>
-        </div>
-      )}
+                  <Button variant="MediumDefaultFit" disabled={!isRecommendMode} onClick={onCreate}>
+                    생성
+                  </Button>
+                </div>
 
-      <div className="flex w-full items-center gap-4 px-1 py-1">
-        <button
-          type="button"
-          onClick={onOpenCalendar}
-          className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
-        >
-          <img
-            src="/icon/icons/calendar_small.svg"
-            alt=""
-            className="block shrink-0"
-          />
+                <div className="flex w-full items-center gap-4 px-1 py-1">
+                  <button
+                    type="button"
+                    onPointerDown={handleCalendarPointerDown}
+                    onClick={handleCalendarClick}
+                    className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+                  >
+                    <img src="/icon/icons/calendar_small.svg" alt="" className="block shrink-0" />
 
-          <span className="whitespace-nowrap">
-            {calendarText}
-          </span>
-        </button>
+                    <span className="whitespace-nowrap">{calendarText}</span>
+                  </button>
 
-        <button
-          type="button"
-          onClick={onOpenLabel}
-          className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
-        >
-          <img
-            src="/icon/icons/label_small.svg"
-            alt=""
-            className="block shrink-0"
-          />
+                  <div className="relative flex min-w-0">
+                    <button
+                      ref={labelButtonRef}
+                      type="button"
+                      onClick={handleLabelClick}
+                      className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+                    >
+                      <img src="/icon/icons/label_small.svg" alt="" className="block shrink-0" />
 
-          {labelStatus.type ===
-          'default' ? (
-            <span className="whitespace-nowrap">
-              레이블 없음
-            </span>
-          ) : (
-            <div className="flex min-w-0 items-center gap-xsmall">
-              <span className="max-w-[80px] truncate">
-                {labelStatus.label}
-              </span>
+                      {labelStatus.type === 'default' ? (
+                        <span className="whitespace-nowrap">레이블 없음</span>
+                      ) : (
+                        <div className="flex min-w-0 items-center gap-xsmall">
+                          <span className="max-w-[80px] truncate">{labelStatus.label}</span>
 
-              <img
-                src={
-                  COLOR_ICON[
-                    labelStatus.color
-                  ]
-                }
-                alt=""
-                className="block shrink-0"
-              />
+                          <img
+                            src={COLOR_ICON[labelStatus.color]}
+                            alt=""
+                            className="block shrink-0"
+                          />
+                        </div>
+                      )}
+                    </button>
+
+                    {isLabelModalOpen && (
+                      <div className="absolute bottom-[calc(100%+8px)] left-0 z-30">
+                        <LabelModal
+                          labels={labels}
+                          onSelectLabel={handleSelectLabel}
+                          onCreateLabel={handleCreateLabel}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Frame>
             </div>
-          )}
-        </button>
-      </div>
-    </section>
+          </Overlay>,
+          document.body,
+        )}
+
+      {isScheduleOpen && (
+        <RepeatScheduleBottomSheet
+          startDate={startDate}
+          endDate={endDate}
+          startTime={startTime}
+          endTime={endTime}
+          repeat={repeat}
+          onStartDateChange={(date) => {
+            setStartDate(date);
+            setHasScheduleChanged(true);
+          }}
+          onEndDateChange={(date) => {
+            setEndDate(date);
+            setHasScheduleChanged(true);
+          }}
+          onStartTimeChange={(value) => setStartTime(formatTime(value))}
+          onEndTimeChange={(value) => setEndTime(formatTime(value))}
+          onRepeatChange={(nextRepeat) => {
+            setRepeat(nextRepeat);
+            setHasScheduleChanged(true);
+          }}
+          onClose={handleScheduleClose}
+        />
+      )}
+    </>
   );
 }
