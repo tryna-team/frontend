@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  useNavigate,
-  useParams,
-} from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { useSwipeable } from 'react-swipeable';
 import { useCanGoBack } from '@/hooks/useCanGoBack';
 
@@ -15,23 +12,11 @@ import ScheduleCard from '@/features/calendar/components/ScheduleCard';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import type { CategoryColor } from '@/features/calendar/types';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
-import {
-  generateDailyPath,
-  generateEventPath,
-  PATH,
-} from '@/routes/paths';
+import { generateDailyPath, generateEventPath, PATH } from '@/routes/paths';
 
 import './DailyPage.css';
 
-const DAY_LABELS = [
-  '일',
-  '월',
-  '화',
-  '수',
-  '목',
-  '금',
-  '토',
-] as const;
+const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 
 // URL 날짜가 실제 YYYY-MM-DD 형식인지 확인
 function isValidDateParam(date: string) {
@@ -39,11 +24,8 @@ function isValidDateParam(date: string) {
     return false;
   }
 
-  const parsedDate = new Date(
-    `${date}T00:00:00`,
-  );
-  const [year, month, day] =
-    date.split('-').map(Number);
+  const parsedDate = new Date(`${date}T00:00:00`);
+  const [year, month, day] = date.split('-').map(Number);
 
   return (
     parsedDate.getFullYear() === year &&
@@ -153,68 +135,41 @@ const MOCK_BANNERS: BannerItem[] = [
 
 function DailyPage() {
   // Daily 경로의 날짜를 화면 기준값으로 사용
-  const { date: routeDate } =
-    useParams<{ date: string }>();
+  const { date: routeDate } = useParams<{ date: string }>();
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
 
-  const calendarSelectedDate =
-    useCalendarStore(
-      (s) => s.selectedDate,
-    );
+  const calendarSelectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
   const goToToday = useCalendarStore((s) => s.goToToday);
   const [schedules, setSchedules] = useState<ScheduleItem[]>(MOCK_SCHEDULES);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
 
-  const isValidRouteDate =
-    routeDate !== undefined &&
-    isValidDateParam(routeDate);
+  const isValidRouteDate = routeDate !== undefined && isValidDateParam(routeDate);
 
-  const selectedDate =
-    isValidRouteDate
-      ? routeDate
-      : calendarSelectedDate;
+  const selectedDate = isValidRouteDate ? routeDate : calendarSelectedDate;
 
   // 직접 접근한 URL 날짜를 Zustand에도 반영
   useEffect(() => {
     if (!isValidRouteDate) {
-      navigate(
-        generateDailyPath(
-          calendarSelectedDate,
-        ),
-        { replace: true },
-      );
+      navigate(generateDailyPath(calendarSelectedDate), { replace: true });
       return;
     }
 
-    if (
-      routeDate !== calendarSelectedDate
-    ) {
+    if (routeDate !== calendarSelectedDate) {
       selectDate(routeDate);
     }
-  }, [
-    calendarSelectedDate,
-    isValidRouteDate,
-    navigate,
-    routeDate,
-    selectDate,
-  ]);
+  }, [calendarSelectedDate, isValidRouteDate, navigate, routeDate, selectDate]);
 
   // 날짜 선택 시 화면 상태, URL을 함께 갱신
-  const handleSelectDate = (
-    nextDate: string,
-  ) => {
+  const handleSelectDate = (nextDate: string) => {
     selectDate(nextDate);
-    navigate(
-      generateDailyPath(nextDate),
-      { replace: true },
-    );
+    navigate(generateDailyPath(nextDate), { replace: true });
   };
 
   const handleCreate = () => {
-    window.alert('일정 생성 API 연결 예정입니다.');
+    // 저장 성공 후 생성 모달의 임시 입력 상태를 정리한다.
     setCreateInputValue('');
     setIsCreateModalOpen(false);
   };
@@ -248,10 +203,7 @@ function DailyPage() {
           variant="LargeStrongFit"
           onClick={() => {
             goToToday();
-            navigate(
-              generateDailyPath(new Date().toLocaleDateString('sv-SE')),
-              { replace: true },
-            );
+            navigate(generateDailyPath(new Date().toLocaleDateString('sv-SE')), { replace: true });
           }}
         >
           오늘
@@ -280,24 +232,14 @@ function DailyPage() {
   };
 
   // 일정 카드 -> EventView 이동
-  const handleScheduleClick = (
-    eventId: string,
-  ) => {
-    navigate(
-      generateEventPath.view(eventId),
-    );
+  const handleScheduleClick = (eventId: string) => {
+    navigate(generateEventPath.view(eventId));
   };
 
   // Header: 선택된 날짜 표시
-  const displayDate = new Date(
-    `${selectedDate}T00:00:00`,
-  );
-  const monthText = `${
-    displayDate.getMonth() + 1
-  }월`;
-  const titleText = `${monthText} ${displayDate.getDate()}일 (${
-    DAY_LABELS[displayDate.getDay()]
-  })`;
+  const displayDate = new Date(`${selectedDate}T00:00:00`);
+  const monthText = `${displayDate.getMonth() + 1}월`;
+  const titleText = `${monthText} ${displayDate.getDate()}일 (${DAY_LABELS[displayDate.getDay()]})`;
 
   const todaySchedules = schedules.filter((s) => s.date === selectedDate);
   const todayBanners = MOCK_BANNERS.filter((b) => b.date === selectedDate);
@@ -329,10 +271,7 @@ function DailyPage() {
         trailing={{ type: 'none' }}
       />
 
-      <WeekStrip
-        selectedDate={selectedDate}
-        onSelectDate={handleSelectDate}
-      />
+      <WeekStrip selectedDate={selectedDate} onSelectDate={handleSelectDate} />
 
       {/* 스와이프 핸들러는 여기(배너+콘텐츠 영역)에만 적용 — WeekStrip 스와이프와 분리 */}
       <div {...contentSwipeHandlers}>
@@ -362,11 +301,7 @@ function DailyPage() {
                 startTime={schedule.startTime}
                 endTime={schedule.endTime}
                 checklist={schedule.checklist}
-                onScheduleClick={() =>
-                  handleScheduleClick(
-                    schedule.id,
-                  )
-                }
+                onScheduleClick={() => handleScheduleClick(schedule.id)}
                 onToggleItem={(itemId) => handleToggleItem(schedule.id, itemId)}
                 linkedSchedule={schedule.linkedSchedule}
               />

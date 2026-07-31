@@ -6,8 +6,9 @@ import { format, isSameDay, isToday, isValid, parseISO } from 'date-fns';
 
 import { eventService } from '@/apis/services/eventService';
 import { recommendationService } from '@/apis/services/recommendationService';
-import type { EventParseResponse } from '@/apis/types/event';
+import type { EventParseResponse, EventRecurrenceType } from '@/apis/types/event';
 import type { RecommendationResponse, RecommendationSuggestion } from '@/apis/types/recommendation';
+import { queryClient } from '@/apis/queryClient';
 import Button from '@/components/common/Buttons/Button';
 import Checklist, { type ChecklistItemData } from '@/components/common/Checklist/Checklist';
 import LabelModal, { type LabelItemData } from '@/components/common/LabelModal/LabelModal';
@@ -15,6 +16,7 @@ import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
 import Overlay from '@/components/common/Popup/Overlay';
 import { RepeatScheduleBottomSheet, type RepeatOption } from '@/features/event/components/create';
 import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial';
+import { queryKeys } from '@/hooks/queries/queryKeys';
 import { useEventCreationStore } from '@/stores';
 import type { ActionItemType, ParsedEventCandidate, RecommendationCandidate } from '@/stores/types';
 
@@ -144,6 +146,10 @@ const mapRecommendationCandidate = (
   title: suggestion.displayText ?? suggestion.sourceCode ?? '',
   // 공용 체크리스트에서는 비시간형 항목을 CHECKLIST로 표현한다.
   itemType: suggestion.itemType === 'TIMED_ACTION' ? 'TIMED_ACTION' : 'CHECKLIST',
+  apiItemType: suggestion.itemType ?? 'UNRESOLVED',
+  sourceTemplateId: suggestion.sourceCode ?? null,
+  offsetDays: suggestion.offsetDays ?? null,
+  originalTitle: suggestion.displayText ?? suggestion.sourceCode ?? '',
   displayDate: suggestion.displayDate ?? null,
   // 추천 항목은 모두 저장 대상인 상태로 시작한다.
   selected: true,
@@ -152,6 +158,31 @@ const mapRecommendationCandidate = (
 
 const hasRecommendationFailed = (response: RecommendationResponse) =>
   response.suggestionStatus === 'ERROR' || response.suggestionStatus === 'EMPTY';
+
+const RECURRENCE_TYPE: Record<RepeatOption, EventRecurrenceType> = {
+  매일: 'DAILY',
+  매주: 'WEEKLY',
+  매월: 'MONTHLY',
+  매년: 'YEARLY',
+};
+
+const normalizeTime = (time: string) => {
+  const apiTime = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(time);
+
+  if (apiTime) {
+    return `${apiTime[1]}:${apiTime[2]}:${apiTime[3] ?? '00'}`;
+  }
+
+  const displayTime = /^(\d{1,2}):(\d{2})\s(AM|PM)$/.exec(time);
+
+  if (!displayTime) {
+    return null;
+  }
+
+  const hour = (Number(displayTime[1]) % 12) + (displayTime[3] === 'PM' ? 12 : 0);
+
+  return `${String(hour).padStart(2, '0')}:${displayTime[2]}:00`;
+};
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -212,6 +243,11 @@ export default function CreateModal({
   const [endTime, setEndTime] = useState('9:41 AM');
   const [repeat, setRepeat] = useState<RepeatOption>('매주');
   const [hasScheduleChanged, setHasScheduleChanged] = useState(false);
+  const [hasRepeatChanged, setHasRepeatChanged] = useState(false);
+  const [hasEndDateChanged, setHasEndDateChanged] = useState(false);
+  const [hasStartTimeChanged, setHasStartTimeChanged] = useState(false);
+  const [hasEndTimeChanged, setHasEndTimeChanged] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const startDateRef = useRef(startDate);
   const [visualViewportRect, setVisualViewportRect] = useState(() => ({
     top: window.visualViewport?.offsetTop ?? 0,
@@ -230,6 +266,7 @@ export default function CreateModal({
     (state) => state.setRecommendationCandidates,
   );
   const toggleCandidateSelected = useEventCreationStore((state) => state.toggleCandidateSelected);
+  const resetCreation = useEventCreationStore((state) => state.reset);
 
   const trimmedInput = inputValue.trim();
   const isRecommendMode = mode === 'recommend' || hasRecommended;
@@ -287,7 +324,11 @@ export default function CreateModal({
 
           if (isValid(parsedDate)) {
             setStartDate(parsedDate);
-            setEndDate(parsedDate);
+            const parsedEndDate = parsedCandidate.endDateCandidate
+              ? parseISO(parsedCandidate.endDateCandidate)
+              : parsedDate;
+
+            setEndDate(isValid(parsedEndDate) ? parsedEndDate : parsedDate);
           }
         }
 
@@ -692,6 +733,83 @@ export default function CreateModal({
     onCreateLabel?.();
   };
 
+  const handleCreate = async () => {
+    if (isSaving || !trimmedInput) {
+      return;
+    }
+
+    const selectedCandidates = recommendationCandidates.filter((candidate) => candidate.selected);
+    const hasParsedStartTime = Boolean(parsedCandidate?.timeCandidate);
+    const hasParsedEndTime = Boolean(parsedCandidate?.endTimeCandidate);
+    const startTimeValue =
+      hasStartTimeChanged || hasParsedStartTime ? normalizeTime(startTime) : null;
+    const endTimeValue = hasEndTimeChanged || hasParsedEndTime ? normalizeTime(endTime) : null;
+    const shouldSaveEndDate =
+      hasEndDateChanged ||
+      Boolean(parsedCandidate?.endDateCandidate) ||
+      Boolean(endTimeValue) ||
+      !isSameDay(startDate, endDate);
+    const recurrenceType = hasRepeatChanged ? RECURRENCE_TYPE[repeat] : 'NONE';
+
+    setIsSaving(true);
+
+    try {
+      await eventService.create({
+        eventTitle: trimmedInput,
+        description: null,
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        startTime: startTimeValue,
+        endDate: shouldSaveEndDate ? format(endDate, 'yyyy-MM-dd') : null,
+        endTime: endTimeValue,
+        isAllDay: !startTimeValue,
+        location: parsedCandidate?.placeCandidate ?? null,
+        eventType: parsedCandidate?.eventTypeCandidate ?? null,
+        isRecurring: recurrenceType !== 'NONE',
+        recurrenceType,
+        recurrenceInterval: 1,
+        recurrenceEndDate: null,
+        actionItems: {
+          // 생성 모달의 add 상태인 항목만 최종 저장한다.
+          items: selectedCandidates.map((candidate) => ({
+            title: candidate.title,
+            itemType: candidate.apiItemType ?? 'UNRESOLVED',
+            createdBy: candidate.edited ? 'USER_EDITED' : 'SYSTEM',
+            displayDate:
+              candidate.apiItemType === 'TIMED_ACTION' ? (candidate.displayDate ?? null) : null,
+            displayTime: null,
+            offsetDays: candidate.offsetDays ?? null,
+            sourceTemplateId: candidate.sourceTemplateId ?? null,
+          })),
+          // 제외·수정 여부도 추천 개선용 피드백으로 전달한다.
+          feedbackLogs: recommendationCandidates.map((candidate) => ({
+            actionType: candidate.selected
+              ? candidate.edited
+                ? 'EDITED'
+                : 'SELECTED'
+              : 'REJECTED',
+            sourceTemplateId: candidate.sourceTemplateId ?? null,
+            originalTitle: candidate.originalTitle ?? candidate.title,
+            editedTitle: candidate.edited ? candidate.title : null,
+            reason: null,
+          })),
+        },
+      });
+
+      // 새 일정을 다시 조회할 수 있도록 관련 캐시를 무효화한다.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.events.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.calendars.all }),
+      ]);
+      resetCreation();
+      onCreate?.();
+    } catch {
+      // TODO: 공통 일정 저장 오류 UI가 준비되면 alert을 교체한다.
+      window.alert('일정을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <>
       {/* 생성 모달만 Portal로 분리하고 반복 바텀시트는 앱 레이아웃을 따른다. */}
@@ -758,7 +876,11 @@ export default function CreateModal({
                     className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
                   />
 
-                  <Button variant="MediumDefaultFit" disabled={!isRecommendMode} onClick={onCreate}>
+                  <Button
+                    variant="MediumDefaultFit"
+                    disabled={!isRecommendMode || isSaving}
+                    onClick={handleCreate}
+                  >
                     생성
                   </Button>
                 </div>
@@ -830,11 +952,21 @@ export default function CreateModal({
           onEndDateChange={(date) => {
             setEndDate(date);
             setHasScheduleChanged(true);
+            setHasEndDateChanged(true);
           }}
-          onStartTimeChange={(value) => setStartTime(formatTime(value))}
-          onEndTimeChange={(value) => setEndTime(formatTime(value))}
+          onStartTimeChange={(value) => {
+            setStartTime(formatTime(value));
+            setHasStartTimeChanged(true);
+            setHasScheduleChanged(true);
+          }}
+          onEndTimeChange={(value) => {
+            setEndTime(formatTime(value));
+            setHasEndTimeChanged(true);
+            setHasScheduleChanged(true);
+          }}
           onRepeatChange={(nextRepeat) => {
             setRepeat(nextRepeat);
+            setHasRepeatChanged(true);
             setHasScheduleChanged(true);
           }}
           onClose={handleScheduleClose}
