@@ -1,6 +1,8 @@
 import { apiClient } from "../client";
 import { ENDPOINTS } from "../endpoints";
 import type {
+  EventCreateRequest,
+  EventCreateResponse,
   EventParseRequest,
   EventParseResponse,
 } from "../types/event";
@@ -9,6 +11,12 @@ export const eventService = {
   /** C103 입력 원문을 일정 미리보기 후보로 변환한다. */
   parse: (request: EventParseRequest, signal?: AbortSignal) =>
     apiClient.post<EventParseResponse>(ENDPOINTS.EVENTS.PARSE, request, {
+      signal,
+    }),
+
+  /** C104 일정과 선택된 준비·실행 항목을 최종 저장한다. */
+  create: (request: EventCreateRequest, signal?: AbortSignal) =>
+    apiClient.post<EventCreateResponse>(ENDPOINTS.EVENTS.ROOT, request, {
       signal,
     }),
 };
