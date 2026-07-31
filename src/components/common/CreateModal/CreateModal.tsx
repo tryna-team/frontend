@@ -2,10 +2,12 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { FocusEvent, KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 
-import { addDays, format, isSameDay, isToday, isValid, parseISO } from 'date-fns';
+import { format, isSameDay, isToday, isValid, parseISO } from 'date-fns';
 
 import { eventService } from '@/apis/services/eventService';
+import { recommendationService } from '@/apis/services/recommendationService';
 import type { EventParseResponse } from '@/apis/types/event';
+import type { RecommendationResponse, RecommendationSuggestion } from '@/apis/types/recommendation';
 import Button from '@/components/common/Buttons/Button';
 import Checklist, { type ChecklistItemData } from '@/components/common/Checklist/Checklist';
 import LabelModal, { type LabelItemData } from '@/components/common/LabelModal/LabelModal';
@@ -14,11 +16,7 @@ import Overlay from '@/components/common/Popup/Overlay';
 import { RepeatScheduleBottomSheet, type RepeatOption } from '@/features/event/components/create';
 import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial';
 import { useEventCreationStore } from '@/stores';
-import type {
-  ActionItemType,
-  ParsedEventCandidate,
-  RecommendationCandidate,
-} from '@/stores/types';
+import type { ActionItemType, ParsedEventCandidate, RecommendationCandidate } from '@/stores/types';
 
 import type { ChecklistStatus } from '@/components/common/Checklist/ChecklistItem';
 
@@ -91,7 +89,6 @@ const ADD_CHECKLIST_ITEM_ID = -1;
 
 const PARSING_THROTTLE_DELAY = 300;
 const RECOMMENDATION_DEBOUNCE_DELAY = 1000;
-const MOCK_RECOMMENDATION_RESPONSE_DELAY = 4000;
 
 const formatChecklistDate = (date: string | null | undefined, fallbackDate: Date) => {
   const parsedDate = date ? parseISO(date) : fallbackDate;
@@ -104,16 +101,8 @@ type RevisionRequest = {
   revision: number;
 };
 
-type MockRecommendationResponse = {
-  title: string;
-  candidates: RecommendationCandidate[];
-};
-
 // 실제 API 연결 시 내부만 파싱 요청으로 교체한다.
-const mapParseResponse = (
-  input: string,
-  response: EventParseResponse,
-): ParsedEventCandidate => ({
+const mapParseResponse = (input: string, response: EventParseResponse): ParsedEventCandidate => ({
   sourceText: input,
   titleCandidate: response.eventTitle ?? input,
   dateCandidate: response.startDate ?? null,
@@ -147,44 +136,22 @@ const createParseFallback = (input: string): ParsedEventCandidate => ({
   warnings: [],
 });
 
-// 실제 API 연결 전 추천 응답 형태와 대기 흐름을 재현한다.
-const requestMockRecommendations = (
-  { input }: RevisionRequest,
-  scheduleDate: Date,
-): Promise<MockRecommendationResponse> =>
-  new Promise((resolve) => {
-    window.setTimeout(() => {
-      resolve({
-        title: `${input}에 필요한 체크리스트를 추천했어요.`,
-        candidates: [
-          {
-            candidateId: 'mock-1',
-            title: '일정 세부 내용 확인하기',
-            itemType: 'CHECKLIST',
-            displayDate: null,
-            selected: true,
-            edited: false,
-          },
-          {
-            candidateId: 'mock-2',
-            title: '필요한 준비물 챙기기',
-            itemType: 'TIMED_ACTION',
-            displayDate: format(addDays(scheduleDate, -1), 'yyyy-MM-dd'),
-            selected: true,
-            edited: false,
-          },
-          {
-            candidateId: 'mock-3',
-            title: '참석자에게 일정 공유하기',
-            itemType: 'TIMED_ACTION',
-            displayDate: format(scheduleDate, 'yyyy-MM-dd'),
-            selected: true,
-            edited: false,
-          },
-        ],
-      });
-    }, MOCK_RECOMMENDATION_RESPONSE_DELAY);
-  });
+const mapRecommendationCandidate = (
+  suggestion: RecommendationSuggestion,
+  index: number,
+): RecommendationCandidate => ({
+  candidateId: suggestion.sourceCode ?? `recommendation-${index}`,
+  title: suggestion.displayText ?? suggestion.sourceCode ?? '',
+  // 공용 체크리스트에서는 비시간형 항목을 CHECKLIST로 표현한다.
+  itemType: suggestion.itemType === 'TIMED_ACTION' ? 'TIMED_ACTION' : 'CHECKLIST',
+  displayDate: suggestion.displayDate ?? null,
+  // 추천 항목은 모두 저장 대상인 상태로 시작한다.
+  selected: true,
+  edited: false,
+});
+
+const hasRecommendationFailed = (response: RecommendationResponse) =>
+  response.suggestionStatus === 'ERROR' || response.suggestionStatus === 'EMPTY';
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -224,9 +191,13 @@ export default function CreateModal({
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const labelButtonRef = useRef<HTMLButtonElement>(null);
+  // 추천 초안 revision은 실제 추천 요청 횟수만 센다.
+  const draftRevisionRef = useRef(0);
   const revisionRef = useRef(0);
   const lastParseRequestedAtRef = useRef(0);
   const parseAbortControllerRef = useRef<AbortController | null>(null);
+  const recommendationAbortControllerRef = useRef<AbortController | null>(null);
+  const lastInputChangedAtRef = useRef<number | null>(null);
   const hasRecommendedRef = useRef(mode === 'recommend');
   const keepKeyboardOpenRef = useRef(true);
   const isScheduleOpeningRef = useRef(false);
@@ -246,10 +217,9 @@ export default function CreateModal({
     top: window.visualViewport?.offsetTop ?? 0,
     height: window.visualViewport?.height ?? window.innerHeight,
   }));
-  const isRecommendationLoading = useEventCreationStore(
-    (state) => state.isLoadingRecommendations,
-  );
+  const isRecommendationLoading = useEventCreationStore((state) => state.isLoadingRecommendations);
   const recommendationCandidates = useEventCreationStore((state) => state.recommendationCandidates);
+  const parsedCandidate = useEventCreationStore((state) => state.parsedCandidate);
   const setRawInput = useEventCreationStore((state) => state.setRawInput);
   const setStep = useEventCreationStore((state) => state.setStep);
   const setParsedCandidate = useEventCreationStore((state) => state.setParsedCandidate);
@@ -264,8 +234,7 @@ export default function CreateModal({
   const trimmedInput = inputValue.trim();
   const isRecommendMode = mode === 'recommend' || hasRecommended;
   const recommendationKeyword = keyword || trimmedInput;
-  const recommendationMessage =
-    message || recommendedTitle || '에 필요한 체크리스트를 추천했어요.';
+  const recommendationMessage = message || recommendedTitle || '에 필요한 체크리스트를 추천했어요.';
 
   const propCalendarText =
     calendarStatus.type === 'default' ? '오늘 · 반복 없음' : `${calendarStatus.text}마다`;
@@ -302,10 +271,7 @@ export default function CreateModal({
       parseAbortControllerRef.current = controller;
       setStep('parsing');
       try {
-        const response = await eventService.parse(
-          { eventTitle: request.input },
-          controller.signal,
-        );
+        const response = await eventService.parse({ eventTitle: request.input }, controller.signal);
         const parsedCandidate = mapParseResponse(request.input, response);
 
         // TODO: 파싱 API가 revision을 지원하면 로컬 revision 비교를 서버 값으로 교체한다.
@@ -358,30 +324,106 @@ export default function CreateModal({
       return;
     }
 
-    const request = {
-      input: trimmedInput,
-      revision: revisionRef.current,
-    };
-    const timerId = window.setTimeout(async () => {
-      setLoadingRecommendations(true);
-      const response = await requestMockRecommendations(request, startDateRef.current);
+    const request: RevisionRequest = { input: trimmedInput, revision: revisionRef.current };
+    const remainingDelay = lastInputChangedAtRef.current
+      ? Math.max(0, RECOMMENDATION_DEBOUNCE_DELAY - (Date.now() - lastInputChangedAtRef.current))
+      : RECOMMENDATION_DEBOUNCE_DELAY;
 
-      if (request.revision !== revisionRef.current) {
+    const timerId = window.setTimeout(async () => {
+      const latestParsedCandidate = useEventCreationStore.getState().parsedCandidate;
+
+      // 최신 입력의 파싱 결과가 준비된 뒤에만 추천을 요청한다.
+      if (
+        request.revision !== revisionRef.current ||
+        latestParsedCandidate?.sourceText !== request.input ||
+        !latestParsedCandidate.tempEventId
+      ) {
         return;
       }
 
-      setRecommendationCandidates(response.candidates);
-      setRecommendedTitle(response.title);
-      hasRecommendedRef.current = true;
-      setHasRecommended(true);
-      setLoadingRecommendations(false);
-      setStep('recommendation');
-    }, RECOMMENDATION_DEBOUNCE_DELAY);
+      recommendationAbortControllerRef.current?.abort();
+      const controller = new AbortController();
+      recommendationAbortControllerRef.current = controller;
+      const draftRevision = draftRevisionRef.current;
+      draftRevisionRef.current += 1;
+      setLoadingRecommendations(true);
 
-    return () => window.clearTimeout(timerId);
+      try {
+        const response = await recommendationService.getRecommendations(
+          {
+            tempEventId: latestParsedCandidate.tempEventId,
+            draftRevision,
+            eventTitle: latestParsedCandidate.titleCandidate ?? request.input,
+            sourceType: 'USER_NATURAL_LANGUAGE',
+            startDateCandidate:
+              latestParsedCandidate.dateCandidate ?? format(startDateRef.current, 'yyyy-MM-dd'),
+            startTimeCandidate: latestParsedCandidate.timeCandidate,
+            endDateCandidate: latestParsedCandidate.endDateCandidate,
+            endTimeCandidate: latestParsedCandidate.endTimeCandidate,
+            ...(latestParsedCandidate.dateSource
+              ? { startDateSource: latestParsedCandidate.dateSource }
+              : {}),
+            placeCandidate: latestParsedCandidate.placeCandidate,
+            description: null,
+            embeddingWords: latestParsedCandidate.embeddingWords ?? [],
+          },
+          controller.signal,
+        );
+
+        if (
+          controller.signal.aborted ||
+          request.revision !== revisionRef.current ||
+          (response.draftRevision !== undefined && response.draftRevision !== draftRevision) ||
+          (response.tempEventId !== undefined &&
+            response.tempEventId !== latestParsedCandidate.tempEventId)
+        ) {
+          return;
+        }
+
+        if (hasRecommendationFailed(response) || !response.suggestions?.length) {
+          // TODO: 공통 추천 오류 UI가 준비되면 alert을 교체한다.
+          window.alert('체크리스트 추천에 실패했습니다. 잠시 후 다시 시도해주세요.');
+          setStep('input');
+          return;
+        }
+
+        const candidates = response.suggestions
+          .map(mapRecommendationCandidate)
+          .filter((candidate) => candidate.title.length > 0);
+
+        if (candidates.length === 0) {
+          window.alert('추천할 체크리스트를 찾지 못했습니다.');
+          setStep('input');
+          return;
+        }
+
+        setRecommendationCandidates(candidates);
+        setRecommendedTitle(
+          `${latestParsedCandidate.titleCandidate ?? request.input}에 필요한 체크리스트를 추천했어요.`,
+        );
+        hasRecommendedRef.current = true;
+        setHasRecommended(true);
+        setStep('recommendation');
+      } catch {
+        if (!controller.signal.aborted && request.revision === revisionRef.current) {
+          // TODO: 공통 추천 오류 UI가 준비되면 alert을 교체한다.
+          window.alert('체크리스트 추천 중 오류가 발생했습니다.');
+          setStep('input');
+        }
+      } finally {
+        if (request.revision === revisionRef.current) {
+          setLoadingRecommendations(false);
+        }
+      }
+    }, remainingDelay);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [
     hasRecommended,
     mode,
+    parsedCandidate,
     setLoadingRecommendations,
     setRecommendationCandidates,
     setStep,
@@ -390,6 +432,7 @@ export default function CreateModal({
 
   useEffect(
     () => () => {
+      recommendationAbortControllerRef.current?.abort();
       setLoadingRecommendations(false);
     },
     [setLoadingRecommendations],
@@ -615,6 +658,8 @@ export default function CreateModal({
   const handleInputChange = (value: string) => {
     // revision을 올려 이전 파싱·추천 응답을 무효화한다.
     revisionRef.current += 1;
+    lastInputChangedAtRef.current = Date.now();
+    recommendationAbortControllerRef.current?.abort();
     setRawInput(value);
     setLoadingRecommendations(false);
     setStep(hasRecommendedRef.current ? 'recommendation' : 'input');
