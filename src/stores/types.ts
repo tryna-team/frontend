@@ -85,6 +85,14 @@ export interface ParsedEventCandidate {
   timeCandidate: string | null;
   placeCandidate: string | null;
   eventTypeCandidate: string | null;
+  tempEventId?: string | null;
+  dateSource?: 'EXPLICIT' | 'RELATIVE_EXPRESSION' | 'DEFAULT_TODAY' | null;
+  endDateCandidate?: string | null;
+  endTimeCandidate?: string | null;
+  embeddingWords?: string[];
+  isAllDayCandidate?: boolean;
+  needsConfirmation?: boolean;
+  warnings?: Array<{ code?: string; message?: string }>;
 }
 
 export type AuthStatus = 'unauthenticated' | 'guest' | 'member';

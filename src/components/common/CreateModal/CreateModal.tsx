@@ -4,6 +4,8 @@ import { createPortal } from 'react-dom';
 
 import { addDays, format, isSameDay, isToday, isValid, parseISO } from 'date-fns';
 
+import { eventService } from '@/apis/services/eventService';
+import type { EventParseResponse } from '@/apis/types/event';
 import Button from '@/components/common/Buttons/Button';
 import Checklist, { type ChecklistItemData } from '@/components/common/Checklist/Checklist';
 import LabelModal, { type LabelItemData } from '@/components/common/LabelModal/LabelModal';
@@ -87,7 +89,7 @@ const COLOR_ICON = {
 // 실제 체크리스트 ID와 겹치지 않도록 음수를 사용
 const ADD_CHECKLIST_ITEM_ID = -1;
 
-const PARSING_DEBOUNCE_DELAY = 300;
+const PARSING_THROTTLE_DELAY = 300;
 const RECOMMENDATION_DEBOUNCE_DELAY = 1000;
 const MOCK_RECOMMENDATION_RESPONSE_DELAY = 4000;
 
@@ -108,15 +110,41 @@ type MockRecommendationResponse = {
 };
 
 // 실제 API 연결 시 내부만 파싱 요청으로 교체한다.
-const requestMockParsing = async ({
-  input,
-}: RevisionRequest): Promise<ParsedEventCandidate> => ({
+const mapParseResponse = (
+  input: string,
+  response: EventParseResponse,
+): ParsedEventCandidate => ({
+  sourceText: input,
+  titleCandidate: response.eventTitle ?? input,
+  dateCandidate: response.startDate ?? null,
+  timeCandidate: response.startTime ?? null,
+  placeCandidate: response.placeCandidate ?? null,
+  eventTypeCandidate: null,
+  tempEventId: response.tempEventId ?? null,
+  dateSource: response.dateSource ?? null,
+  endDateCandidate: response.endDate ?? null,
+  endTimeCandidate: response.endTime ?? null,
+  embeddingWords: response.toEmbedding ?? [],
+  isAllDayCandidate: response.isAllDayCandidate ?? false,
+  needsConfirmation: response.needsConfirmation ?? false,
+  warnings: response.warnings ?? [],
+});
+
+const createParseFallback = (input: string): ParsedEventCandidate => ({
   sourceText: input,
   titleCandidate: input,
   dateCandidate: null,
   timeCandidate: null,
   placeCandidate: null,
   eventTypeCandidate: null,
+  tempEventId: null,
+  dateSource: null,
+  endDateCandidate: null,
+  endTimeCandidate: null,
+  embeddingWords: [],
+  isAllDayCandidate: true,
+  needsConfirmation: true,
+  warnings: [],
 });
 
 // 실제 API 연결 전 추천 응답 형태와 대기 흐름을 재현한다.
@@ -197,6 +225,8 @@ export default function CreateModal({
   const inputRef = useRef<HTMLInputElement>(null);
   const labelButtonRef = useRef<HTMLButtonElement>(null);
   const revisionRef = useRef(0);
+  const lastParseRequestedAtRef = useRef(0);
+  const parseAbortControllerRef = useRef<AbortController | null>(null);
   const hasRecommendedRef = useRef(mode === 'recommend');
   const keepKeyboardOpenRef = useRef(true);
   const isScheduleOpeningRef = useRef(false);
@@ -251,9 +281,10 @@ export default function CreateModal({
     startDateRef.current = startDate;
   }, [startDate]);
 
-  // 모든 입력 변경은 0.3초 후 revision과 함께 파싱한다.
+  // 입력 중 최신 원문을 최대 0.3초 간격으로 파싱한다.
   useEffect(() => {
     if (!trimmedInput) {
+      parseAbortControllerRef.current?.abort();
       return;
     }
 
@@ -261,36 +292,65 @@ export default function CreateModal({
       input: trimmedInput,
       revision: revisionRef.current,
     };
+    const elapsed = Date.now() - lastParseRequestedAtRef.current;
+    const delay = Math.max(0, PARSING_THROTTLE_DELAY - elapsed);
+
     const timerId = window.setTimeout(async () => {
+      lastParseRequestedAtRef.current = Date.now();
+      parseAbortControllerRef.current?.abort();
+      const controller = new AbortController();
+      parseAbortControllerRef.current = controller;
       setStep('parsing');
-      const parsedCandidate = await requestMockParsing(request);
+      try {
+        const response = await eventService.parse(
+          { eventTitle: request.input },
+          controller.signal,
+        );
+        const parsedCandidate = mapParseResponse(request.input, response);
 
-      if (request.revision !== revisionRef.current) {
-        return;
-      }
-
-      setParsedCandidate(parsedCandidate);
-
-      // 파싱 응답에 시간 정보가 있을 때만 기존 일정값을 갱신한다.
-      if (parsedCandidate.dateCandidate) {
-        const parsedDate = parseISO(parsedCandidate.dateCandidate);
-
-        if (isValid(parsedDate)) {
-          setStartDate(parsedDate);
-          setEndDate(parsedDate);
+        // TODO: 파싱 API가 revision을 지원하면 로컬 revision 비교를 서버 값으로 교체한다.
+        if (request.revision !== revisionRef.current) {
+          return;
         }
-      }
 
-      if (parsedCandidate.timeCandidate) {
-        setStartTime(parsedCandidate.timeCandidate);
-        setEndTime(parsedCandidate.timeCandidate);
-      }
+        setParsedCandidate(parsedCandidate);
 
-      setStep(hasRecommendedRef.current ? 'recommendation' : 'input');
-    }, PARSING_DEBOUNCE_DELAY);
+        // 파싱 결과를 사용자가 직접 고른 일정값보다 우선한다.
+        if (parsedCandidate.dateCandidate) {
+          const parsedDate = parseISO(parsedCandidate.dateCandidate);
+
+          if (isValid(parsedDate)) {
+            setStartDate(parsedDate);
+            setEndDate(parsedDate);
+          }
+        }
+
+        if (parsedCandidate.timeCandidate) {
+          setStartTime(parsedCandidate.timeCandidate);
+          setEndTime(parsedCandidate.timeCandidate);
+        }
+
+        setStep(hasRecommendedRef.current ? 'recommendation' : 'input');
+      } catch {
+        if (controller.signal.aborted || request.revision !== revisionRef.current) {
+          return;
+        }
+
+        // 파싱 실패가 일정 생성 흐름을 중단하지 않게 원문을 유지한다.
+        setParsedCandidate(createParseFallback(request.input));
+        setStep(hasRecommendedRef.current ? 'recommendation' : 'input');
+      }
+    }, delay);
 
     return () => window.clearTimeout(timerId);
   }, [setParsedCandidate, setStep, trimmedInput]);
+
+  useEffect(
+    () => () => {
+      parseAbortControllerRef.current?.abort();
+    },
+    [],
+  );
 
   // recommend 진입 전에는 마지막 입력 1초 후 추천 요청을 시작한다.
   useEffect(() => {
