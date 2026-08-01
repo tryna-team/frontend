@@ -228,7 +228,6 @@ export default function CreateModal({
   const lastParseRequestedAtRef = useRef(0);
   const parseAbortControllerRef = useRef<AbortController | null>(null);
   const recommendationAbortControllerRef = useRef<AbortController | null>(null);
-  const createAbortControllerRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
   const lastInputChangedAtRef = useRef<number | null>(null);
   const hasRecommendedRef = useRef(mode === 'recommend');
@@ -294,7 +293,6 @@ export default function CreateModal({
 
     return () => {
       isMountedRef.current = false;
-      createAbortControllerRef.current?.abort();
     };
   }, []);
 
@@ -522,6 +520,8 @@ export default function CreateModal({
       if (event.key === 'Escape') {
         event.preventDefault();
 
+        // TODO: 저장 중 닫기를 차단할지 저장 요청을 취소할지 정책 확정 후 처리한다.
+
         if (isLabelModalOpen) {
           setIsLabelModalOpen(false);
           window.requestAnimationFrame(() => {
@@ -648,6 +648,10 @@ export default function CreateModal({
   }, [checklistItems, recommendationCandidates, startDate]);
 
   const handleChecklistClick = (id: number) => {
+    if (isSaving) {
+      return;
+    }
+
     if (id === ADD_CHECKLIST_ITEM_ID) {
       onAddChecklist?.();
       return;
@@ -667,12 +671,16 @@ export default function CreateModal({
   };
 
   const handleLabelClick = () => {
+    if (isSaving) {
+      return;
+    }
+
     setIsLabelModalOpen((isOpen) => !isOpen);
     onOpenLabel?.();
   };
 
   const handleCalendarClick = () => {
-    if (isScheduleOpeningRef.current) {
+    if (isSaving || isScheduleOpeningRef.current) {
       return;
     }
 
@@ -708,6 +716,10 @@ export default function CreateModal({
   };
 
   const handleInputChange = (value: string) => {
+    if (isSaving) {
+      return;
+    }
+
     // revision을 올려 이전 파싱·추천 응답을 무효화한다.
     revisionRef.current += 1;
     lastInputChangedAtRef.current = Date.now();
@@ -735,11 +747,19 @@ export default function CreateModal({
   };
 
   const handleSelectLabel = (id: number) => {
+    if (isSaving) {
+      return;
+    }
+
     setIsLabelModalOpen(false);
     onSelectLabel?.(id);
   };
 
   const handleCreateLabel = () => {
+    if (isSaving) {
+      return;
+    }
+
     setIsLabelModalOpen(false);
     onCreateLabel?.();
   };
@@ -750,8 +770,6 @@ export default function CreateModal({
     }
 
     const createRevision = revisionRef.current;
-    const controller = new AbortController();
-    createAbortControllerRef.current = controller;
     const selectedCandidates = recommendationCandidates.filter((candidate) => candidate.selected);
     const hasParsedStartTime = Boolean(parsedCandidate?.timeCandidate);
     const hasParsedEndTime = Boolean(parsedCandidate?.endTimeCandidate);
@@ -768,54 +786,46 @@ export default function CreateModal({
     setIsSaving(true);
 
     try {
-      await eventService.create(
-        {
-          eventTitle: trimmedInput,
-          description: null,
-          startDate: format(startDate, 'yyyy-MM-dd'),
-          startTime: startTimeValue,
-          endDate: shouldSaveEndDate ? format(endDate, 'yyyy-MM-dd') : null,
-          endTime: endTimeValue,
-          isAllDay: !startTimeValue,
-          location: parsedCandidate?.placeCandidate ?? null,
-          eventType: parsedCandidate?.eventTypeCandidate ?? null,
-          isRecurring: recurrenceType !== 'NONE',
-          recurrenceType,
-          recurrenceInterval: 1,
-          recurrenceEndDate: null,
-          actionItems: {
-            // 생성 모달의 add 상태인 항목만 최종 저장한다.
-            items: selectedCandidates.map((candidate) => ({
-              title: candidate.title,
-              itemType: candidate.apiItemType ?? 'UNRESOLVED',
-              createdBy: candidate.edited ? 'USER_EDITED' : 'SYSTEM',
-              displayDate:
-                candidate.apiItemType === 'TIMED_ACTION' ? (candidate.displayDate ?? null) : null,
-              displayTime: null,
-              offsetDays: candidate.offsetDays ?? null,
-              sourceTemplateId: candidate.sourceTemplateId ?? null,
-            })),
-            // 제외·수정 여부도 추천 개선용 피드백으로 전달한다.
-            feedbackLogs: recommendationCandidates.map((candidate) => ({
-              actionType: candidate.selected
-                ? candidate.edited
-                  ? 'EDITED'
-                  : 'SELECTED'
-                : 'REJECTED',
-              sourceTemplateId: candidate.sourceTemplateId ?? null,
-              originalTitle: candidate.originalTitle ?? candidate.title,
-              editedTitle: candidate.edited ? candidate.title : null,
-              reason: null,
-            })),
-          },
+      await eventService.create({
+        eventTitle: trimmedInput,
+        description: null,
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        startTime: startTimeValue,
+        endDate: shouldSaveEndDate ? format(endDate, 'yyyy-MM-dd') : null,
+        endTime: endTimeValue,
+        isAllDay: !startTimeValue,
+        location: parsedCandidate?.placeCandidate ?? null,
+        eventType: parsedCandidate?.eventTypeCandidate ?? null,
+        isRecurring: recurrenceType !== 'NONE',
+        recurrenceType,
+        recurrenceInterval: 1,
+        recurrenceEndDate: null,
+        actionItems: {
+          // 생성 모달의 add 상태인 항목만 최종 저장한다.
+          items: selectedCandidates.map((candidate) => ({
+            title: candidate.title,
+            itemType: candidate.apiItemType ?? 'UNRESOLVED',
+            createdBy: candidate.edited ? 'USER_EDITED' : 'SYSTEM',
+            displayDate:
+              candidate.apiItemType === 'TIMED_ACTION' ? (candidate.displayDate ?? null) : null,
+            displayTime: null,
+            offsetDays: candidate.offsetDays ?? null,
+            sourceTemplateId: candidate.sourceTemplateId ?? null,
+          })),
+          // 제외·수정 여부도 추천 개선용 피드백으로 전달한다.
+          feedbackLogs: recommendationCandidates.map((candidate) => ({
+            actionType: candidate.selected
+              ? candidate.edited
+                ? 'EDITED'
+                : 'SELECTED'
+              : 'REJECTED',
+            sourceTemplateId: candidate.sourceTemplateId ?? null,
+            originalTitle: candidate.originalTitle ?? candidate.title,
+            editedTitle: candidate.edited ? candidate.title : null,
+            reason: null,
+          })),
         },
-        controller.signal,
-      );
-
-      // 이전 초안의 완료 응답은 현재 생성 세션을 변경하지 않는다.
-      if (!isMountedRef.current || createRevision !== revisionRef.current) {
-        return;
-      }
+      });
 
       // 새 일정을 다시 조회할 수 있도록 관련 캐시를 무효화한다.
       await Promise.all([
@@ -823,6 +833,7 @@ export default function CreateModal({
         queryClient.invalidateQueries({ queryKey: queryKeys.calendars.all }),
       ]);
 
+      // 이전 초안의 완료 응답은 현재 생성 세션을 변경하지 않는다.
       if (!isMountedRef.current || createRevision !== revisionRef.current) {
         return;
       }
@@ -830,25 +841,22 @@ export default function CreateModal({
       resetCreation();
       onCreate?.();
     } catch {
-      if (
-        controller.signal.aborted ||
-        !isMountedRef.current ||
-        createRevision !== revisionRef.current
-      ) {
+      if (!isMountedRef.current || createRevision !== revisionRef.current) {
         return;
       }
 
       // TODO: 공통 일정 저장 오류 UI가 준비되면 alert을 교체한다.
       window.alert('일정을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
-      if (createAbortControllerRef.current === controller) {
-        createAbortControllerRef.current = null;
-      }
-
       if (isMountedRef.current) {
         setIsSaving(false);
       }
     }
+  };
+
+  const handleOverlayClick = () => {
+    // TODO: 저장 중 닫기를 차단할지 저장 요청을 취소할지 정책 확정 후 처리한다.
+    onClose?.();
   };
 
   return (
@@ -856,7 +864,7 @@ export default function CreateModal({
       {/* 생성 모달만 Portal로 분리하고 반복 바텀시트는 앱 레이아웃을 따른다. */}
       {!isScheduleOpen &&
         createPortal(
-          <Overlay onClick={onClose}>
+          <Overlay onClick={handleOverlayClick}>
             {/* 키보드를 제외한 화면 영역의 하단에 생성 모달을 맞춘다. */}
             <div
               ref={dialogRef}
@@ -894,7 +902,11 @@ export default function CreateModal({
                       </p>
                     </div>
 
-                    <div onPointerDown={(event) => event.preventDefault()}>
+                    <div
+                      aria-disabled={isSaving}
+                      className={isSaving ? 'pointer-events-none' : undefined}
+                      onPointerDown={(event) => event.preventDefault()}
+                    >
                       <Checklist
                         items={renderedChecklistItems}
                         radioVariant="create"
@@ -909,6 +921,7 @@ export default function CreateModal({
                     ref={inputRef}
                     type="text"
                     autoFocus
+                    disabled={isSaving}
                     value={inputValue}
                     onChange={(event) => handleInputChange(event.target.value)}
                     onBlur={handleInputBlur}
@@ -929,6 +942,7 @@ export default function CreateModal({
                 <div className="flex w-full items-center gap-4 px-1 py-1">
                   <button
                     type="button"
+                    disabled={isSaving}
                     onPointerDown={handleCalendarPointerDown}
                     onClick={handleCalendarClick}
                     className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
@@ -942,6 +956,7 @@ export default function CreateModal({
                     <button
                       ref={labelButtonRef}
                       type="button"
+                      disabled={isSaving}
                       onClick={handleLabelClick}
                       className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
                     >
