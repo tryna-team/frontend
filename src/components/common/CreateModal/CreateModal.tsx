@@ -282,7 +282,12 @@ export default function CreateModal({
   const selectedDateText = isSameDay(startDate, endDate)
     ? formatTriggerDate(startDate)
     : `${formatTriggerDate(startDate)}~${format(endDate, 'M.d')}`;
-  const calendarText = hasScheduleChanged ? `${selectedDateText} · ${repeat}` : initialCalendarText;
+  const hasParsedScheduleDate = Boolean(parsedCandidate?.dateCandidate);
+  const repeatText = hasRepeatChanged ? repeat : '반복 없음';
+  const calendarText =
+    hasScheduleChanged || hasParsedScheduleDate
+      ? `${selectedDateText} · ${repeatText}`
+      : initialCalendarText;
 
   useEffect(() => {
     startDateRef.current = startDate;
@@ -327,7 +332,7 @@ export default function CreateModal({
 
         setParsedCandidate(parsedCandidate);
 
-        // 파싱 결과를 사용자가 직접 고른 일정값보다 우선한다.
+        // 파싱 날짜를 시작·종료 일정과 하단 일정 문구에 함께 반영한다.
         if (parsedCandidate.dateCandidate) {
           const parsedDate = parseISO(parsedCandidate.dateCandidate);
 
