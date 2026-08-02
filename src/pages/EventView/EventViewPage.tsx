@@ -165,7 +165,7 @@ function EventViewPage() {
       <div className="event-view-page-content">
         <ScheduleBanner
           categoryColor={MOCK_CATEGORY_COLOR}
-          title={eventDetail.title}
+          title={eventDetail.eventTitle}
           dateText=""
         />
 
