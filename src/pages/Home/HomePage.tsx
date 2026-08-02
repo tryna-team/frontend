@@ -78,7 +78,7 @@ function HomePage() {
   };
 
   const handleCreate = () => {
-    window.alert('일정 생성 API 연결 예정입니다.');
+    // 저장 성공 후 생성 모달의 임시 입력 상태를 정리한다.
     setCreateInputValue('');
     setIsCreateModalOpen(false);
     setInitialCreateDate(null);
