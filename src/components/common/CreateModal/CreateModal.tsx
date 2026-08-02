@@ -72,7 +72,7 @@ export type CreateModalProps = {
   onCreateLabel?: () => void;
   onAddChecklist?: () => void;
   onToggleChecklist?: (id: number) => void;
-  onCreate?: () => void;
+  onCreate?: (createdDate: string) => void;
   onClose?: () => void;
 };
 
@@ -844,7 +844,7 @@ export default function CreateModal({
       }
 
       resetCreation();
-      onCreate?.();
+      onCreate?.(format(startDate, 'yyyy-MM-dd'));
     } catch {
       if (!isMountedRef.current || createRevision !== revisionRef.current) {
         return;

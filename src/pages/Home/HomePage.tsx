@@ -35,6 +35,7 @@ function HomePage() {
   // 기본 선택 = 오늘 (useCalendarStore.selectedDate는 string, null 없음)
   const selectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
+  const setMonth = useCalendarStore((s) => s.setMonth);
   const goToToday = useCalendarStore((s) => s.goToToday);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -77,8 +78,12 @@ function HomePage() {
     navigate(generateDailyPath(date));
   };
 
-  const handleCreate = () => {
-    // 저장 성공 후 생성 모달의 임시 입력 상태를 정리한다.
+  const handleCreate = (createdDate: string) => {
+    const [createdYear, createdMonth] = createdDate.split('-').map(Number);
+
+    // 생성된 일정 날짜를 선택해 B101의 해당 날짜 일정을 다시 표시한다.
+    selectDate(createdDate);
+    setMonth(createdYear, createdMonth);
     setCreateInputValue('');
     setIsCreateModalOpen(false);
     setInitialCreateDate(null);
