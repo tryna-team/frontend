@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQueries, useQuery, keepPreviousData } from '@tanstack/react-query';
 
 import { useCalendarStore } from '@/stores';
 import Button from '@/components/common/Buttons/Button';
@@ -73,6 +73,47 @@ function HomePage() {
       }))
     : [];
 
+  const currentYear = useCalendarStore((s) => s.currentYear);
+  const currentMonth = useCalendarStore((s) => s.currentMonth);
+
+  // B101은 유지하고, 현재 화면에 표시된 월의 일정 날짜를 추가로 조회한다.
+  const { data: monthlyData } = useQuery({
+    queryKey: queryKeys.calendars.monthly(currentYear, currentMonth),
+    queryFn: () => calendarService.getMonthly(currentYear, currentMonth),
+  });
+
+  const isFreshForCurrentMonth =
+    monthlyData?.year === currentYear && monthlyData.month === currentMonth;
+  const eventDates = isFreshForCurrentMonth
+    ? monthlyData.days
+        .filter((day) => day.date !== selectedDate && (day.hasEvent || day.eventCount > 0))
+        .map((day) => day.date)
+    : [];
+
+  // B101이 제공하지 않는 날짜의 일정 제목만 B103으로 보완한다.
+  const dateEventQueries = useQueries({
+    queries: eventDates.map((date) => ({
+      queryKey: queryKeys.calendars.dateEvents(date),
+      queryFn: () => calendarService.getDateEvents(date),
+    })),
+  });
+
+  const isSelectedDateInCurrentMonth = selectedDate.startsWith(
+    `${currentYear}-${String(currentMonth).padStart(2, '0')}`,
+  );
+  const visibleCalendarEvents = [
+    ...(isSelectedDateInCurrentMonth ? calendarEvents : []),
+    ...dateEventQueries.flatMap((query) =>
+      (query.data?.events ?? []).map((event) => ({
+        title: event.title,
+        date: event.startDate,
+        backgroundColor: CATEGORY_COLOR_MAP.yellow,
+        textColor: '#1C1630',
+        borderColor: 'transparent',
+      })),
+    ),
+  ];
+
   const handleSelectDate = (date: string) => {
     selectDate(date);
     navigate(generateDailyPath(date));
@@ -117,7 +158,7 @@ function HomePage() {
   return (
     <div className="home-page">
       <CalendarGrid
-        events={calendarEvents}
+        events={visibleCalendarEvents}
         selectedDate={selectedDate}
         onSelectDate={handleSelectDate}
         onLongPressDate={handleLongPressDate}
