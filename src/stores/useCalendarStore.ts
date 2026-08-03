@@ -31,7 +31,7 @@ interface CalendarState {
   // 레이블은 개수가 적고 여러 화면(캘린더 셀 색상, 이벤트 뷰, 생성 패널의 레이블 선택)에서
   // 동시에 참조되므로, 서버에서 한 번 받아온 뒤 여기 전역 캐시로 들고 있는다.
   labels: CalendarLabel[]; // 사용자가 가진 전체 레이블 목록
-  selectedLabelId: string | null; // "레이블 수정" 화면에 진입할 때 대상이 되는 레이블 id (없으면 null)
+  selectedLabelId: number | null; // "레이블 수정" 화면에 진입할 때 대상이 되는 레이블 id (없으면 null) — CalendarLabel.labelId와 동일하게 number
 
   // ── 뷰 상태를 바꾸는 액션 ──
   setMonth: (year: number, month: number) => void; // 월간 캘린더에서 이전/다음 달 이동
@@ -41,8 +41,8 @@ interface CalendarState {
   // ── 레이블 목록을 바꾸는 액션 ──
   setLabels: (labels: CalendarLabel[]) => void; // 서버에서 받아온 레이블 목록을 통째로 캐시에 반영
   upsertLabel: (label: CalendarLabel) => void; // 1-9 "레이블 수정 완료" - 있으면 수정, 없으면 추가(update-or-insert)
-  removeLabel: (labelId: string) => void; // 레이블 삭제 후 캐시에서도 제거
-  selectLabel: (labelId: string | null) => void; // 레이블 수정 화면 진입/이탈 시 대상 지정·해제
+  removeLabel: (labelId: number) => void; // 레이블 삭제 후 캐시에서도 제거
+  selectLabel: (labelId: number | null) => void; // 레이블 수정 화면 진입/이탈 시 대상 지정·해제
 }
 
 // 스토어 초기값 계산용 "오늘" — 모듈(앱) 로드 시점의 스냅샷.
@@ -90,17 +90,17 @@ export const useCalendarStore = create<CalendarState>((set) => ({
   // "레이블 생성"과 "레이블 수정"을 액션 하나로 함께 처리하기 위한 설계.
   upsertLabel: (label) =>
     set((state) => {
-      const exists = state.labels.some((l) => l.id === label.id);
+      const exists = state.labels.some((l) => l.labelId === label.labelId);
       return {
         labels: exists
-          ? state.labels.map((l) => (l.id === label.id ? label : l))
+          ? state.labels.map((l) => (l.labelId === label.labelId ? label : l))
           : [...state.labels, label],
       };
     }),
 
   // 삭제된 레이블 id를 배열에서 필터링해서 제거
   removeLabel: (labelId) =>
-    set((state) => ({ labels: state.labels.filter((l) => l.id !== labelId) })),
+    set((state) => ({ labels: state.labels.filter((l) => l.labelId !== labelId) })),
 
   // 레이블 수정 화면 진입 시 대상 id 지정, 화면 나갈 때 null로 초기화
   selectLabel: (labelId) => set({ selectedLabelId: labelId }),

@@ -3,6 +3,9 @@
 // 정책서(A~G 그룹) + tryna APISpec(Notion)의 필드명을 그대로 따른다.
 // ============================================================
 
+import type { LabelType } from '@/apis/types/labels';
+import type { LabelColor } from '@/components/common/LabelModal/LabelItem';
+
 export type EventSource = 'internal' | 'external'; // tryna 자체 생성 / 외부 캘린더 연동
 
 /**
@@ -26,13 +29,21 @@ export type EventSource = 'internal' | 'external'; // tryna 자체 생성 / 외�
  */
 export type CalendarProvider = 'google' | 'apple';
 
-/** 레이블 = 캘린더 그룹 (Gmail 계정, tryna 그룹, 커스텀 그룹 등) */
+/**
+ * 레이블 = 캘린더 그룹 (label-controller API 명세서 기준, B108-1~5)
+ * apis/types/labels.ts의 LabelResponseData와 필드가 대응하지만, color는 API의
+ * UPPERCASE 값이 아니라 화면 표시용 LabelColor(lowercase)로 변환해서 저장한다
+ * (변환 지점: apis/services/labelsService.ts의 toCalendarLabel).
+ */
 export interface CalendarLabel {
-  id: string;
-  title: string;
-  color: string; // 6가지 프리셋 색상 중 하나
-  notificationEnabled: boolean;
-  source: 'gmail' | 'tryna' | 'external';
+  labelId: number;
+  externalCalendarId: number | null; // 외부 캘린더 라벨이 아니면 null
+  name: string;
+  labelType: LabelType; // 'USER' | 'EXTERNAL_CALENDAR' — apis/types/labels.ts
+  color: LabelColor; // src/components/common/LabelModal/LabelItem.tsx의 LabelColor(lowercase 6종) 재사용
+  isDefault: boolean;
+  isVisible: boolean;
+  sortOrder: number;
 }
 
 /** B/C 그룹 - 캘린더에 표시되는 일정 (events 테이블) */

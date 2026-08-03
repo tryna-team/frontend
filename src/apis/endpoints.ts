@@ -67,6 +67,15 @@ export const ENDPOINTS = {
     // 캘린더 내 시간형 실행 항목 조회 - Query: date
     CALENDAR_TIMED: "/calendar/action-items/timed",
   },
+  LABELS: {
+    // B108-1 라벨 목록 조회(GET) / B108-2 라벨 생성(POST)
+    ROOT: "/labels",
+    // B108-3 라벨 수정(PATCH) / B108-4 라벨 삭제(DELETE)
+    DETAIL: (labelId: number | string) =>
+      `/labels/${encodeURIComponent(labelId)}`,
+    // B108-5 라벨 순서 변경(PATCH)
+    ORDER: "/labels/order",
+  },
   RECOMMENDATIONS: {
     // 일정 기반 준비/실행 항목 추천
     ROOT: "/recommendations",
