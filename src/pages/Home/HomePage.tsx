@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQueries, useQuery, keepPreviousData } from '@tanstack/react-query';
+
 import { useCalendarStore } from '@/stores';
+import Button from '@/components/common/Buttons/Button';
 import CalendarGrid from '@/components/common/CalendarGrid/CalendarGrid';
 import CreateModal from '@/components/common/CreateModal/CreateModal';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
-import { generateDailyPath } from '@/routes/paths';
+import { generateDailyPath, PATH } from '@/routes/paths';
+
 import './HomePage.css';
 
 // 라우터 적용 전: 부모 = 날짜 선택 이후의 화면 전환을 처리
@@ -31,10 +35,12 @@ function HomePage() {
   // 기본 선택 = 오늘 (useCalendarStore.selectedDate는 string, null 없음)
   const selectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
+  const setMonth = useCalendarStore((s) => s.setMonth);
+  const goToToday = useCalendarStore((s) => s.goToToday);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
-  const [createDate, setCreateDate] = useState<Date | null>(null);
+  const [initialCreateDate, setInitialCreateDate] = useState<Date | null>(null);
 
   // selectedDate("YYYY-MM-DD")에서 year/month 추출 — B101이 요구하는 쿼리 파라미터
   const [year, month] = selectedDate.split('-').map(Number);
@@ -67,28 +73,99 @@ function HomePage() {
       }))
     : [];
 
+  const currentYear = useCalendarStore((s) => s.currentYear);
+  const currentMonth = useCalendarStore((s) => s.currentMonth);
+
+  // B101은 유지하고, 현재 화면에 표시된 월의 일정 날짜를 추가로 조회한다.
+  const { data: monthlyData } = useQuery({
+    queryKey: queryKeys.calendars.monthly(currentYear, currentMonth),
+    queryFn: () => calendarService.getMonthly(currentYear, currentMonth),
+  });
+
+  const isFreshForCurrentMonth =
+    monthlyData?.year === currentYear && monthlyData.month === currentMonth;
+  const eventDates = isFreshForCurrentMonth
+    ? monthlyData.days
+        .filter((day) => day.date !== selectedDate && (day.hasEvent || day.eventCount > 0))
+        .map((day) => day.date)
+    : [];
+
+  // B101이 제공하지 않는 날짜의 일정 제목만 B103으로 보완한다.
+  const dateEventQueries = useQueries({
+    queries: eventDates.map((date) => ({
+      queryKey: queryKeys.calendars.dateEvents(date),
+      queryFn: () => calendarService.getDateEvents(date),
+    })),
+  });
+
+  const isSelectedDateInCurrentMonth = selectedDate.startsWith(
+    `${currentYear}-${String(currentMonth).padStart(2, '0')}`,
+  );
+  const visibleCalendarEvents = [
+    ...(isSelectedDateInCurrentMonth ? calendarEvents : []),
+    ...dateEventQueries.flatMap((query, index) =>
+      (query.data?.events ?? []).map((event) => ({
+        title: event.title,
+        date: eventDates[index],
+        backgroundColor: CATEGORY_COLOR_MAP.yellow,
+        textColor: '#1C1630',
+        borderColor: 'transparent',
+      })),
+    ),
+  ];
+
   const handleSelectDate = (date: string) => {
     selectDate(date);
-
     navigate(generateDailyPath(date));
   };
 
+  const handleCreate = (createdDate: string) => {
+    const [createdYear, createdMonth] = createdDate.split('-').map(Number);
+
+    // 생성된 일정 날짜를 선택해 B101의 해당 날짜 일정을 다시 표시한다.
+    selectDate(createdDate);
+    setMonth(createdYear, createdMonth);
+    setCreateInputValue('');
+    setIsCreateModalOpen(false);
+    setInitialCreateDate(null);
+  };
+
   const handleLongPressDate = (date: string) => {
-    // 길게 누른 날짜는 이동하지 않고 생성 모달의 초기 날짜로 사용한다.
-    setCreateDate(new Date(`${date}T00:00:00`));
+    selectDate(date);
+    setInitialCreateDate(new Date(`${date}T00:00:00`));
     setIsCreateModalOpen(true);
   };
+
+  const handleCreateModalClose = () => {
+    setIsCreateModalOpen(false);
+    setInitialCreateDate(null);
+  };
+
+  const floatingButtonsContent = useMemo(
+    () => (
+      <div className="flex w-full items-center justify-between">
+        <Button variant="LargeStrongFit" onClick={goToToday}>
+          오늘
+        </Button>
+        {/* 생성 모달을 현재 화면 위에 연다. */}
+        <Button variant="MainCTAButton" onClick={() => setIsCreateModalOpen(true)} />
+      </div>
+    ),
+    [goToToday],
+  );
+  useFloatingButtons(floatingButtonsContent);
 
   return (
     <div className="home-page">
       <CalendarGrid
-        events={calendarEvents}
+        events={visibleCalendarEvents}
         selectedDate={selectedDate}
         onSelectDate={handleSelectDate}
         onLongPressDate={handleLongPressDate}
         onSearchClick={() => setIsSearchOpen(true)}
         onViewToggleClick={() => {}}
         onSettingsClick={() => {}}
+        onYearViewClick={() => navigate(PATH.YEAR_CALENDAR)}
       />
 
       {isSearchOpen && (
@@ -98,12 +175,11 @@ function HomePage() {
       {isCreateModalOpen && (
         <CreateModal
           inputValue={createInputValue}
-          initialScheduleDate={createDate ?? undefined}
+          initialScheduleDate={initialCreateDate ?? undefined}
           onInputChange={setCreateInputValue}
-          onClose={() => {
-            setIsCreateModalOpen(false);
-            setCreateInputValue('');
-          }}
+          onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
+          onCreate={handleCreate}
+          onClose={handleCreateModalClose}
         />
       )}
     </div>

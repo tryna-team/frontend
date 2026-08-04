@@ -114,7 +114,7 @@ client.interceptors.response.use(
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
         failedQueue.push({
-          resolve: (_token: string) => {
+          resolve: () => {
             originalRequest._retry = true;
             resolve(client(originalRequest));
           },

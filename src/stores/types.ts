@@ -72,6 +72,11 @@ export interface RecommendationCandidate {
   candidateId: string;
   title: string;
   itemType: ActionItemType;
+  /** 서버 응답의 원본 항목 유형은 최종 저장 시 사용한다. */
+  apiItemType?: 'TIMED_ACTION' | 'UNTIMED_PREP' | 'UNRESOLVED';
+  sourceTemplateId?: string | null;
+  offsetDays?: number | null;
+  originalTitle?: string;
   displayDate?: string | null;
   selected: boolean; // E101 제안 항목 선택
   edited: boolean; // E102 제안 항목 수정 여부
@@ -85,6 +90,14 @@ export interface ParsedEventCandidate {
   timeCandidate: string | null;
   placeCandidate: string | null;
   eventTypeCandidate: string | null;
+  tempEventId?: string | null;
+  dateSource?: 'EXPLICIT' | 'RELATIVE_EXPRESSION' | 'DEFAULT_TODAY' | null;
+  endDateCandidate?: string | null;
+  endTimeCandidate?: string | null;
+  embeddingWords?: string[];
+  isAllDayCandidate?: boolean;
+  needsConfirmation?: boolean;
+  warnings?: Array<{ code?: string; message?: string }>;
 }
 
 export type AuthStatus = 'unauthenticated' | 'guest' | 'member';

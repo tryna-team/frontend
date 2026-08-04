@@ -1,11 +1,17 @@
-import { useEffect, useRef, type PointerEvent } from 'react';
+import { useEffect, useRef } from 'react';
+import type { MouseEvent, PointerEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import FullCalendar from '@fullcalendar/react';
+import type { MoreLinkContentArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { DateClickArg } from '@fullcalendar/interaction';
-import type { MoreLinkContentArg } from '@fullcalendar/core';
 import { useSwipeable } from 'react-swipeable';
+
+import { calendarService } from '@/apis/services/calendarService';
+import { queryKeys } from '@/hooks/queries/queryKeys';
 import { useCalendarStore } from '@/stores';
+
 import './CalendarGrid.css';
 
 interface CalendarEvent {
@@ -24,8 +30,12 @@ interface CalendarGridProps {
   onSearchClick?: () => void;
   onViewToggleClick?: () => void;
   onSettingsClick?: () => void;
+  onYearViewClick?: () => void;
   initialView?: string;
 }
+
+const LONG_PRESS_DURATION_MS = 500;
+const LONG_PRESS_MOVE_THRESHOLD_PX = 10;
 
 function CalendarGrid({
   events,
@@ -35,31 +45,18 @@ function CalendarGrid({
   onSearchClick,
   onViewToggleClick,
   onSettingsClick,
+  onYearViewClick,
   initialView = 'dayGridMonth',
 }: CalendarGridProps) {
   const calendarRef = useRef<FullCalendar>(null);
   const longPressTimerRef = useRef<number | null>(null);
+  const longPressedDateRef = useRef<string | null>(null);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
-  const pointerCaptureRef = useRef<{
-    element: HTMLDivElement;
-    pointerId: number;
-  } | null>(null);
-  const suppressDateClickRef = useRef(false);
 
-  // 기존: header에 월 표시
-  // const currentMonth = useCalendarStore((s) => s.currentMonth);
-  // 저장된 연도와 월을 캘린더 초기 화면에 사용
-  const currentYear = useCalendarStore((s) => s.currentYear);
-  const currentMonth = useCalendarStore((s) => s.currentMonth);
-  const setMonth = useCalendarStore((s) => s.setMonth);
-
-  // Home으로 돌아올 때 이전에 보던 월을 복원 (마운트 시 1회)
+  const currentYear = useCalendarStore((state) => state.currentYear);
+  const currentMonth = useCalendarStore((state) => state.currentMonth);
+  const setMonth = useCalendarStore((state) => state.setMonth);
   const initialCalendarDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
-
-  // "오늘" 버튼처럼 스토어의 연/월이 바깥에서 바뀌면 마운트된 캘린더 뷰도 그 달로 이동
-  useEffect(() => {
-    calendarRef.current?.getApi().gotoDate(new Date(currentYear, currentMonth - 1, 1));
-  }, [currentYear, currentMonth]);
 
   useEffect(
     () => () => {
@@ -70,9 +67,20 @@ function CalendarGrid({
     [],
   );
 
+  // 저장된 연월이 바뀌면 현재 캘린더 화면도 함께 이동한다.
+  useEffect(() => {
+    calendarRef.current?.getApi().gotoDate(new Date(currentYear, currentMonth - 1, 1));
+  }, [currentYear, currentMonth]);
+
+  // 월간 일정 데이터는 제목·라벨 스펙 확정 전까지 캐시에만 저장한다.
+  useQuery({
+    queryKey: queryKeys.calendars.monthly(currentYear, currentMonth),
+    queryFn: () => calendarService.getMonthly(currentYear, currentMonth),
+  });
+
   const handleDateClick = (arg: DateClickArg) => {
-    // long press 직후 발생하는 click은 Daily 이동으로 전달하지 않는다.
-    if (suppressDateClickRef.current) {
+    if (longPressedDateRef.current === arg.dateStr) {
+      longPressedDateRef.current = null;
       return;
     }
 
@@ -86,60 +94,65 @@ function CalendarGrid({
     }
   };
 
-  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    const dateCell = (event.target as HTMLElement).closest<HTMLElement>('[data-date]');
-    const date = dateCell?.dataset.date;
+  const getDateFromTarget = (target: EventTarget | null) =>
+    target instanceof Element
+      ? target.closest<HTMLElement>('[data-date]')?.dataset.date
+      : undefined;
 
+  // 날짜 셀을 길게 누르면 해당 날짜의 생성 모달을 연다.
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) {
+      return;
+    }
+
+    const date = getDateFromTarget(event.target);
+
+    // 콜백이 없는 화면에서는 일반 날짜 클릭만 처리한다.
     if (!date || !onLongPressDate) {
       return;
     }
 
     clearLongPressTimer();
+    longPressedDateRef.current = null;
     pointerStartRef.current = { x: event.clientX, y: event.clientY };
-    pointerCaptureRef.current = {
-      element: event.currentTarget,
-      pointerId: event.pointerId,
-    };
-
     longPressTimerRef.current = window.setTimeout(() => {
-      suppressDateClickRef.current = true;
-      pointerCaptureRef.current?.element.setPointerCapture(pointerCaptureRef.current.pointerId);
+      longPressedDateRef.current = date;
+      longPressTimerRef.current = null;
       onLongPressDate(date);
-
-      // 후속 click이 없더라도 다음 일반 클릭은 정상 처리한다.
-      window.setTimeout(() => {
-        suppressDateClickRef.current = false;
-      }, 1000);
-    }, 500);
+    }, LONG_PRESS_DURATION_MS);
   };
 
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const start = pointerStartRef.current;
 
-    if (!start) {
-      return;
-    }
-
-    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) {
+    if (
+      start &&
+      (Math.abs(event.clientX - start.x) > LONG_PRESS_MOVE_THRESHOLD_PX ||
+        Math.abs(event.clientY - start.y) > LONG_PRESS_MOVE_THRESHOLD_PX)
+    ) {
       clearLongPressTimer();
     }
   };
 
-  const handlePointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+  const handlePointerEnd = () => {
     clearLongPressTimer();
     pointerStartRef.current = null;
 
-    const capture = pointerCaptureRef.current;
-
-    if (capture?.element.hasPointerCapture(capture.pointerId)) {
-      capture.element.releasePointerCapture(capture.pointerId);
+    if (longPressedDateRef.current) {
+      window.setTimeout(() => {
+        longPressedDateRef.current = null;
+      }, 1000);
     }
+  };
 
-    pointerCaptureRef.current = null;
+  // long press 뒤의 click이 Daily 이동으로 이어지지 않게 막는다.
+  const handleClickCapture = (event: MouseEvent<HTMLDivElement>) => {
+    const date = getDateFromTarget(event.target);
 
-    if (suppressDateClickRef.current) {
+    if (date && longPressedDateRef.current === date) {
       event.preventDefault();
       event.stopPropagation();
+      longPressedDateRef.current = null;
     }
   };
 
@@ -161,38 +174,53 @@ function CalendarGrid({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
       onPointerCancel={handlePointerEnd}
-      onClickCapture={(event) => {
-        if (suppressDateClickRef.current) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-      }}
+      onPointerLeave={handlePointerEnd}
+      onClickCapture={handleClickCapture}
       onContextMenu={(event) => {
-        if ((event.target as HTMLElement).closest('[data-date]')) {
+        if (getDateFromTarget(event.target)) {
           event.preventDefault();
         }
       }}
       className={`calendar-grid-root ${selectedDate ? 'has-selection' : ''}`}
     >
       <div className="calendar-header">
-        <span className="month-number">{currentMonth}</span>
-        <div className="calendar-header-icons">
-          <button type="button" className="icon-button" onClick={onSearchClick} aria-label="검색">
-            <img src="/icon/search.svg" alt="" />
-          </button>
+        <div className="calendar-header-top">
           <button
             type="button"
-            className="icon-button"
-            onClick={onViewToggleClick}
-            aria-label="캘린더 뷰 전환"
+            className="year-nav-button"
+            onClick={onYearViewClick}
+            aria-label="연간 캘린더로 이동"
           >
-            <img src="/icon/icons/label_small.svg" alt="" />
+            <img src="/icon/chevron/left_small.svg" alt="" />
+            <span className="year-number">{currentYear}</span>
           </button>
-          <button type="button" className="icon-button" onClick={onSettingsClick} aria-label="설정">
-            <img src="/icon/settings.svg" alt="" />
-          </button>
+
+          <div className="calendar-header-icons">
+            <button type="button" className="icon-button" onClick={onSearchClick} aria-label="검색">
+              <img src="/icon/search.svg" alt="" />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={onViewToggleClick}
+              aria-label="캘린더 뷰 전환"
+            >
+              <img src="/icon/icons/label_small.svg" alt="" />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={onSettingsClick}
+              aria-label="설정"
+            >
+              <img src="/icon/settings.svg" alt="" />
+            </button>
+          </div>
         </div>
+
+        <span className="month-number">{currentMonth}</span>
       </div>
+
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, interactionPlugin]}

@@ -1,15 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useSwipeable } from 'react-swipeable';
 import { useCanGoBack } from '@/hooks/useCanGoBack';
 
 import { useCalendarStore } from '@/stores';
+import Button from '@/components/common/Buttons/Button';
 import CreateModal from '@/components/common/CreateModal/CreateModal';
 import Header from '@/components/common/Header/Header';
 import WeekStrip from '@/features/calendar/components/WeekStrip';
 import ScheduleCard from '@/features/calendar/components/ScheduleCard';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import type { CategoryColor } from '@/features/calendar/types';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { generateDailyPath, generateEventPath, PATH } from '@/routes/paths';
 
 import './DailyPage.css';
@@ -139,6 +141,7 @@ function DailyPage() {
 
   const calendarSelectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
+  const goToToday = useCalendarStore((s) => s.goToToday);
   const [schedules, setSchedules] = useState<ScheduleItem[]>(MOCK_SCHEDULES);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
@@ -165,6 +168,12 @@ function DailyPage() {
     navigate(generateDailyPath(nextDate), { replace: true });
   };
 
+  const handleCreate = () => {
+    // 저장 성공 후 생성 모달의 임시 입력 상태를 정리한다.
+    setCreateInputValue('');
+    setIsCreateModalOpen(false);
+  };
+
   // 렌더링마다 최신 selectedDate를 담아두는 ref.
   // useSwipeable 핸들러가 클로저의 오래된 selectedDate를 참조하면, 연속으로 빠르게
   // 스와이프할 때 리렌더링 타이밍에 따라 "한 번은 되는데 계속 반복은 안 되는" 증상이
@@ -186,6 +195,26 @@ function DailyPage() {
     preventScrollOnSwipe: true,
     trackMouse: true,
   });
+
+  const floatingButtonsContent = useMemo(
+    () => (
+      <div className="flex w-full items-center justify-between">
+        <Button
+          variant="LargeStrongFit"
+          onClick={() => {
+            goToToday();
+            navigate(generateDailyPath(new Date().toLocaleDateString('sv-SE')), { replace: true });
+          }}
+        >
+          오늘
+        </Button>
+        {/* 생성 모달을 현재 화면 위에 연다. */}
+        <Button variant="MainCTAButton" onClick={() => setIsCreateModalOpen(true)} />
+      </div>
+    ),
+    [goToToday, navigate],
+  );
+  useFloatingButtons(floatingButtonsContent);
 
   // Header: chevron -> 직전 화면 이동
   // window.history.state.idx는 React Router 내부 비공개 값이라 버전에 따라 깨질 수 있음
@@ -286,10 +315,9 @@ function DailyPage() {
           inputValue={createInputValue}
           initialScheduleDate={displayDate}
           onInputChange={setCreateInputValue}
-          onClose={() => {
-            setIsCreateModalOpen(false);
-            setCreateInputValue('');
-          }}
+          onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
+          onCreate={handleCreate}
+          onClose={() => setIsCreateModalOpen(false)}
         />
       )}
     </div>
