@@ -252,6 +252,7 @@ export default function CreateModal({
   const [hasEndTimeChanged, setHasEndTimeChanged] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
+  const [hasInputInteractionStarted, setHasInputInteractionStarted] = useState(false);
   const startDateRef = useRef(startDate);
   const [visualViewportRect, setVisualViewportRect] = useState(() => ({
     top: window.visualViewport?.offsetTop ?? 0,
@@ -911,6 +912,26 @@ export default function CreateModal({
       {!isScheduleOpen &&
         createPortal(
           <Overlay onClick={handleCloseRequest}>
+            {(hasInputInteractionStarted || isRecommendMode) && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute left-1/2 w-[min(402px,100vw)] -translate-x-1/2 overflow-hidden"
+                style={{
+                  top: visualViewportRect.top,
+                  height: visualViewportRect.height,
+                }}
+              >
+                <video
+                  src="/BlendDimVideo.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className={`h-full w-full object-cover ${isRecommendMode ? 'opacity-100' : 'opacity-50'}`}
+                />
+              </div>
+            )}
+
             {/* 키보드를 제외한 화면 영역의 하단에 생성 모달을 맞춘다. */}
             <div
               ref={dialogRef}
@@ -969,6 +990,7 @@ export default function CreateModal({
                     autoFocus
                     disabled={isSaving}
                     value={inputValue}
+                    onPointerDown={() => setHasInputInteractionStarted(true)}
                     onChange={(event) => handleInputChange(event.target.value)}
                     onBlur={handleInputBlur}
                     onKeyDown={handleInputKeyDown}

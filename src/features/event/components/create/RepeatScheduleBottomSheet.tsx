@@ -282,7 +282,17 @@ export default function RepeatScheduleBottomSheet({
 
   return (
     <Overlay className="flex items-end justify-center" onClick={onClose}>
-      <Frame className="gap-2 !bg-white px-4 pt-5 pb-1" aria-labelledby={titleId}>
+      <video
+        src="/BlendDimVideo.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover opacity-100"
+      />
+
+      <Frame className="relative z-10 gap-2 !bg-white px-4 pt-5 pb-1" aria-labelledby={titleId}>
         <h2 id={titleId} className="sr-only">
           반복 일정 설정
         </h2>
