@@ -1,12 +1,11 @@
 import { useEffect, useRef } from 'react';
-import type { MouseEvent, PointerEvent } from 'react';
+import type { MouseEvent, PointerEvent, WheelEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import FullCalendar from '@fullcalendar/react';
 import type { MoreLinkContentArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { DateClickArg } from '@fullcalendar/interaction';
-import { useSwipeable } from 'react-swipeable';
 
 import { calendarService } from '@/apis/services/calendarService';
 import { queryKeys } from '@/hooks/queries/queryKeys';
@@ -37,6 +36,11 @@ interface CalendarGridProps {
 const LONG_PRESS_DURATION_MS = 500;
 const LONG_PRESS_MOVE_THRESHOLD_PX = 10;
 
+// 스크롤로 월 전환을 트리거할 최소 이동 거리(px)
+const SCROLL_TRANSITION_THRESHOLD_PX = 60;
+// 월 전환 직후, 같은 스크롤 동작으로 여러 달이 연속 넘어가지 않도록 잠그는 시간(ms)
+const SCROLL_TRANSITION_LOCK_MS = 500;
+
 function CalendarGrid({
   events,
   selectedDate,
@@ -52,6 +56,11 @@ function CalendarGrid({
   const longPressTimerRef = useRef<number | null>(null);
   const longPressedDateRef = useRef<string | null>(null);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  // 스크롤(터치 드래그 / 휠) 기반 월 전환 관련 ref
+  const scrollTouchStartYRef = useRef<number | null>(null);
+  const isScrollLockedRef = useRef(false);
+  const wheelAccumulatedYRef = useRef(0);
 
   const currentYear = useCalendarStore((state) => state.currentYear);
   const currentMonth = useCalendarStore((state) => state.currentMonth);
@@ -105,6 +114,9 @@ function CalendarGrid({
       return;
     }
 
+    // 스크롤(월 전환) 제스처 시작점 기록 — 터치 드래그 거리 계산용
+    scrollTouchStartYRef.current = event.clientY;
+
     const date = getDateFromTarget(event.target);
 
     // 콜백이 없는 화면에서는 일반 날짜 클릭만 처리한다.
@@ -122,6 +134,13 @@ function CalendarGrid({
     }, LONG_PRESS_DURATION_MS);
   };
 
+  const lockScrollTransition = () => {
+    isScrollLockedRef.current = true;
+    window.setTimeout(() => {
+      isScrollLockedRef.current = false;
+    }, SCROLL_TRANSITION_LOCK_MS);
+  };
+
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const start = pointerStartRef.current;
 
@@ -132,16 +151,56 @@ function CalendarGrid({
     ) {
       clearLongPressTimer();
     }
+
+    // 터치 드래그로 위/아래 스크롤 시 월 전환 처리
+    const scrollStartY = scrollTouchStartYRef.current;
+    if (scrollStartY === null || isScrollLockedRef.current) {
+      return;
+    }
+
+    const deltaY = event.clientY - scrollStartY;
+
+    if (Math.abs(deltaY) >= SCROLL_TRANSITION_THRESHOLD_PX) {
+      if (deltaY < 0) {
+        // 위로 드래그(콘텐츠는 위로 스크롤) -> 다음 달
+        calendarRef.current?.getApi().next();
+      } else {
+        // 아래로 드래그 -> 이전 달
+        calendarRef.current?.getApi().prev();
+      }
+      lockScrollTransition();
+      scrollTouchStartYRef.current = event.clientY; // 연속 드래그 시 기준점 갱신
+    }
   };
 
   const handlePointerEnd = () => {
     clearLongPressTimer();
     pointerStartRef.current = null;
+    scrollTouchStartYRef.current = null;
 
     if (longPressedDateRef.current) {
       window.setTimeout(() => {
         longPressedDateRef.current = null;
       }, 1000);
+    }
+  };
+
+  // 데스크톱 마우스 휠 스크롤로 월 전환 (모바일 실제 동작은 터치 드래그 쪽에서 처리됨)
+  const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
+    if (isScrollLockedRef.current) {
+      return;
+    }
+
+    wheelAccumulatedYRef.current += event.deltaY;
+
+    if (Math.abs(wheelAccumulatedYRef.current) >= SCROLL_TRANSITION_THRESHOLD_PX) {
+      if (wheelAccumulatedYRef.current > 0) {
+        calendarRef.current?.getApi().next();
+      } else {
+        calendarRef.current?.getApi().prev();
+      }
+      wheelAccumulatedYRef.current = 0;
+      lockScrollTransition();
     }
   };
 
@@ -161,20 +220,14 @@ function CalendarGrid({
     return dateStr === selectedDate ? ['selected-date'] : [];
   };
 
-  const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => calendarRef.current?.getApi().next(),
-    onSwipedRight: () => calendarRef.current?.getApi().prev(),
-    trackMouse: true,
-  });
-
   return (
     <div
-      {...swipeHandlers}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
       onPointerCancel={handlePointerEnd}
       onPointerLeave={handlePointerEnd}
+      onWheel={handleWheel}
       onClickCapture={handleClickCapture}
       onContextMenu={(event) => {
         if (getDateFromTarget(event.target)) {
@@ -221,26 +274,28 @@ function CalendarGrid({
         <span className="month-number">{currentMonth}</span>
       </div>
 
-      <FullCalendar
-        ref={calendarRef}
-        plugins={[dayGridPlugin, interactionPlugin]}
-        initialView={initialView}
-        initialDate={initialCalendarDate}
-        locale="ko"
-        events={events}
-        dateClick={handleDateClick}
-        dayCellClassNames={dayCellClassNames}
-        dayCellContent={(arg) => arg.dayNumberText.replace('일', '')}
-        height="auto"
-        headerToolbar={false}
-        fixedWeekCount={false}
-        dayMaxEvents={3}
-        moreLinkContent={(arg: MoreLinkContentArg) => `+${arg.num}`}
-        datesSet={(arg) => {
-          const month = arg.view.currentStart.getMonth() + 1;
-          setMonth(arg.view.currentStart.getFullYear(), month);
-        }}
-      />
+      <div className="calendar-grid-scroll-area">
+        <FullCalendar
+          ref={calendarRef}
+          plugins={[dayGridPlugin, interactionPlugin]}
+          initialView={initialView}
+          initialDate={initialCalendarDate}
+          locale="ko"
+          events={events}
+          dateClick={handleDateClick}
+          dayCellClassNames={dayCellClassNames}
+          dayCellContent={(arg) => arg.dayNumberText.replace('일', '')}
+          height="auto"
+          headerToolbar={false}
+          fixedWeekCount={false}
+          dayMaxEvents={3}
+          moreLinkContent={(arg: MoreLinkContentArg) => `+${arg.num}`}
+          datesSet={(arg) => {
+            const month = arg.view.currentStart.getMonth() + 1;
+            setMonth(arg.view.currentStart.getFullYear(), month);
+          }}
+        />
+      </div>
     </div>
   );
 }

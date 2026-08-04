@@ -203,3 +203,16 @@
   width: 24px;
   height: 24px;
 }
+.calendar-grid-root {
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-grid-scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
