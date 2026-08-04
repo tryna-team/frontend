@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { MouseEvent, PointerEvent, WheelEvent } from 'react';
+import type { KeyboardEvent, MouseEvent, PointerEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import FullCalendar from '@fullcalendar/react';
 import type { MoreLinkContentArg } from '@fullcalendar/core';
@@ -135,6 +135,7 @@ function CalendarGrid({
   const scrollTouchStartYRef = useRef<number | null>(null); // 드래그 시작 y좌표
   const wheelAccumulatedYRef = useRef(0);
   const wheelIdleTimerRef = useRef<number | null>(null);
+  const resetTimerRef = useRef<number | null>(null); // 제자리 복귀(snapback) 타이머 — 새 드래그 시작 시 취소용
   const isAnimatingRef = useRef(false); // 전환 애니메이션 진행 중에는 새 드래그를 막는다
 
   const currentYear = useCalendarStore((state) => state.currentYear);
@@ -150,6 +151,12 @@ function CalendarGrid({
     () => () => {
       if (longPressTimerRef.current !== null) {
         window.clearTimeout(longPressTimerRef.current);
+      }
+      if (wheelIdleTimerRef.current !== null) {
+        window.clearTimeout(wheelIdleTimerRef.current);
+      }
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
       }
     },
     [],
@@ -206,10 +213,11 @@ function CalendarGrid({
     const syncFloatingHeight = () => {
       const el = document.querySelector<HTMLElement>('.fixed.bottom-0');
 
+      // 추적 중인 요소가 그대로면 아무것도 안 한다 — 실제 크기 변화는 이미
+      // 아래 ResizeObserver가 감시하고 있으므로, document.body 전체를 감시하는
+      // MutationObserver가 (FullCalendar 내부 리렌더 등) 무관한 변화 때마다
+      // 매번 getBoundingClientRect()로 레이아웃을 다시 읽을 필요가 없다.
       if (el === trackedEl) {
-        if (el) {
-          rootRef.current?.style.setProperty('--floating-h', `${el.getBoundingClientRect().height}px`);
-        }
         return;
       }
 
@@ -327,17 +335,38 @@ function CalendarGrid({
     const track = trackRef.current;
     if (!track || panelHeightRef.current === 0) return;
 
-    track.style.transition = animate
+    // prefers-reduced-motion을 요청한 사용자는 슬라이딩 애니메이션 없이 즉시 이동한다.
+    // (실제 월 전환 로직 자체는 애니메이션 유무와 무관하게 setTimeout 기반이라 그대로 동작한다.)
+    const shouldAnimate =
+      animate && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    track.style.transition = shouldAnimate
       ? `transform ${TRANSITION_DURATION_MS}ms cubic-bezier(0.25, 0.1, 0.25, 1)`
       : 'none';
     track.style.transform = `translateY(${-panelHeightRef.current + delta}px)`;
   };
 
   const resetTrack = () => {
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = null;
+    }
     const track = trackRef.current;
     if (!track) return;
     track.style.transition = 'none';
     track.style.transform = '';
+  };
+
+  // resetTrack을 지연 실행하되, 이미 예약된 타이머가 있으면 먼저 취소한다.
+  // 그렇지 않으면 새 드래그가 시작된 후에도 예전 타이머가 실행되면서 트랙
+  // transform이 갑자기 초기화되는 깜빡임(레이스 컨디션)이 생길 수 있다.
+  const scheduleReset = () => {
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+    }
+    resetTimerRef.current = window.setTimeout(() => {
+      resetTrack();
+    }, TRANSITION_DURATION_MS);
   };
 
   const runTransition = (direction: 'next' | 'prev') => {
@@ -359,7 +388,7 @@ function CalendarGrid({
       runTransition(delta < 0 ? 'next' : 'prev');
     } else {
       setTrackTransform(0, true);
-      window.setTimeout(resetTrack, TRANSITION_DURATION_MS);
+      scheduleReset();
     }
   };
 
@@ -388,6 +417,17 @@ function CalendarGrid({
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) {
       return;
+    }
+
+    // 포인터를 캡처해서, 드래그 도중 손가락/마우스가 이 요소(화면 프레임) 밖으로
+    // 나가도 계속 이 요소가 pointermove/pointerup을 받도록 한다. 이게 없으면
+    // 데스크톱에서 마우스 드래그 중 프레임(max-w-402px) 밖으로 살짝만 나가도
+    // 드래그가 중간에 취소되는 문제가 있었다. 일부 포인터 타입/브라우저 조합에서
+    // 예외가 날 수 있어 안전하게 try/catch로 감싼다.
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // 캡처 실패해도 기존 pointercancel 처리로 대부분 커버되므로 무시한다.
     }
 
     // 전환 애니메이션이 진행 중일 때는 새 드래그를 시작하지 않는다.
@@ -459,30 +499,39 @@ function CalendarGrid({
 
     if (!isAnimatingRef.current) {
       setTrackTransform(0, true);
-      window.setTimeout(resetTrack, TRANSITION_DURATION_MS);
+      scheduleReset();
     }
   };
 
-  // 데스크톱 마우스 휠 스크롤로 월 전환 (모바일 실제 동작은 터치 드래그 쪽에서 처리됨)
-  const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
-    if (isAnimatingRef.current) {
-      return;
-    }
+  // React의 onWheel은 브라우저에 의해 passive 리스너로 등록되는 경우가 있어,
+  // 그 안에서 event.preventDefault()를 호출해도 무시되고 페이지가 같이 스크롤될
+  // 수 있다. { passive: false }로 네이티브 리스너를 직접 붙여야 확실히 막힌다.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
 
-    event.preventDefault();
-    wheelAccumulatedYRef.current += event.deltaY;
-    // wheel deltaY 양수(아래로 스크롤) === 터치에서 손가락을 위로 미는 것과 같은 "다음 달" 방향
-    setTrackTransform(-wheelAccumulatedYRef.current, false);
+    const onWheelNative = (event: globalThis.WheelEvent) => {
+      if (isAnimatingRef.current) {
+        return;
+      }
 
-    if (wheelIdleTimerRef.current !== null) {
-      window.clearTimeout(wheelIdleTimerRef.current);
-    }
-    wheelIdleTimerRef.current = window.setTimeout(() => {
-      finishDrag(-wheelAccumulatedYRef.current);
-      wheelAccumulatedYRef.current = 0;
-      wheelIdleTimerRef.current = null;
-    }, WHEEL_IDLE_MS);
-  };
+      event.preventDefault();
+      wheelAccumulatedYRef.current += event.deltaY;
+      setTrackTransform(-wheelAccumulatedYRef.current, false);
+
+      if (wheelIdleTimerRef.current !== null) {
+        window.clearTimeout(wheelIdleTimerRef.current);
+      }
+      wheelIdleTimerRef.current = window.setTimeout(() => {
+        finishDrag(-wheelAccumulatedYRef.current);
+        wheelAccumulatedYRef.current = 0;
+        wheelIdleTimerRef.current = null;
+      }, WHEEL_IDLE_MS);
+    };
+
+    root.addEventListener('wheel', onWheelNative, { passive: false });
+    return () => root.removeEventListener('wheel', onWheelNative);
+  }, []);
 
   // long press 뒤의 click이 Daily 이동으로 이어지지 않게 막는다.
   const handleClickCapture = (event: MouseEvent<HTMLDivElement>) => {
@@ -500,14 +549,32 @@ function CalendarGrid({
     return dateStr === selectedDate ? ['selected-date'] : [];
   };
 
+  // 마우스 드래그/휠 스와이프 외에, 키보드(방향키)로도 월 전환이 가능해야 한다.
+  // headerToolbar={false}로 FullCalendar 자체 이전/다음 버튼도 꺼져있어서,
+  // 이게 없으면 키보드/스크린리더 사용자는 현재 달 외에 다른 달로 이동할 방법이 없다.
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (isAnimatingRef.current) {
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      runTransition('next');
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      runTransition('prev');
+    }
+  };
+
   return (
     <div
       onPointerDownCapture={handlePointerDown}
       onPointerMoveCapture={handlePointerMove}
       onPointerUpCapture={handlePointerEnd}
       onPointerCancelCapture={handlePointerCancel}
-      onPointerLeave={handlePointerCancel}
-      onWheel={handleWheel}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="group"
+      aria-label={`${currentYear}년 ${currentMonth}월 캘린더. 위/아래 방향키로 달을 전환할 수 있습니다.`}
       onClickCapture={handleClickCapture}
       onContextMenu={(event) => {
         if (getDateFromTarget(event.target)) {
@@ -558,7 +625,7 @@ function CalendarGrid({
       <div className="calendar-grid-scroll-area" ref={viewportRef}>
         <div className="calendar-swipe-track" ref={trackRef}>
           {/* 이전 달 — 드래그 중에만 살짝 보이는 미리보기(날짜만, 이벤트 없음) */}
-          <div className="calendar-panel" ref={prevPanelElRef}>
+          <div className="calendar-panel" ref={prevPanelElRef} aria-hidden="true">
             <MonthPeekGrid
               year={prevMonthDate.getFullYear()}
               month={prevMonthDate.getMonth() + 1}
@@ -596,7 +663,7 @@ function CalendarGrid({
           </div>
 
           {/* 다음 달 — 드래그 중에만 살짝 보이는 미리보기(날짜만, 이벤트 없음) */}
-          <div className="calendar-panel" ref={nextPanelElRef}>
+          <div className="calendar-panel" ref={nextPanelElRef} aria-hidden="true">
             <MonthPeekGrid
               year={nextMonthDate.getFullYear()}
               month={nextMonthDate.getMonth() + 1}

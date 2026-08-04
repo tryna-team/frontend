@@ -1,14 +1,16 @@
 .fc {
   width: 100%;
-  /* iOS Safari에서 조상(.calendar-grid-root)의 touch-action: none이 이 안쪽
-     요소들까지 제대로 "교집합"으로 적용되지 않는 경우가 있어(특히 position:
-     absolute 트랙 구조에서), FullCalendar가 만드는 모든 요소에 직접
-     touch-action: none을 걸어 조상에게 의존하지 않게 한다. */
-  touch-action: none;
+  /* iOS Safari에서 조상(.calendar-grid-root)의 touch-action이 이 안쪽 요소들까지
+     제대로 "교집합"으로 적용되지 않는 경우가 있어(특히 position: absolute 트랙
+     구조에서), FullCalendar가 만드는 모든 요소에 직접 걸어 조상에게 의존하지
+     않게 한다. none이 아니라 pan-x pinch-zoom을 쓰는 이유: 세로 드래그(pan-y)만
+     막아서 월 전환 스와이프와 충돌하지 않게 하고, 핀치줌(확대/축소)은 저시력
+     사용자를 위해 계속 허용한다. */
+  touch-action: pan-x pinch-zoom;
 }
 
 .fc * {
-  touch-action: none;
+  touch-action: pan-x pinch-zoom;
 }
 .fc-daygrid-day-top {
   display: flex;
@@ -225,7 +227,7 @@
      높이(--day-row-h)가 주 수에 맞춰 항상 화면에 딱 맞게 계산되므로, 예전처럼
      .calendar-panel-inner 안에서 별도로 스크롤해야 할 콘텐츠가 없다 — 그래서
      touch-action: none을 여기(root 전체)에 걸어도 내부 스크롤과 충돌할 일이 없다. */
-  touch-action: none;
+  touch-action: pan-x pinch-zoom;
   display: flex;
   flex-direction: column;
 }
@@ -294,7 +296,7 @@
   display: flex;
   flex-direction: column;
   padding-top: 2px;
-  touch-action: none;
+  touch-action: pan-x pinch-zoom;
 }
 
 .calendar-peek-week {
