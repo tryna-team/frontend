@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQueries, useQuery, keepPreviousData } from '@tanstack/react-query';
 
 import { useCalendarStore } from '@/stores';
 import Button from '@/components/common/Buttons/Button';
@@ -35,6 +35,7 @@ function HomePage() {
   // 기본 선택 = 오늘 (useCalendarStore.selectedDate는 string, null 없음)
   const selectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
+  const setMonth = useCalendarStore((s) => s.setMonth);
   const goToToday = useCalendarStore((s) => s.goToToday);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -72,13 +73,58 @@ function HomePage() {
       }))
     : [];
 
+  const currentYear = useCalendarStore((s) => s.currentYear);
+  const currentMonth = useCalendarStore((s) => s.currentMonth);
+
+  // B101은 유지하고, 현재 화면에 표시된 월의 일정 날짜를 추가로 조회한다.
+  const { data: monthlyData } = useQuery({
+    queryKey: queryKeys.calendars.monthly(currentYear, currentMonth),
+    queryFn: () => calendarService.getMonthly(currentYear, currentMonth),
+  });
+
+  const isFreshForCurrentMonth =
+    monthlyData?.year === currentYear && monthlyData.month === currentMonth;
+  const eventDates = isFreshForCurrentMonth
+    ? monthlyData.days
+        .filter((day) => day.date !== selectedDate && (day.hasEvent || day.eventCount > 0))
+        .map((day) => day.date)
+    : [];
+
+  // B101이 제공하지 않는 날짜의 일정 제목만 B103으로 보완한다.
+  const dateEventQueries = useQueries({
+    queries: eventDates.map((date) => ({
+      queryKey: queryKeys.calendars.dateEvents(date),
+      queryFn: () => calendarService.getDateEvents(date),
+    })),
+  });
+
+  const isSelectedDateInCurrentMonth = selectedDate.startsWith(
+    `${currentYear}-${String(currentMonth).padStart(2, '0')}`,
+  );
+  const visibleCalendarEvents = [
+    ...(isSelectedDateInCurrentMonth ? calendarEvents : []),
+    ...dateEventQueries.flatMap((query, index) =>
+      (query.data?.events ?? []).map((event) => ({
+        title: event.title,
+        date: eventDates[index],
+        backgroundColor: CATEGORY_COLOR_MAP.yellow,
+        textColor: '#1C1630',
+        borderColor: 'transparent',
+      })),
+    ),
+  ];
+
   const handleSelectDate = (date: string) => {
     selectDate(date);
     navigate(generateDailyPath(date));
   };
 
-  const handleCreate = () => {
-    // 저장 성공 후 생성 모달의 임시 입력 상태를 정리한다.
+  const handleCreate = (createdDate: string) => {
+    const [createdYear, createdMonth] = createdDate.split('-').map(Number);
+
+    // 생성된 일정 날짜를 선택해 B101의 해당 날짜 일정을 다시 표시한다.
+    selectDate(createdDate);
+    setMonth(createdYear, createdMonth);
     setCreateInputValue('');
     setIsCreateModalOpen(false);
     setInitialCreateDate(null);
@@ -112,7 +158,7 @@ function HomePage() {
   return (
     <div className="home-page">
       <CalendarGrid
-        events={calendarEvents}
+        events={visibleCalendarEvents}
         selectedDate={selectedDate}
         onSelectDate={handleSelectDate}
         onLongPressDate={handleLongPressDate}
