@@ -338,6 +338,19 @@ export default function CreateModal({
     });
   }, []);
 
+  const handleCreateOverlayClick = useCallback(() => {
+    if (isLabelModalOpen) {
+      // 라벨 선택 배경을 누르면 라벨 모달만 닫는다.
+      setIsLabelModalOpen(false);
+      window.requestAnimationFrame(() => {
+        labelButtonRef.current?.focus();
+      });
+      return;
+    }
+
+    handleCloseRequest();
+  }, [handleCloseRequest, isLabelModalOpen]);
+
   const handleExitConfirm = () => {
     // 확인한 경우에만 작성 중인 입력과 생성 후보를 삭제한다.
     onInputChange?.('');
@@ -951,7 +964,7 @@ export default function CreateModal({
       {/* 생성 모달만 Portal로 분리하고 반복 바텀시트는 앱 레이아웃을 따른다. */}
       {!isScheduleOpen &&
         createPortal(
-          <Overlay onClick={handleCloseRequest}>
+          <Overlay onClick={handleCreateOverlayClick}>
             {(hasInputInteractionStarted || isRecommendMode) && (
               <div
                 aria-hidden="true"
