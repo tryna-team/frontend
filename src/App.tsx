@@ -21,7 +21,7 @@ function App() {
     // 뷰포트가 아니라 이 프레임을 기준으로 위치를 잡게 됨 — BottomSheet/ToastPopup처럼
     // fixed inset-0을 쓰는 오버레이가 전체 화면이 아니라 이 앱 프레임(390~402px) 폭
     // 안에서만 뜨도록 하기 위한 의도적인 처리.
-    <div className="mx-auto flex min-h-[max(840px,100dvh)] w-full min-w-[390px] max-w-[402px] transform-gpu flex-col bg-background">
+    <div className="mx-auto flex min-h-[100dvh] w-full min-w-[390px] max-w-[402px] transform-gpu flex-col bg-background md:min-h-[max(840px,100dvh)]">
       <FloatingButtonsContext.Provider value={setFloatingContent}>
         {/* Main: 스크롤 콘텐츠 영역. FloatingButtons가 떠 있을 땐 그 높이만큼 하단 여백 예약 */}
         <div className={floatingContent ? 'flex-1 main-floating-padding' : 'flex-1'}>

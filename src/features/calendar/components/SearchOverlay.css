@@ -111,6 +111,13 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  /* 클릭 가능한 UI라는 걸 시각적으로 알리고, 상하로 터치 영역을 좀 더 확보 */
+  cursor: pointer;
+  padding: 4px 0;
+  margin: -4px 0; /* 위 padding으로 늘어난 만큼 형제 간 gap이 커지지 않도록 상쇄 */
+  border-radius: var(--radius-medium);
 }
 
 .search-overlay-result-dot {
