@@ -90,12 +90,7 @@ function CalendarGrid({
     const dateCell = (event.target as HTMLElement).closest<HTMLElement>('[data-date]');
     const date = dateCell?.dataset.date;
 
-    if (!date) {
-      return;
-    }
-
-    // 콜백이 없는 화면에서는 일반 날짜 클릭만 처리한다.
-    if (!onLongPressDate) {
+    if (!date || !onLongPressDate) {
       return;
     }
 
