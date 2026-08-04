@@ -22,7 +22,7 @@ import { PATH } from '@/routes/paths';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useCanGoBack } from '@/hooks/useCanGoBack';
 import { queryKeys } from '@/hooks/queries/queryKeys';
-import { eventsService } from '@/apis/services/eventsService';
+import { eventDetailService } from '@/apis/services/eventDetailService';
 import { actionItemsService } from '@/apis/services/actionItemsService';
 
 import './EventViewPage.css';
@@ -60,7 +60,7 @@ function EventViewPage() {
     isError: isEventError,
   } = useQuery({
     queryKey: queryKeys.events.detail(eventId ?? ''),
-    queryFn: () => eventsService.getDetail(eventId as string),
+    queryFn: () => eventDetailService.getDetail(eventId as string),
     enabled: !!eventId,
   });
 
