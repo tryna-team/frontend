@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { FocusEvent, KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -14,6 +14,7 @@ import Checklist, { type ChecklistItemData } from '@/components/common/Checklist
 import LabelModal, { type LabelItemData } from '@/components/common/LabelModal/LabelModal';
 import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
 import Overlay from '@/components/common/Popup/Overlay';
+import ToastPopup from '@/components/common/Popup/ToastPopup';
 import { RepeatScheduleBottomSheet, type RepeatOption } from '@/features/event/components/create';
 import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial';
 import { queryKeys } from '@/hooks/queries/queryKeys';
@@ -228,6 +229,7 @@ export default function CreateModal({
   const lastParseRequestedAtRef = useRef(0);
   const parseAbortControllerRef = useRef<AbortController | null>(null);
   const recommendationAbortControllerRef = useRef<AbortController | null>(null);
+  const createAbortControllerRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
   const lastInputChangedAtRef = useRef<number | null>(null);
   const hasRecommendedRef = useRef(mode === 'recommend');
@@ -249,6 +251,7 @@ export default function CreateModal({
   const [hasStartTimeChanged, setHasStartTimeChanged] = useState(false);
   const [hasEndTimeChanged, setHasEndTimeChanged] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
   const startDateRef = useRef(startDate);
   const [visualViewportRect, setVisualViewportRect] = useState(() => ({
     top: window.visualViewport?.offsetTop ?? 0,
@@ -282,12 +285,32 @@ export default function CreateModal({
   const selectedDateText = isSameDay(startDate, endDate)
     ? formatTriggerDate(startDate)
     : `${formatTriggerDate(startDate)}~${format(endDate, 'M.d')}`;
-  const hasParsedScheduleDate = Boolean(parsedCandidate?.dateCandidate);
-  const repeatText = hasRepeatChanged ? repeat : '반복 없음';
-  const calendarText =
-    hasScheduleChanged || hasParsedScheduleDate
-      ? `${selectedDateText} · ${repeatText}`
-      : initialCalendarText;
+  const calendarText = hasScheduleChanged ? `${selectedDateText} · ${repeat}` : initialCalendarText;
+
+  const handleCloseRequest = useCallback(() => {
+    if (trimmedInput && !isSaving) {
+      setIsExitConfirmOpen(true);
+      return;
+    }
+
+    onClose?.();
+  }, [isSaving, onClose, trimmedInput]);
+
+  const handleExitConfirmClose = useCallback(() => {
+    setIsExitConfirmOpen(false);
+
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  }, []);
+
+  const handleExitConfirm = () => {
+    // 확인한 경우에만 작성 중인 입력과 생성 후보를 삭제한다.
+    onInputChange?.('');
+    resetCreation();
+    setIsExitConfirmOpen(false);
+    onClose?.();
+  };
 
   useEffect(() => {
     startDateRef.current = startDate;
@@ -298,6 +321,7 @@ export default function CreateModal({
 
     return () => {
       isMountedRef.current = false;
+      createAbortControllerRef.current?.abort();
     };
   }, []);
 
@@ -332,7 +356,7 @@ export default function CreateModal({
 
         setParsedCandidate(parsedCandidate);
 
-        // 파싱 날짜를 시작·종료 일정과 하단 일정 문구에 함께 반영한다.
+        // 파싱 결과를 사용자가 직접 고른 일정값보다 우선한다.
         if (parsedCandidate.dateCandidate) {
           const parsedDate = parseISO(parsedCandidate.dateCandidate);
 
@@ -525,7 +549,10 @@ export default function CreateModal({
       if (event.key === 'Escape') {
         event.preventDefault();
 
-        // TODO: 저장 중 닫기를 차단할지 저장 요청을 취소할지 정책 확정 후 처리한다.
+        if (isExitConfirmOpen) {
+          handleExitConfirmClose();
+          return;
+        }
 
         if (isLabelModalOpen) {
           setIsLabelModalOpen(false);
@@ -535,7 +562,7 @@ export default function CreateModal({
           return;
         }
 
-        onClose?.();
+        handleCloseRequest();
         return;
       }
 
@@ -578,7 +605,13 @@ export default function CreateModal({
     document.addEventListener('keydown', handleDialogKeyDown);
 
     return () => document.removeEventListener('keydown', handleDialogKeyDown);
-  }, [isLabelModalOpen, isScheduleOpen, onClose]);
+  }, [
+    handleCloseRequest,
+    handleExitConfirmClose,
+    isExitConfirmOpen,
+    isLabelModalOpen,
+    isScheduleOpen,
+  ]);
 
   // 오버레이를 키보드를 제외한 실제 화면 영역에 맞춘다.
   useEffect(() => {
@@ -775,6 +808,8 @@ export default function CreateModal({
     }
 
     const createRevision = revisionRef.current;
+    const controller = new AbortController();
+    createAbortControllerRef.current = controller;
     const selectedCandidates = recommendationCandidates.filter((candidate) => candidate.selected);
     const hasParsedStartTime = Boolean(parsedCandidate?.timeCandidate);
     const hasParsedEndTime = Boolean(parsedCandidate?.endTimeCandidate);
@@ -791,46 +826,49 @@ export default function CreateModal({
     setIsSaving(true);
 
     try {
-      await eventService.create({
-        eventTitle: trimmedInput,
-        description: null,
-        startDate: format(startDate, 'yyyy-MM-dd'),
-        startTime: startTimeValue,
-        endDate: shouldSaveEndDate ? format(endDate, 'yyyy-MM-dd') : null,
-        endTime: endTimeValue,
-        isAllDay: !startTimeValue,
-        location: parsedCandidate?.placeCandidate ?? null,
-        eventType: parsedCandidate?.eventTypeCandidate ?? null,
-        isRecurring: recurrenceType !== 'NONE',
-        recurrenceType,
-        recurrenceInterval: 1,
-        recurrenceEndDate: null,
-        actionItems: {
-          // 생성 모달의 add 상태인 항목만 최종 저장한다.
-          items: selectedCandidates.map((candidate) => ({
-            title: candidate.title,
-            itemType: candidate.apiItemType ?? 'UNRESOLVED',
-            createdBy: candidate.edited ? 'USER_EDITED' : 'SYSTEM',
-            displayDate:
-              candidate.apiItemType === 'TIMED_ACTION' ? (candidate.displayDate ?? null) : null,
-            displayTime: null,
-            offsetDays: candidate.offsetDays ?? null,
-            sourceTemplateId: candidate.sourceTemplateId ?? null,
-          })),
-          // 제외·수정 여부도 추천 개선용 피드백으로 전달한다.
-          feedbackLogs: recommendationCandidates.map((candidate) => ({
-            actionType: candidate.selected
-              ? candidate.edited
-                ? 'EDITED'
-                : 'SELECTED'
-              : 'REJECTED',
-            sourceTemplateId: candidate.sourceTemplateId ?? null,
-            originalTitle: candidate.originalTitle ?? candidate.title,
-            editedTitle: candidate.edited ? candidate.title : null,
-            reason: null,
-          })),
+      await eventService.create(
+        {
+          eventTitle: trimmedInput,
+          description: null,
+          startDate: format(startDate, 'yyyy-MM-dd'),
+          startTime: startTimeValue,
+          endDate: shouldSaveEndDate ? format(endDate, 'yyyy-MM-dd') : null,
+          endTime: endTimeValue,
+          isAllDay: !startTimeValue,
+          location: parsedCandidate?.placeCandidate ?? null,
+          eventType: parsedCandidate?.eventTypeCandidate ?? null,
+          isRecurring: recurrenceType !== 'NONE',
+          recurrenceType,
+          recurrenceInterval: 1,
+          recurrenceEndDate: null,
+          actionItems: {
+            // 생성 모달의 add 상태인 항목만 최종 저장한다.
+            items: selectedCandidates.map((candidate) => ({
+              title: candidate.title,
+              itemType: candidate.apiItemType ?? 'UNRESOLVED',
+              createdBy: candidate.edited ? 'USER_EDITED' : 'SYSTEM',
+              displayDate:
+                candidate.apiItemType === 'TIMED_ACTION' ? (candidate.displayDate ?? null) : null,
+              displayTime: null,
+              offsetDays: candidate.offsetDays ?? null,
+              sourceTemplateId: candidate.sourceTemplateId ?? null,
+            })),
+            // 제외·수정 여부도 추천 개선용 피드백으로 전달한다.
+            feedbackLogs: recommendationCandidates.map((candidate) => ({
+              actionType: candidate.selected
+                ? candidate.edited
+                  ? 'EDITED'
+                  : 'SELECTED'
+                : 'REJECTED',
+              sourceTemplateId: candidate.sourceTemplateId ?? null,
+              originalTitle: candidate.originalTitle ?? candidate.title,
+              editedTitle: candidate.edited ? candidate.title : null,
+              reason: null,
+            })),
+          },
         },
-      });
+        controller.signal,
+      );
 
       // 새 일정을 다시 조회할 수 있도록 관련 캐시를 무효화한다.
       await Promise.all([
@@ -846,22 +884,25 @@ export default function CreateModal({
       resetCreation();
       onCreate?.(format(startDate, 'yyyy-MM-dd'));
     } catch {
-      if (!isMountedRef.current || createRevision !== revisionRef.current) {
+      if (
+        controller.signal.aborted ||
+        !isMountedRef.current ||
+        createRevision !== revisionRef.current
+      ) {
         return;
       }
 
       // TODO: 공통 일정 저장 오류 UI가 준비되면 alert을 교체한다.
       window.alert('일정을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
+      if (createAbortControllerRef.current === controller) {
+        createAbortControllerRef.current = null;
+      }
+
       if (isMountedRef.current) {
         setIsSaving(false);
       }
     }
-  };
-
-  const handleOverlayClick = () => {
-    // TODO: 저장 중 닫기를 차단할지 저장 요청을 취소할지 정책 확정 후 처리한다.
-    onClose?.();
   };
 
   return (
@@ -869,7 +910,7 @@ export default function CreateModal({
       {/* 생성 모달만 Portal로 분리하고 반복 바텀시트는 앱 레이아웃을 따른다. */}
       {!isScheduleOpen &&
         createPortal(
-          <Overlay onClick={handleOverlayClick}>
+          <Overlay onClick={handleCloseRequest}>
             {/* 키보드를 제외한 화면 영역의 하단에 생성 모달을 맞춘다. */}
             <div
               ref={dialogRef}
@@ -996,6 +1037,17 @@ export default function CreateModal({
               </Frame>
             </div>
           </Overlay>,
+          document.body,
+        )}
+
+      {isExitConfirmOpen &&
+        createPortal(
+          <ToastPopup
+            GuideText="나가면 데이터는 삭제됩니다."
+            confirmText="확인"
+            onConfirm={handleExitConfirm}
+            onClose={handleExitConfirmClose}
+          />,
           document.body,
         )}
 
