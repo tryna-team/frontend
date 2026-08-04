@@ -4,7 +4,7 @@
 
 // API가 실제로 내려주는 색상값. 화면 표시(아이콘 매핑 등)에는 이 값을 그대로 쓰지 않고
 // LabelColor(src/components/common/LabelModal/LabelItem.tsx, lowercase)로 변환해서 쓴다.
-// 6개 값 자체는 두 타입이 동일하고 대소문자만 다르다 — 변환은 apis/services/labelsService.ts 참고.
+// 6개 값 자체는 두 타입이 동일하고 대소문자만 다르다 — 변환은 apis/services/labelService.ts 참고.
 export type ApiLabelColor = 'GREEN' | 'YELLOW' | 'PURPLE' | 'BLUE' | 'APRICOT' | 'PINK';
 
 export type LabelType = 'USER' | 'EXTERNAL_CALENDAR';

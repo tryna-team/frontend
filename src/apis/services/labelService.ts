@@ -8,11 +8,11 @@ import type {
   DeleteLabelResponseData,
   ReorderLabelsRequestBody,
   ReorderLabelsResponseData,
-} from "../types/labels";
+} from "../types/label";
 import type { CalendarLabel } from "@/stores/types";
 import type { LabelColor } from "@/components/common/LabelModal/LabelItem";
 
-export const labelsService = {
+export const labelService = {
   /** 라벨 목록 조회 — GET /api/v1/labels (B108-1) */
   getList: () => apiClient.get<LabelListResponseData>(ENDPOINTS.LABELS.ROOT),
 
@@ -34,7 +34,7 @@ export const labelsService = {
 };
 
 /**
- * API 응답(LabelResponseData, apis/types/labels.ts)을 store 도메인 타입인
+ * API 응답(LabelResponseData, apis/types/label.ts)을 store 도메인 타입인
  * CalendarLabel(src/stores/types.ts)로 변환한다.
  *
  * color 변환: API는 색상을 UPPERCASE(예: "GREEN")로 내려주지만, 화면에서는
