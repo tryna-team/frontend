@@ -201,6 +201,8 @@ const formatTriggerDate = (date: Date) => (isToday(date) ? '오늘' : format(dat
 
 const formatTriggerTime = (time: string) => normalizeTime(time)?.slice(0, 5) ?? time;
 
+const getCurrentTime = () => format(new Date(), 'h:mm a').toUpperCase();
+
 export default function CreateModal({
   mode = 'default',
   inputValue = '',
@@ -244,8 +246,9 @@ export default function CreateModal({
   const [recommendedTitle, setRecommendedTitle] = useState('');
   const [startDate, setStartDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
   const [endDate, setEndDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
-  const [startTime, setStartTime] = useState('9:41 AM');
-  const [endTime, setEndTime] = useState('9:41 AM');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [scheduleOpenedAtTime, setScheduleOpenedAtTime] = useState('');
   const [repeat, setRepeat] = useState<RepeatOption>('매주');
   const [hasScheduleChanged, setHasScheduleChanged] = useState(false);
   const [hasRepeatChanged, setHasRepeatChanged] = useState(false);
@@ -277,8 +280,8 @@ export default function CreateModal({
 
   const trimmedInput = inputValue.trim();
   const isRecommendMode = mode === 'recommend' || hasRecommended;
-  const recommendationKeyword = keyword || trimmedInput;
-  const recommendationMessage = message || recommendedTitle || '에 필요한 체크리스트를 추천했어요.';
+  const recommendationKeyword = keyword || recommendedTitle || trimmedInput;
+  const recommendationMessage = message || '에 필요한 체크리스트를 추천했어요.';
 
   const propCalendarText =
     calendarStatus.type === 'default' ? '오늘 · 반복 없음' : `${calendarStatus.text}마다`;
@@ -293,8 +296,10 @@ export default function CreateModal({
     ? `${format(startDate, 'MM.dd')}-${format(endDate, 'MM.dd')}`
     : formatTriggerDate(startDate);
   const hasParsedScheduleDate = Boolean(parsedCandidate?.dateCandidate);
-  const hasConfiguredStartTime = hasStartTimeChanged || Boolean(parsedCandidate?.timeCandidate);
-  const hasConfiguredEndTime = hasEndTimeChanged || Boolean(parsedCandidate?.endTimeCandidate);
+  const hasConfiguredStartTime =
+    Boolean(startTime) && (hasStartTimeChanged || Boolean(parsedCandidate?.timeCandidate));
+  const hasConfiguredEndTime =
+    Boolean(endTime) && (hasEndTimeChanged || Boolean(parsedCandidate?.endTimeCandidate));
   const hasParsedScheduleTime = Boolean(
     parsedCandidate?.timeCandidate || parsedCandidate?.endTimeCandidate,
   );
@@ -510,9 +515,7 @@ export default function CreateModal({
         }
 
         setRecommendationCandidates(candidates);
-        setRecommendedTitle(
-          `${latestParsedCandidate.titleCandidate ?? request.input}에 필요한 체크리스트를 추천했어요.`,
-        );
+        setRecommendedTitle(latestParsedCandidate.titleCandidate ?? request.input);
         hasRecommendedRef.current = true;
         setHasRecommended(true);
         setStep('recommendation');
@@ -755,6 +758,11 @@ export default function CreateModal({
       return;
     }
 
+    const currentTime = getCurrentTime();
+
+    // 바텀시트가 열린 시각을 미설정 시간 필드의 피커 초기값으로 사용한다.
+    setScheduleOpenedAtTime(currentTime);
+
     isScheduleOpeningRef.current = true;
     keepKeyboardOpenRef.current = false;
     setIsLabelModalOpen(false);
@@ -987,17 +995,11 @@ export default function CreateModal({
                   <div className="flex w-full flex-col">
                     <div className="flex w-full items-center justify-between px-1 py-2">
                       <p className="min-w-0 text-text-additional default-body-medium">
-                        {recommendedTitle ? (
-                          recommendedTitle
-                        ) : (
-                          <>
-                            <span className="bg-gradient-to-l from-[#29C878] to-[#32E089] bg-clip-text text-transparent default-body-strong-medium">
-                              {recommendationKeyword}
-                            </span>
+                        <span className="bg-gradient-to-l from-green-500 to-green-400 bg-clip-text text-transparent default-body-strong-medium">
+                          {recommendationKeyword}
+                        </span>
 
-                            {recommendationMessage}
-                          </>
-                        )}
+                        {recommendationMessage}
                       </p>
                     </div>
 
@@ -1109,8 +1111,8 @@ export default function CreateModal({
         <RepeatScheduleBottomSheet
           startDate={startDate}
           endDate={endDate}
-          startTime={startTime}
-          endTime={endTime}
+          startTime={startTime || scheduleOpenedAtTime}
+          endTime={endTime || scheduleOpenedAtTime}
           repeat={repeat}
           onStartDateChange={(date) => {
             setStartDate(date);
