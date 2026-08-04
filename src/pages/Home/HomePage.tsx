@@ -103,10 +103,10 @@ function HomePage() {
   );
   const visibleCalendarEvents = [
     ...(isSelectedDateInCurrentMonth ? calendarEvents : []),
-    ...dateEventQueries.flatMap((query) =>
+    ...dateEventQueries.flatMap((query, index) =>
       (query.data?.events ?? []).map((event) => ({
         title: event.title,
-        date: event.startDate,
+        date: eventDates[index],
         backgroundColor: CATEGORY_COLOR_MAP.yellow,
         textColor: '#1C1630',
         borderColor: 'transparent',

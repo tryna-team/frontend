@@ -20,6 +20,7 @@ export default function ToastPopup({
     <Overlay className="flex items-center justify-center" onClick={onClose}>
       <div
         role="alertdialog"
+        aria-label={GuideText}
         className="flex w-[252px] flex-col gap-2 rounded-[24px] bg-white px-5 py-4 drop-shadow-[0px_0px_10px_rgba(0,0,0,0.08)]"
         onClick={(event) => event.stopPropagation()}
       >
