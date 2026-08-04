@@ -100,7 +100,8 @@ export interface ActionItemStatusUpdate {
 export interface RecommendationCandidate {
   candidateId: string;
   title: string;
-  itemType: ActionItemType;
+  // 'CHECKLIST'는 API 값이 아니라, 공용 체크리스트 화면에서 비시간형 항목을 표현하기 위한 클라이언트 전용 값
+  itemType: ActionItemType | 'CHECKLIST';
   /** 서버 응답의 원본 항목 유형은 최종 저장 시 사용한다. */
   apiItemType?: 'TIMED_ACTION' | 'UNTIMED_PREP' | 'UNRESOLVED';
   sourceTemplateId?: string | null;
@@ -121,5 +122,11 @@ export interface ParsedEventCandidate {
   eventTypeCandidate: string | null;
   isAllDayCandidate: boolean;
   needsConfirmation: boolean;
-  warnings: { code: string; message: string }[];
+  warnings: { code?: string; message?: string }[];
+  // CreateModal.tsx가 EventParseResponse(apis/types/event.ts)를 매핑할 때 그대로 채우는 부가 필드
+  tempEventId?: string | null;
+  dateSource?: 'EXPLICIT' | 'RELATIVE_EXPRESSION' | 'DEFAULT_TODAY' | null;
+  endDateCandidate?: string | null;
+  endTimeCandidate?: string | null;
+  embeddingWords?: string[];
 }
