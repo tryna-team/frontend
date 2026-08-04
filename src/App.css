@@ -7,5 +7,5 @@
  */
 .main-floating-padding {
   padding-bottom: 82px;
-  padding-bottom: calc(82px + max(16px, env(safe-area-inset-bottom)));
+  /*padding-bottom: calc(82px + max(16px, env(safe-area-inset-bottom)));*/
 }

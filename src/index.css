@@ -146,13 +146,13 @@
 
   body {
 	  /* 화면 바깥 영역(앱 외부) 배경색 */
-    min-height: 100vh;
+    min-height: 100dvh;
     @apply bg-grey-100 text-foreground;
   }
 
 	/* App 컴포넌트가 화면 전체 높이를 사용할 수 있도록 설정 */
   #root {
-    min-height: 100vh;
+    min-height: 100dvh;
   }
 }
 
