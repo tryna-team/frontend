@@ -11,7 +11,8 @@
 
 export type SocialProvider = "GOOGLE" | "KAKAO" | "APPLE";
 
-export type UserRole = "GUEST" | "USER";
+// 스카 - GET /users/status과 타입 일치를 위해 "NONE" 추가
+export type UserRole = "GUEST" | "USER" | "NONE";
 
 /**
  * 약관 동의 Enum. 현재 확인된 값은 SERVICE/PRIVACY/LOCATION 세 가지.
