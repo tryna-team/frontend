@@ -812,6 +812,10 @@ export default function CreateModal({
       return;
     }
 
+    if (value) {
+      setHasInputInteractionStarted(true);
+    }
+
     // revision을 올려 이전 파싱·추천 응답을 무효화한다.
     revisionRef.current += 1;
     lastInputChangedAtRef.current = Date.now();
