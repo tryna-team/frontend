@@ -23,7 +23,12 @@ export type TextButtonType =
 // IconTextDefault: node 1516:8116 (Header "Left" 챕터론+제목 텍스트)
 export type IconTextButtonType = "IconTextSmall" | "IconTextDefault";
 
-export type ButtonType = TextButtonType | "Icon" | IconTextButtonType | "MainCTAButton";
+export type ButtonType =
+  | TextButtonType
+  | "Icon"
+  | IconTextButtonType
+  | "MainCTAButton"
+  | "CheckCTAButton";
 
 interface TextButtonConfig {
   size: ButtonSize;

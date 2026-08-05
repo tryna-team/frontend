@@ -1046,12 +1046,11 @@ export default function CreateModal({
                   />
 
                   <Button
-                    variant="MediumDefaultFit"
-                    disabled={!isRecommendMode || isSaving}
+                    variant="CheckCTAButton"
+                    className="size-9"
+                    disabled={!trimmedInput || isSaving}
                     onClick={handleCreate}
-                  >
-                    생성
-                  </Button>
+                  />
                 </div>
 
                 <div className="flex w-full items-center gap-4 px-1 py-1">
