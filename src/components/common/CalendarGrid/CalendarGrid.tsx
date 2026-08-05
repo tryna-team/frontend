@@ -27,7 +27,7 @@ interface CalendarGridProps {
   onSelectDate: (date: string) => void;
   onLongPressDate?: (date: string) => void;
   onSearchClick?: () => void;
-  onViewToggleClick?: () => void;
+  onViewToggleClick?: () => void; // TODO: 실제로는 라벨(label_small.svg) 버튼 클릭 핸들러라 이름이 실제 동작과 안 맞음 — 추후 onLabelClick 등으로 정리 필요
   onSettingsClick?: () => void;
   onYearViewClick?: () => void;
   initialView?: string;
@@ -416,6 +416,14 @@ function CalendarGrid({
   // 날짜 셀을 길게 누르면 해당 날짜의 생성 모달을 연다.
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) {
+      return;
+    }
+
+    // 버튼(검색/라벨/설정/연간뷰) 클릭까지 포인터를 캡처하면, Pointer Events 스펙상
+    // 이후 click 이벤트의 target까지 이 루트 엘리먼트로 리다이렉트되어 버튼 자신의
+    // onClick이 발화하지 않는다 — 버튼 영역은 스와이프 대상이 아니므로 캡처/드래그
+    // 추적을 아예 건너뛴다.
+    if (event.target instanceof Element && event.target.closest('button')) {
       return;
     }
 
