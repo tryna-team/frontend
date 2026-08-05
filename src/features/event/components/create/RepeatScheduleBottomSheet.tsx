@@ -51,16 +51,20 @@ const parseTimePickerValue = (time: string): TimePickerValue => {
   }
 
   // 1차 파싱의 24시간제 응답을 시간 피커 형식으로 변환한다.
-  const apiTime = time.match(/^(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?Z?$/);
+  const apiTime = time.match(/^(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?Z?$/);
 
   if (apiTime) {
     const hour24 = Number(apiTime[1]);
+    const minute = Number(apiTime[2]);
+    const second = apiTime[3] === undefined ? 0 : Number(apiTime[3]);
 
-    return {
-      meridiem: hour24 >= 12 ? 'PM' : 'AM',
-      hour: hour24 % 12 || 12,
-      minute: Math.min(55, Math.round(Number(apiTime[2]) / 5) * 5),
-    };
+    if (hour24 <= 23 && minute <= 59 && second <= 59) {
+      return {
+        meridiem: hour24 >= 12 ? 'PM' : 'AM',
+        hour: hour24 % 12 || 12,
+        minute: Math.min(55, Math.round(minute / 5) * 5),
+      };
+    }
   }
 
   return { meridiem: 'AM', hour: 9, minute: 0 };
