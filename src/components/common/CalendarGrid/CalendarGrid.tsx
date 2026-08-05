@@ -419,6 +419,13 @@ function CalendarGrid({
       return;
     }
 
+    // 헤더(검색/설정/연도 버튼 등)에서 시작된 포인터는 스와이프/롱프레스 로직을
+    // 완전히 건너뛴다. 여기서 setPointerCapture를 호출하면 캡처링 대상이 되어
+    // 버튼의 click 이벤트가 정상적으로 발생하지 않을 수 있다(크롬에서 특히 엄격).
+    if (headerRef.current?.contains(event.target as Node)) {
+      return;
+    }
+
     // 포인터를 캡처해서, 드래그 도중 손가락/마우스가 이 요소(화면 프레임) 밖으로
     // 나가도 계속 이 요소가 pointermove/pointerup을 받도록 한다. 이게 없으면
     // 데스크톱에서 마우스 드래그 중 프레임(max-w-402px) 밖으로 살짝만 나가도
@@ -535,6 +542,13 @@ function CalendarGrid({
 
   // long press 뒤의 click이 Daily 이동으로 이어지지 않게 막는다.
   const handleClickCapture = (event: MouseEvent<HTMLDivElement>) => {
+    // 헤더(검색/설정/연도 버튼 등) 클릭은 스와이프/롱프레스 로직과 무관하므로
+    // 그대로 통과시킨다. 그렇지 않으면 헤더 버튼 클릭이 이 캡처 핸들러를 거치면서
+    // 일부 브라우저(Chrome)에서 정상적으로 target까지 전달되지 않는 경우가 있다.
+    if (headerRef.current?.contains(event.target as Node)) {
+      return;
+    }
+
     const date = getDateFromTarget(event.target);
 
     if (date && longPressedDateRef.current === date) {
