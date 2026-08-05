@@ -42,15 +42,32 @@ const formatScheduleDate = (date: Date) => format(date, 'yyyy. MM. dd.');
 const parseTimePickerValue = (time: string): TimePickerValue => {
   const match = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
 
-  if (!match) {
-    return { meridiem: 'AM', hour: 9, minute: 0 };
+  if (match) {
+    return {
+      meridiem: match[3].toUpperCase() === 'PM' ? 'PM' : 'AM',
+      hour: Number(match[1]),
+      minute: Math.min(55, Math.round(Number(match[2]) / 5) * 5),
+    };
   }
 
-  return {
-    meridiem: match[3].toUpperCase() === 'PM' ? 'PM' : 'AM',
-    hour: Number(match[1]),
-    minute: Math.min(55, Math.round(Number(match[2]) / 5) * 5),
-  };
+  // 1차 파싱의 24시간제 응답을 시간 피커 형식으로 변환한다.
+  const apiTime = time.match(/^(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?Z?$/);
+
+  if (apiTime) {
+    const hour24 = Number(apiTime[1]);
+    const minute = Number(apiTime[2]);
+    const second = apiTime[3] === undefined ? 0 : Number(apiTime[3]);
+
+    if (hour24 <= 23 && minute <= 59 && second <= 59) {
+      return {
+        meridiem: hour24 >= 12 ? 'PM' : 'AM',
+        hour: hour24 % 12 || 12,
+        minute: Math.min(55, Math.round(minute / 5) * 5),
+      };
+    }
+  }
+
+  return { meridiem: 'AM', hour: 9, minute: 0 };
 };
 
 const toMinutes = ({ meridiem, hour, minute }: TimePickerValue) => {
@@ -282,7 +299,17 @@ export default function RepeatScheduleBottomSheet({
 
   return (
     <Overlay className="flex items-end justify-center" onClick={onClose}>
-      <Frame className="gap-2 !bg-white px-4 pt-5 pb-1" aria-labelledby={titleId}>
+      <video
+        src="/BlendDimVideo.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover opacity-100"
+      />
+
+      <Frame className="relative z-10 gap-2 !bg-white px-4 pt-5 pb-1" aria-labelledby={titleId}>
         <h2 id={titleId} className="sr-only">
           반복 일정 설정
         </h2>
