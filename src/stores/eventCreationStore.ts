@@ -1,5 +1,5 @@
 // ============================================================
-// stores/useEventCreationStore.ts
+// stores/eventCreationStore.ts
 // 커버: C그룹(자연어 입력~최종 저장) + D그룹(추천) + E그룹(제안 항목 선택/수정/삭제/직접추가/저장)
 // ============================================================
 //
@@ -23,10 +23,7 @@ type CreationStep =
 
 // 2-8 "반복 선택" 화면에서 사용자가 고르는 반복 주기 (없음/매일/매주/매월/매년).
 // EventCreationState.recurrence(작성 중인 초안 값)와 setSchedule() 인자에서 쓰인다.
-//
-// 참고: types.ts의 EventItem.recurrence도 동일한 유니온을 별도로 하드코딩하고 있어
-// CalendarProvider처럼 공용 타입으로 합칠 수 있는 지점이다. 다만 이 값은 두 곳뿐이고
-// 당장 옵션이 추가될 가능성도 낮아 보여, 지금은 리팩터링하지 않고 가능성만 남겨둔다.
+// 참고: 반복 일정 관련 필드/엔드포인트는 현재 백엔드 스펙에 없어 이 값은 클라이언트 초안 단계에서만 쓰인다.
 type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 interface EventCreationState {

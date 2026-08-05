@@ -74,12 +74,21 @@ type MainCTAButtonRenderProps = ButtonBaseProps & {
   size?: never;
 };
 
+type CheckCTAButtonRenderProps = ButtonBaseProps & {
+  variant: "CheckCTAButton";
+  children?: never;
+  icon?: never;
+  alt?: never;
+  size?: never;
+};
+
 export type ButtonProps =
   | TextButtonRenderProps
   | IconButtonRenderProps
   | IconTextButtonRenderProps<"IconTextSmall">
   | IconTextButtonRenderProps<"IconTextDefault">
-  | MainCTAButtonRenderProps;
+  | MainCTAButtonRenderProps
+  | CheckCTAButtonRenderProps;
 
 function renderIconTextButton(props: IconTextButtonRenderProps) {
   // variant는 ShadcnButton의 자체 variant prop과 이름이 겹쳐 spread에서 제외(config 조회엔 사용)
@@ -148,6 +157,33 @@ export default function Button(props: ButtonProps) {
         <span className="flex size-full items-center justify-center rounded-medium bg-text-default">
           <Plus className="size-6 text-icon-white" strokeWidth={2} />
         </span>
+      </ShadcnButton>
+    );
+  }
+
+  if (props.variant === "CheckCTAButton") {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 공통 Button의 variant를 DOM에 전달하지 않는다.
+    const { variant, className, type, "aria-label": ariaLabel, ...buttonProps } = props;
+    return (
+      <ShadcnButton
+        type={type ?? "button"}
+        aria-label={ariaLabel ?? "일정 생성"}
+        className={cn(
+          "size-12 rounded-full border-none bg-icon-default p-0 text-icon-white shadow-none",
+          "hover:bg-icon-default active:translate-y-0",
+          "disabled:bg-grey-opacity-100 disabled:text-icon-disable disabled:opacity-100",
+          className,
+        )}
+        {...buttonProps}
+      >
+        <span
+          aria-hidden="true"
+          className="size-6 bg-current"
+          style={{
+            WebkitMask: "url('/icon/icons/check_medium.svg') center / contain no-repeat",
+            mask: "url('/icon/icons/check_medium.svg') center / contain no-repeat",
+          }}
+        />
       </ShadcnButton>
     );
   }
