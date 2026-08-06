@@ -11,6 +11,8 @@ import RowAccessory, {
 type TextLeading = {
   type: 'text';
   text: string;
+  // 설정 화면의 "회원탈퇴"처럼 파괴적 액션을 danger 색상으로 표시하기 위해 추가
+  tone?: 'danger';
 };
 
 type IconTextLeading = {
@@ -25,7 +27,8 @@ export type ActionRowLeading =
 
 type ActionRowProps = {
   leading: ActionRowLeading;
-  accessory: RowAccessoryProps;
+  // 설정 화면의 "로그아웃"/"회원탈퇴"처럼 오른쪽 accessory가 없는 행을 위해 optional로 변경
+  accessory?: RowAccessoryProps;
   onClick?: () => void;
 };
 
@@ -38,7 +41,12 @@ export default function ActionRow({
   const renderLeading = () => {
     if (leading.type === 'text') {
       return (
-        <span className="min-w-0 truncate text-text-default default-body-large">
+        <span
+          // tone === 'danger'일 때 text-danger-200 적용 (기존엔 text-text-default 고정)
+          className={`min-w-0 truncate default-body-large ${
+            leading.tone === 'danger' ? 'text-danger-200' : 'text-text-default'
+          }`}
+        >
           {leading.text}
         </span>
       );
@@ -86,9 +94,12 @@ export default function ActionRow({
     >
       <div className="min-w-0">{renderLeading()}</div>
 
-      <div className="shrink-0">
-        <RowAccessory {...accessory} />
-      </div>
+      {/* accessory 없으면 오른쪽 영역 자체를 렌더링하지 않음 */}
+      {accessory && (
+        <div className="shrink-0">
+          <RowAccessory {...accessory} />
+        </div>
+      )}
     </div>
   );
 }
