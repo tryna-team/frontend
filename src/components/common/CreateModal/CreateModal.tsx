@@ -263,6 +263,12 @@ export default function CreateModal({
     top: window.visualViewport?.offsetTop ?? 0,
     height: window.visualViewport?.height ?? window.innerHeight,
   }));
+  const [appFrameRect, setAppFrameRect] = useState(() => {
+    const appFrame = document.querySelector<HTMLElement>('.transform-gpu');
+    const { left = 0, width = window.innerWidth } = appFrame?.getBoundingClientRect() ?? {};
+
+    return { left, width };
+  });
   const isRecommendationLoading = useEventCreationStore((state) => state.isLoadingRecommendations);
   const recommendationCandidates = useEventCreationStore((state) => state.recommendationCandidates);
   const parsedCandidate = useEventCreationStore((state) => state.parsedCandidate);
@@ -688,6 +694,30 @@ export default function CreateModal({
     };
   }, []);
 
+  // Portal 내부 콘텐츠를 실제 캘린더 앱 프레임에 맞춘다.
+  useEffect(() => {
+    const appFrame = document.querySelector<HTMLElement>('.transform-gpu');
+
+    if (!appFrame) {
+      return;
+    }
+
+    const updateAppFrameRect = () => {
+      const { left, width } = appFrame.getBoundingClientRect();
+      setAppFrameRect({ left, width });
+    };
+    const resizeObserver = new ResizeObserver(updateAppFrameRect);
+
+    updateAppFrameRect();
+    resizeObserver.observe(appFrame);
+    window.addEventListener('resize', updateAppFrameRect);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateAppFrameRect);
+    };
+  }, []);
+
   // CreateModal에서 전달받은 기존 체크리스트 데이터를 공용 Checklist 컴포넌트의 데이터 형식으로 변환
   const renderedChecklistItems = useMemo<ChecklistItemData[]>(() => {
     const effectiveChecklistItems =
@@ -972,8 +1002,10 @@ export default function CreateModal({
             {(hasInputInteractionStarted || isRecommendMode) && (
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute left-1/2 w-[min(402px,100vw)] -translate-x-1/2 overflow-hidden"
+                className="pointer-events-none absolute overflow-hidden"
                 style={{
+                  left: appFrameRect.left,
+                  width: appFrameRect.width,
                   top: visualViewportRect.top,
                   height: visualViewportRect.height,
                 }}
@@ -992,8 +1024,10 @@ export default function CreateModal({
             {/* 키보드를 제외한 화면 영역의 하단에 생성 모달을 맞춘다. */}
             <div
               ref={dialogRef}
-              className="absolute right-0 left-0 flex items-end justify-center"
+              className="absolute flex items-end justify-center"
               style={{
+                left: appFrameRect.left,
+                width: appFrameRect.width,
                 top: visualViewportRect.top,
                 height: visualViewportRect.height,
               }}
