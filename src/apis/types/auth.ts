@@ -108,13 +108,9 @@ export interface ReissueRequest {
 export type ReissueResponseData = AuthTokenResponse;
 
 /**
- * A102 비회원 시작 시 guestId = deviceId 그대로 사용
- * (users 도메인 소관이라 여기 타입만 참고용으로 남겨둠, 실제 서비스 함수는 usersService에서)
+ * A102 비회원 시작(POST /guests)은 users 도메인 소관이라
+ * 타입은 types/user.ts, 서비스 함수는 services/userService.ts에 있다.
  */
-export interface GuestStartRequest {
-  guestId: string;
-  fcmToken?: string;
-}
 
 /**
  * A104 로그인 필요 안내 (계정 권한 요구사항 검증)

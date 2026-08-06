@@ -2,7 +2,10 @@ import { useState, type ReactNode } from 'react';
 
 import { WebIntro } from '@/components/common/WebIntro';
 import AppRouter from '@/routes/AppRouter';
+import GlobalBottomSheet from '@/components/common/Popup/GlobalBottomSheet';
 import { FloatingButtonsContext } from '@/hooks/useFloatingButtons';
+import { useAppBootstrap } from '@/hooks/useAppBootstrap';
+import SplashScreen from '@/pages/Splash/SplashScreen';
 
 import './App.css';
 
@@ -11,6 +14,10 @@ const FLOATING_BOTTOM_PADDING = 'max(16px,env(safe-area-inset-bottom))';
 
 function App() {
   const [floatingContent, setFloatingContent] = useState<ReactNode>(null);
+  // 앱 진입 상태 확인(A101). 유효한 토큰이 없으면 내부에서 비회원 생성(A102)까지 끝낸다.
+  // Splash 라우트가 아니라 여기서 부트스트랩하는 이유: /home, /daily/:date 등으로 직접
+  // 진입하거나 새로고침하면 Splash를 거치지 않아 토큰 없이 API가 나가게 된다.
+  const { isPending: isBootstrapping } = useAppBootstrap();
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[1200px] items-start justify-center lg:gap-[24px]">
@@ -26,7 +33,9 @@ function App() {
         <FloatingButtonsContext.Provider value={setFloatingContent}>
           {/* Main: 스크롤 콘텐츠 영역. FloatingButtons가 떠 있을 땐 그 높이만큼 하단 여백 예약 */}
           <div className={floatingContent ? 'flex-1 main-floating-padding' : 'flex-1'}>
-            <AppRouter />
+            {/* 토큰이 준비되기 전에 화면 API가 나가면 전부 401이 되므로, 부트스트랩이
+                끝날 때까지는 스플래시 화면을 유지한다 (실패해도 진입은 막지 않음) */}
+            {isBootstrapping ? <SplashScreen /> : <AppRouter />}
           </div>
 
           {/* FloatingButtons: 화면 스크롤과 무관하게 항상 같은 위치. 등록된 콘텐츠 없으면 렌더 안 함 */}
@@ -38,6 +47,10 @@ function App() {
               {floatingContent}
             </div>
           )}
+
+          {/* 전역 바텀시트: 어느 화면에서 열든 여기 한 곳에서만 렌더링된다.
+              이 앱 프레임 안에 둬야 fixed inset-0이 전체 화면이 아닌 프레임 기준으로 잡힌다 */}
+          <GlobalBottomSheet />
         </FloatingButtonsContext.Provider>
       </div>
     </div>

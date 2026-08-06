@@ -13,6 +13,7 @@ import ScheduleCard from '@/features/calendar/components/ScheduleCard';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import type { CategoryColor } from '@/features/calendar/types';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
+import { useGuestConversionPrompt } from '@/hooks/useGuestConversionPrompt';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
 import { generateDailyPath, generateEventPath, PATH } from '@/routes/paths';
@@ -85,6 +86,7 @@ function DailyPage() {
   const calendarSelectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
   const goToToday = useCalendarStore((s) => s.goToToday);
+  const { promptIfGuest } = useGuestConversionPrompt();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
 
@@ -137,6 +139,10 @@ function DailyPage() {
     // 저장 성공 후 생성 모달의 임시 입력 상태를 정리한다.
     setCreateInputValue('');
     setIsCreateModalOpen(false);
+
+    // 비회원이 생성+추천을 체험한 직후에만 회원 전환을 유도한다 (기기당 1회).
+    // 화면 전환을 막지 않도록 await하지 않으며, 실패해도 훅 내부에서 조용히 넘어간다.
+    void promptIfGuest();
   };
 
   // 렌더링마다 최신 selectedDate를 담아두는 ref.

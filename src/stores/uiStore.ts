@@ -12,6 +12,7 @@ import { create } from 'zustand';
 
 export type BottomSheetType =
   | 'loginRequired' // 4-1 / A104
+  | 'login' // 4-1-1 로그인 바텀시트 (4-1의 "로그인" 버튼을 누르면 전환)
   | 'notificationPermission' // 4-2 / A107
   | 'permissionReset' // 5-1 권한 재설정
   | 'networkError' // 5-2 네트워크 오류
