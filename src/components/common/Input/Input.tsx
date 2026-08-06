@@ -38,7 +38,7 @@ export default function Input({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={ariaLabel}
-        className="h-9 min-w-0 flex-1 bg-transparent pl-1 text-text-default outline-none placeholder:text-text-disable default-body-medium"
+        className="h-9 min-w-0 flex-1 bg-transparent pl-1 text-text-default outline-none placeholder:text-text-disable default-body-medium focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1"
       />
 
       {(onClear || trailingAction) && (
