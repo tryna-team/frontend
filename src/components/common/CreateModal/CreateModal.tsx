@@ -246,6 +246,10 @@ export default function CreateModal({
   const [recommendedTitle, setRecommendedTitle] = useState('');
   const [startDate, setStartDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
   const [endDate, setEndDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
+  // 진입 경로의 날짜를 C103 파싱 기준일로 고정한다.
+  const [parseSelectedDate] = useState(() =>
+    format(initialScheduleDate ?? new Date(), 'yyyy-MM-dd'),
+  );
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [scheduleOpenedAtTime, setScheduleOpenedAtTime] = useState('');
@@ -386,7 +390,7 @@ export default function CreateModal({
     }
 
     const request = {
-      input: trimmedInput,
+      input: inputValue,
       revision: revisionRef.current,
     };
     const elapsed = Date.now() - lastParseRequestedAtRef.current;
@@ -399,7 +403,13 @@ export default function CreateModal({
       parseAbortControllerRef.current = controller;
       setStep('parsing');
       try {
-        const response = await eventService.parse({ eventTitle: request.input }, controller.signal);
+        const response = await eventService.parse(
+          {
+            eventTitle: request.input,
+            selectedDate: parseSelectedDate,
+          },
+          controller.signal,
+        );
         const parsedCandidate = mapParseResponse(request.input, response);
 
         // TODO: 파싱 API가 revision을 지원하면 로컬 revision 비교를 서버 값으로 교체한다.
@@ -445,7 +455,7 @@ export default function CreateModal({
     }, delay);
 
     return () => window.clearTimeout(timerId);
-  }, [setParsedCandidate, setStep, trimmedInput]);
+  }, [inputValue, parseSelectedDate, setParsedCandidate, setStep, trimmedInput]);
 
   useEffect(
     () => () => {
@@ -460,7 +470,8 @@ export default function CreateModal({
       return;
     }
 
-    const request: RevisionRequest = { input: trimmedInput, revision: revisionRef.current };
+    // 공백과 Backspace를 포함한 실제 마지막 입력을 기준으로 대기 시간을 계산한다.
+    const request: RevisionRequest = { input: inputValue, revision: revisionRef.current };
     const remainingDelay = lastInputChangedAtRef.current
       ? Math.max(0, RECOMMENDATION_DEBOUNCE_DELAY - (Date.now() - lastInputChangedAtRef.current))
       : RECOMMENDATION_DEBOUNCE_DELAY;
@@ -561,6 +572,7 @@ export default function CreateModal({
     setLoadingRecommendations,
     setRecommendationCandidates,
     setStep,
+    inputValue,
     trimmedInput,
   ]);
 
