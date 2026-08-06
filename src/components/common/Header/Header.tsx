@@ -24,6 +24,9 @@ type HeaderTrailing =
       type: 'text';
       text: string;
       onClick?: () => void;
+      // 라벨 수정 바텀시트의 "완료" 버튼처럼, 변경 사항이 있을 때만 활성화해야 하는
+      // 경우를 위해 추가. 생략 시(undefined) 기존 동작과 동일하게 항상 활성화됨.
+      disabled?: boolean;
     };
 
 type HeaderProps = {
@@ -168,6 +171,7 @@ export default function Header({
           type="button"
           variant="Small"
           onClick={trailing.onClick}
+          disabled={trailing.disabled} // disabled 전달 추가
           className="ml-auto justify-end text-right"
         >
           {trailing.text}
@@ -176,7 +180,12 @@ export default function Header({
     }
 
     return (
-      <Button type="button" variant="MediumDefaultFit" onClick={trailing.onClick}>
+      <Button
+        type="button"
+        variant="MediumDefaultFit"
+        onClick={trailing.onClick}
+        disabled={trailing.disabled} // disabled 전달 추가
+      >
         {trailing.text}
       </Button>
     );

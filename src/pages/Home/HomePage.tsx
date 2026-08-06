@@ -3,10 +3,14 @@ import { useNavigate } from 'react-router';
 import { useQueries, useQuery, keepPreviousData } from '@tanstack/react-query';
 
 import { useCalendarStore } from '@/stores';
+import type { CalendarLabel } from '@/stores/types';
 import Button from '@/components/common/Buttons/Button';
 import CalendarGrid from '@/components/common/CalendarGrid/CalendarGrid';
 import CreateModal from '@/components/common/CreateModal/CreateModal';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
+import LabelListSheet from '@/components/common/Popup/BottomSheet/Label/LabelListSheet';
+import LabelEditSheet from '@/components/common/Popup/BottomSheet/Label/LabelEditSheet';
+import Setting from '@/components/common/Popup/BottomSheet/Setting';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useGuestConversionPrompt } from '@/hooks/useGuestConversionPrompt';
 import { queryKeys } from '@/hooks/queries/queryKeys';
@@ -43,6 +47,11 @@ function HomePage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
   const [initialCreateDate, setInitialCreateDate] = useState<Date | null>(null);
+
+  // 라벨 목록('list') ↔ 라벨 수정('edit') 바텀시트 전환. editingLabel은 'edit' 단계로 넘어갈 때만 채워짐.
+  const [labelSheetView, setLabelSheetView] = useState<'list' | 'edit' | null>(null);
+  const [editingLabel, setEditingLabel] = useState<CalendarLabel | null>(null);
+  const [isSettingOpen, setIsSettingOpen] = useState(false);
 
   // selectedDate("YYYY-MM-DD")에서 year/month 추출 — B101이 요구하는 쿼리 파라미터
   const [year, month] = selectedDate.split('-').map(Number);
@@ -169,8 +178,8 @@ function HomePage() {
         onSelectDate={handleSelectDate}
         onLongPressDate={handleLongPressDate}
         onSearchClick={() => setIsSearchOpen(true)}
-        onViewToggleClick={() => {}}
-        onSettingsClick={() => {}}
+        onViewToggleClick={() => setLabelSheetView('list')}
+        onSettingsClick={() => setIsSettingOpen(true)}
         onYearViewClick={() => navigate(PATH.YEAR_CALENDAR)}
       />
 
@@ -186,6 +195,46 @@ function HomePage() {
           onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
           onCreate={handleCreate}
           onClose={handleCreateModalClose}
+        />
+      )}
+
+      {labelSheetView === 'list' && (
+        <LabelListSheet
+          onClose={() => setLabelSheetView(null)}
+          onSelectLabel={(label) => {
+            setEditingLabel(label);
+            setLabelSheetView('edit');
+          }}
+        />
+      )}
+
+      {labelSheetView === 'edit' && editingLabel && (
+        <LabelEditSheet
+          label={editingLabel}
+          onBack={() => setLabelSheetView('list')}
+          onComplete={() => {
+            // LabelEditSheet가 성공 시 calendarStore.upsertLabel까지 반영하므로,
+            // 여기선 목록 화면으로 돌아가기만 하면 된다.
+            setLabelSheetView('list');
+          }}
+        />
+      )}
+
+      {isSettingOpen && (
+        <Setting
+          onClose={() => setIsSettingOpen(false)}
+          onOpenTerms={() => console.log('이용 약관(연동 예정)')}
+          onOpenPrivacy={() => console.log('개인정보 처리 방침(연동 예정)')}
+          onLogout={() => {
+            // TODO: authService.logout() 연동 예정
+            console.log('로그아웃(연동 예정)');
+            setIsSettingOpen(false);
+          }}
+          onDeleteAccount={() => {
+            // TODO: 회원탈퇴 API 연동 및 확인 모달 추가 예정
+            console.log('회원탈퇴(연동 예정)');
+            setIsSettingOpen(false);
+          }}
         />
       )}
     </div>
