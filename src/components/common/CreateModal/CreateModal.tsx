@@ -390,7 +390,7 @@ export default function CreateModal({
     }
 
     const request = {
-      input: trimmedInput,
+      input: inputValue,
       revision: revisionRef.current,
     };
     const elapsed = Date.now() - lastParseRequestedAtRef.current;
@@ -455,7 +455,7 @@ export default function CreateModal({
     }, delay);
 
     return () => window.clearTimeout(timerId);
-  }, [parseSelectedDate, setParsedCandidate, setStep, trimmedInput]);
+  }, [inputValue, parseSelectedDate, setParsedCandidate, setStep, trimmedInput]);
 
   useEffect(
     () => () => {
@@ -470,7 +470,8 @@ export default function CreateModal({
       return;
     }
 
-    const request: RevisionRequest = { input: trimmedInput, revision: revisionRef.current };
+    // 공백과 Backspace를 포함한 실제 마지막 입력을 기준으로 대기 시간을 계산한다.
+    const request: RevisionRequest = { input: inputValue, revision: revisionRef.current };
     const remainingDelay = lastInputChangedAtRef.current
       ? Math.max(0, RECOMMENDATION_DEBOUNCE_DELAY - (Date.now() - lastInputChangedAtRef.current))
       : RECOMMENDATION_DEBOUNCE_DELAY;
@@ -571,6 +572,7 @@ export default function CreateModal({
     setLoadingRecommendations,
     setRecommendationCandidates,
     setStep,
+    inputValue,
     trimmedInput,
   ]);
 
