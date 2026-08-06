@@ -242,6 +242,10 @@ export default function CreateModal({
   const [recommendedTitle, setRecommendedTitle] = useState('');
   const [startDate, setStartDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
   const [endDate, setEndDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
+  // 진입 경로의 날짜를 C103 파싱 기준일로 고정한다.
+  const [parseSelectedDate] = useState(() =>
+    format(initialScheduleDate ?? new Date(), 'yyyy-MM-dd'),
+  );
   const [startTime, setStartTime] = useState('9:41 AM');
   const [endTime, setEndTime] = useState('9:41 AM');
   const [repeat, setRepeat] = useState<RepeatOption>('매주');
@@ -346,7 +350,13 @@ export default function CreateModal({
       parseAbortControllerRef.current = controller;
       setStep('parsing');
       try {
-        const response = await eventService.parse({ eventTitle: request.input }, controller.signal);
+        const response = await eventService.parse(
+          {
+            eventTitle: request.input,
+            selectedDate: parseSelectedDate,
+          },
+          controller.signal,
+        );
         const parsedCandidate = mapParseResponse(request.input, response);
 
         // TODO: 파싱 API가 revision을 지원하면 로컬 revision 비교를 서버 값으로 교체한다.
@@ -388,7 +398,7 @@ export default function CreateModal({
     }, delay);
 
     return () => window.clearTimeout(timerId);
-  }, [setParsedCandidate, setStep, trimmedInput]);
+  }, [parseSelectedDate, setParsedCandidate, setStep, trimmedInput]);
 
   useEffect(
     () => () => {

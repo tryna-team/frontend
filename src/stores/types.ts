@@ -91,7 +91,7 @@ export interface ParsedEventCandidate {
   placeCandidate: string | null;
   eventTypeCandidate: string | null;
   tempEventId?: string | null;
-  dateSource?: 'EXPLICIT' | 'RELATIVE_EXPRESSION' | 'DEFAULT_TODAY' | null;
+  dateSource?: 'EXPLICIT' | 'RELATIVE_EXPRESSION' | 'SELECTED_DATE' | 'DEFAULT_TODAY' | null;
   endDateCandidate?: string | null;
   endTimeCandidate?: string | null;
   embeddingWords?: string[];

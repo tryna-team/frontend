@@ -3,11 +3,13 @@ import type { ActionItemSaveRequest, SavedActionItem } from "./recommendation";
 /** C103 자연어 일정 파싱 요청 */
 export interface EventParseRequest {
   eventTitle: string;
+  selectedDate: string;
 }
 
 export type EventDateSource =
   | "EXPLICIT"
   | "RELATIVE_EXPRESSION"
+  | "SELECTED_DATE"
   | "DEFAULT_TODAY";
 
 export interface EventParseWarning {
