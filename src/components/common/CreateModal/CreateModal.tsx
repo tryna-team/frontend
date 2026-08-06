@@ -197,11 +197,7 @@ const FOCUSABLE_SELECTOR = [
 const formatTime = ({ meridiem, hour, minute }: TimePickerValue) =>
   `${hour}:${String(minute).padStart(2, '0')} ${meridiem}`;
 
-const formatTriggerDate = (date: Date) => (isToday(date) ? '오늘' : format(date, 'MM.dd'));
-
-const formatTriggerTime = (time: string) => normalizeTime(time)?.slice(0, 5) ?? time;
-
-const getCurrentTime = () => format(new Date(), 'h:mm a').toUpperCase();
+const formatTriggerDate = (date: Date) => (isToday(date) ? '오늘' : format(date, 'M.d'));
 
 export default function CreateModal({
   mode = 'default',
@@ -250,9 +246,8 @@ export default function CreateModal({
   const [parseSelectedDate] = useState(() =>
     format(initialScheduleDate ?? new Date(), 'yyyy-MM-dd'),
   );
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [scheduleOpenedAtTime, setScheduleOpenedAtTime] = useState('');
+  const [startTime, setStartTime] = useState('9:41 AM');
+  const [endTime, setEndTime] = useState('9:41 AM');
   const [repeat, setRepeat] = useState<RepeatOption>('매주');
   const [hasScheduleChanged, setHasScheduleChanged] = useState(false);
   const [hasRepeatChanged, setHasRepeatChanged] = useState(false);
@@ -261,18 +256,11 @@ export default function CreateModal({
   const [hasEndTimeChanged, setHasEndTimeChanged] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
-  const [hasInputInteractionStarted, setHasInputInteractionStarted] = useState(false);
   const startDateRef = useRef(startDate);
   const [visualViewportRect, setVisualViewportRect] = useState(() => ({
     top: window.visualViewport?.offsetTop ?? 0,
     height: window.visualViewport?.height ?? window.innerHeight,
   }));
-  const [appFrameRect, setAppFrameRect] = useState(() => {
-    const appFrame = document.querySelector<HTMLElement>('.transform-gpu');
-    const { left = 0, width = window.innerWidth } = appFrame?.getBoundingClientRect() ?? {};
-
-    return { left, width };
-  });
   const isRecommendationLoading = useEventCreationStore((state) => state.isLoadingRecommendations);
   const recommendationCandidates = useEventCreationStore((state) => state.recommendationCandidates);
   const parsedCandidate = useEventCreationStore((state) => state.parsedCandidate);
@@ -290,46 +278,18 @@ export default function CreateModal({
 
   const trimmedInput = inputValue.trim();
   const isRecommendMode = mode === 'recommend' || hasRecommended;
-  const recommendationKeyword = keyword || recommendedTitle || trimmedInput;
-  const recommendationMessage = message || '에 필요한 체크리스트를 추천했어요.';
+  const recommendationKeyword = keyword || trimmedInput;
+  const recommendationMessage = message || recommendedTitle || '에 필요한 체크리스트를 추천했어요.';
 
   const propCalendarText =
     calendarStatus.type === 'default' ? '오늘 · 반복 없음' : `${calendarStatus.text}마다`;
   const initialCalendarText = initialScheduleDate
     ? `${formatTriggerDate(startDate)} · 반복 없음`
     : propCalendarText;
-  const hasDateRange =
-    Boolean(parsedCandidate?.dateCandidate && parsedCandidate.endDateCandidate) ||
-    hasEndDateChanged ||
-    !isSameDay(startDate, endDate);
-  const selectedDateText = hasDateRange
-    ? `${format(startDate, 'MM.dd')}-${format(endDate, 'MM.dd')}`
-    : formatTriggerDate(startDate);
-  const hasParsedScheduleDate = Boolean(parsedCandidate?.dateCandidate);
-  const hasConfiguredStartTime =
-    Boolean(startTime) && (hasStartTimeChanged || Boolean(parsedCandidate?.timeCandidate));
-  const hasConfiguredEndTime =
-    Boolean(endTime) && (hasEndTimeChanged || Boolean(parsedCandidate?.endTimeCandidate));
-  const hasParsedScheduleTime = Boolean(
-    parsedCandidate?.timeCandidate || parsedCandidate?.endTimeCandidate,
-  );
-  const repeatText = hasRepeatChanged ? repeat : '반복 없음';
-  // 단일 일정의 실제로 설정된 시간만 24시간제로 표시한다.
-  const selectedTimeText = hasConfiguredStartTime
-    ? `시작 ${formatTriggerTime(startTime)}${
-        hasConfiguredEndTime ? ` - 종료 ${formatTriggerTime(endTime)}` : ''
-      }`
-    : hasConfiguredEndTime
-      ? `종료 ${formatTriggerTime(endTime)}`
-      : '';
-  const selectedScheduleText =
-    !hasDateRange && selectedTimeText
-      ? `${selectedDateText} ${selectedTimeText}`
-      : `${selectedDateText} · ${repeatText}`;
-  const calendarText =
-    hasScheduleChanged || hasParsedScheduleDate || hasParsedScheduleTime
-      ? selectedScheduleText
-      : initialCalendarText;
+  const selectedDateText = isSameDay(startDate, endDate)
+    ? formatTriggerDate(startDate)
+    : `${formatTriggerDate(startDate)}~${format(endDate, 'M.d')}`;
+  const calendarText = hasScheduleChanged ? `${selectedDateText} · ${repeat}` : initialCalendarText;
 
   const handleCloseRequest = useCallback(() => {
     if (trimmedInput && !isSaving) {
@@ -347,19 +307,6 @@ export default function CreateModal({
       inputRef.current?.focus();
     });
   }, []);
-
-  const handleCreateOverlayClick = useCallback(() => {
-    if (isLabelModalOpen) {
-      // 라벨 선택 배경을 누르면 라벨 모달만 닫는다.
-      setIsLabelModalOpen(false);
-      window.requestAnimationFrame(() => {
-        labelButtonRef.current?.focus();
-      });
-      return;
-    }
-
-    handleCloseRequest();
-  }, [handleCloseRequest, isLabelModalOpen]);
 
   const handleExitConfirm = () => {
     // 확인한 경우에만 작성 중인 입력과 생성 후보를 삭제한다.
@@ -435,11 +382,7 @@ export default function CreateModal({
 
         if (parsedCandidate.timeCandidate) {
           setStartTime(parsedCandidate.timeCandidate);
-        }
-
-        // 종료 시간은 파싱 응답에 명시된 경우에만 반영한다.
-        if (parsedCandidate.endTimeCandidate) {
-          setEndTime(parsedCandidate.endTimeCandidate);
+          setEndTime(parsedCandidate.timeCandidate);
         }
 
         setStep(hasRecommendedRef.current ? 'recommendation' : 'input');
@@ -544,7 +487,9 @@ export default function CreateModal({
         }
 
         setRecommendationCandidates(candidates);
-        setRecommendedTitle(latestParsedCandidate.titleCandidate ?? request.input);
+        setRecommendedTitle(
+          `${latestParsedCandidate.titleCandidate ?? request.input}에 필요한 체크리스트를 추천했어요.`,
+        );
         hasRecommendedRef.current = true;
         setHasRecommended(true);
         setStep('recommendation');
@@ -704,30 +649,6 @@ export default function CreateModal({
     };
   }, []);
 
-  // Portal 내부 콘텐츠를 실제 캘린더 앱 프레임에 맞춘다.
-  useEffect(() => {
-    const appFrame = document.querySelector<HTMLElement>('.transform-gpu');
-
-    if (!appFrame) {
-      return;
-    }
-
-    const updateAppFrameRect = () => {
-      const { left, width } = appFrame.getBoundingClientRect();
-      setAppFrameRect({ left, width });
-    };
-    const resizeObserver = new ResizeObserver(updateAppFrameRect);
-
-    updateAppFrameRect();
-    resizeObserver.observe(appFrame);
-    window.addEventListener('resize', updateAppFrameRect);
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener('resize', updateAppFrameRect);
-    };
-  }, []);
-
   // CreateModal에서 전달받은 기존 체크리스트 데이터를 공용 Checklist 컴포넌트의 데이터 형식으로 변환
   const renderedChecklistItems = useMemo<ChecklistItemData[]>(() => {
     const effectiveChecklistItems =
@@ -811,11 +732,6 @@ export default function CreateModal({
       return;
     }
 
-    const currentTime = getCurrentTime();
-
-    // 바텀시트가 열린 시각을 미설정 시간 필드의 피커 초기값으로 사용한다.
-    setScheduleOpenedAtTime(currentTime);
-
     isScheduleOpeningRef.current = true;
     keepKeyboardOpenRef.current = false;
     setIsLabelModalOpen(false);
@@ -850,10 +766,6 @@ export default function CreateModal({
   const handleInputChange = (value: string) => {
     if (isSaving) {
       return;
-    }
-
-    if (value) {
-      setHasInputInteractionStarted(true);
     }
 
     // revision을 올려 이전 파싱·추천 응답을 무효화한다.
@@ -1008,36 +920,12 @@ export default function CreateModal({
       {/* 생성 모달만 Portal로 분리하고 반복 바텀시트는 앱 레이아웃을 따른다. */}
       {!isScheduleOpen &&
         createPortal(
-          <Overlay onClick={handleCreateOverlayClick}>
-            {(hasInputInteractionStarted || isRecommendMode) && (
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute overflow-hidden"
-                style={{
-                  left: appFrameRect.left,
-                  width: appFrameRect.width,
-                  top: visualViewportRect.top,
-                  height: visualViewportRect.height,
-                }}
-              >
-                <video
-                  src="/BlendDimVideo.mp4"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className={`h-full w-full object-cover ${isRecommendMode ? 'opacity-100' : 'opacity-50'}`}
-                />
-              </div>
-            )}
-
+          <Overlay onClick={handleCloseRequest}>
             {/* 키보드를 제외한 화면 영역의 하단에 생성 모달을 맞춘다. */}
             <div
               ref={dialogRef}
-              className="absolute flex items-end justify-center"
+              className="absolute right-0 left-0 flex items-end justify-center"
               style={{
-                left: appFrameRect.left,
-                width: appFrameRect.width,
                 top: visualViewportRect.top,
                 height: visualViewportRect.height,
               }}
@@ -1056,11 +944,17 @@ export default function CreateModal({
                   <div className="flex w-full flex-col">
                     <div className="flex w-full items-center justify-between px-1 py-2">
                       <p className="min-w-0 text-text-additional default-body-medium">
-                        <span className="bg-gradient-to-l from-green-500 to-green-400 bg-clip-text text-transparent default-body-strong-medium">
-                          {recommendationKeyword}
-                        </span>
+                        {recommendedTitle ? (
+                          recommendedTitle
+                        ) : (
+                          <>
+                            <span className="bg-gradient-to-l from-[#29C878] to-[#32E089] bg-clip-text text-transparent default-body-strong-medium">
+                              {recommendationKeyword}
+                            </span>
 
-                        {recommendationMessage}
+                            {recommendationMessage}
+                          </>
+                        )}
                       </p>
                     </div>
 
@@ -1085,7 +979,6 @@ export default function CreateModal({
                     autoFocus
                     disabled={isSaving}
                     value={inputValue}
-                    onPointerDown={() => setHasInputInteractionStarted(true)}
                     onChange={(event) => handleInputChange(event.target.value)}
                     onBlur={handleInputBlur}
                     onKeyDown={handleInputKeyDown}
@@ -1094,11 +987,12 @@ export default function CreateModal({
                   />
 
                   <Button
-                    variant="CheckCTAButton"
-                    className="size-9"
-                    disabled={!trimmedInput || isSaving}
+                    variant="MediumDefaultFit"
+                    disabled={!isRecommendMode || isSaving}
                     onClick={handleCreate}
-                  />
+                  >
+                    생성
+                  </Button>
                 </div>
 
                 <div className="flex w-full items-center gap-4 px-1 py-1">
@@ -1171,8 +1065,8 @@ export default function CreateModal({
         <RepeatScheduleBottomSheet
           startDate={startDate}
           endDate={endDate}
-          startTime={startTime || scheduleOpenedAtTime}
-          endTime={endTime || scheduleOpenedAtTime}
+          startTime={startTime}
+          endTime={endTime}
           repeat={repeat}
           onStartDateChange={(date) => {
             setStartDate(date);
