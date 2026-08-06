@@ -38,12 +38,22 @@ export interface LabelCreateRequest {
   color?: LabelColorCode;
 }
 
-/** B108-3 라벨 수정 요청 — 변경할 값만 하나 이상 전달(labelType/externalCalendarId/isDefault/sortOrder는 이 API로 변경 불가) */
-export interface LabelUpdateRequest {
+// 유니온 멤버 중 하나의 키만 필수로, 나머지는 optional로 남기는 걸 각 키마다
+// 반복해서 유니온으로 묶는다 — "최소 하나는 있어야 함"을 표현하는 표준 패턴.
+type RequireAtLeastOne<T> = {
+  [K in keyof T]-?: Required<Pick<T, K>> & Partial<Omit<T, K>>;
+}[keyof T];
+
+/**
+ * B108-3 라벨 수정 요청 — 변경할 값만 하나 이상 전달(labelType/externalCalendarId/isDefault/sortOrder는 이 API로 변경 불가)
+ * 전부 optional로 두면 {}(빈 객체)도 타입상 허용되는데, 실제 API는 값이 하나도
+ * 없으면 400을 반환한다 — RequireAtLeastOne으로 {}를 컴파일 타임에 막는다.
+ */
+export type LabelUpdateRequest = RequireAtLeastOne<{
   name?: string;
   color?: LabelColorCode;
   isVisible?: boolean;
-}
+}>;
 
 /** B108-4 라벨 삭제 응답 — 서버가 기본 라벨 재지정·소속 일정 이동까지 트랜잭션으로 처리한 결과 */
 export interface LabelDeleteResponseData {
