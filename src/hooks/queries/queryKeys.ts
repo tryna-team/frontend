@@ -45,6 +45,11 @@ export const queryKeys = {
     all: ["recommendations"] as const,
   },
 
+  labels: {
+    all: ["labels"] as const,
+    list: () => [...queryKeys.labels.all, "list"] as const, // B108-1
+  },
+
   alarms: {
     all: ["alarms"] as const,
     list: (size?: number, cursor?: string) =>
