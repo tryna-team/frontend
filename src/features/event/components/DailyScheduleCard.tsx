@@ -5,7 +5,7 @@ export interface DailyScheduleTodoItem {
   id: string;
   text: string;
   checked: boolean;
-  dateText: string;
+  dateText?: string;
 }
 
 interface DailyScheduleCardProps {
@@ -41,7 +41,9 @@ export default function DailyScheduleCard({
           id: index,
           label: item.text,
           status: item.checked ? ('done' as const) : ('default' as const),
-          trailing: { type: 'date' as const, text: item.dateText },
+          trailing: item.dateText
+            ? { type: 'date' as const, text: item.dateText }
+            : { type: 'none' as const },
         }))}
         onLeadingClick={(index) => onToggleItem?.(items[index].id)}
       />

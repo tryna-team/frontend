@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { format, isValid, parseISO } from 'date-fns';
 import {
   Navigate,
   useNavigate,
@@ -17,6 +19,8 @@ import type { CategoryColor } from '@/features/calendar/types';
 import { PATH } from '@/routes/paths';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useCanGoBack } from '@/hooks/useCanGoBack';
+import { actionItemService } from '@/apis/services/actionItemService';
+import { queryKeys } from '@/hooks/queries/queryKeys';
 
 import './EventViewPage.css';
 
@@ -113,21 +117,16 @@ function EventViewPage() {
     : undefined;
   const currentEventId = eventId ?? '';
 
-  // mock 체크리스트만 표시
-  // const [todoItems, setTodoItems] = useState<DailyScheduleTodoItem[]>(MOCK_TODO_ITEMS);
-  // 일정별 체크리스트 상태를 한 곳에서 관리
-  const [todoItemsByEvent, setTodoItemsByEvent] =
-    useState<Record<string, DailyScheduleTodoItem[]>>(
-      () =>
-        Object.fromEntries(
-          Object.entries(
-            MOCK_EVENT_DATA,
-          ).map(([id, data]) => [
-            id,
-            data.todoItems,
-          ]),
-        ),
-    );
+  // F103으로 현재 일정에 저장된 준비·실행 항목을 조회한다.
+  const {
+    data: actionItemData,
+    isPending: isActionItemsPending,
+    isError: isActionItemsError,
+  } = useQuery({
+    queryKey: queryKeys.actionItems.byEvent(currentEventId),
+    queryFn: () => actionItemService.getByEvent(currentEventId),
+    enabled: Boolean(currentEventId && eventData),
+  });
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const canGoBack = useCanGoBack();
 
@@ -146,9 +145,24 @@ function EventViewPage() {
   //   setTodoItems(eventData?.todoItems ?? []);
   // }, [eventData]);
 
-  // URL의 일정 ID에 맞는 체크리스트를 선택
-  const todoItems =
-    todoItemsByEvent[currentEventId] ?? [];
+  const todoItems = useMemo<DailyScheduleTodoItem[]>(
+    () =>
+      (actionItemData?.items ?? []).map((item) => {
+        const displayDate = item.displayDate ? parseISO(item.displayDate) : null;
+
+        return {
+          id: String(item.actionItemId),
+          text: item.title,
+          checked: item.actionItemStatus === 'COMPLETED',
+          // 비시간형 준비 항목은 일정 상세에서 날짜 없이 표시한다.
+          dateText:
+            item.itemType === 'TIMED_ACTION' && displayDate && isValid(displayDate)
+              ? format(displayDate, 'MM. dd.')
+              : undefined,
+        };
+      }),
+    [actionItemData],
+  );
 
   // 존재하지 않는 일정은 Home
   if (!eventData) {
@@ -172,31 +186,34 @@ function EventViewPage() {
     }
   };
 
-  const handleToggleItem = (id: string) => {
-    setTodoItemsByEvent((previousItems) => ({
-      ...previousItems,
-      [currentEventId]: todoItems.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              checked: !item.checked,
-            }
-          : item,
-      ),
-    }));
-  };
-
-  const handleCompleteAll = () => {
-    setTodoItemsByEvent((previousItems) => ({
-      ...previousItems,
-      [currentEventId]: todoItems.map(
-        (item) => ({
-          ...item,
-          checked: true,
-        }),
-      ),
-    }));
-  };
+  /*
+   * TODO: E106 상태 변경 API 연결 후 다시 활성화한다.
+   * 현재는 API 조회값을 직접 변경하면 서버 상태와 달라질 수 있다.
+   *
+   * const handleToggleItem = (id: string) => {
+   *   setTodoItemsByEvent((previousItems) => ({
+   *     ...previousItems,
+   *     [currentEventId]: todoItems.map((item) =>
+   *       item.id === id
+   *         ? {
+   *             ...item,
+   *             checked: !item.checked,
+   *           }
+   *         : item,
+   *     ),
+   *   }));
+   * };
+   *
+   * const handleCompleteAll = () => {
+   *   setTodoItemsByEvent((previousItems) => ({
+   *     ...previousItems,
+   *     [currentEventId]: todoItems.map((item) => ({
+   *       ...item,
+   *       checked: true,
+   *     })),
+   *   }));
+   * };
+   */
 
   return (
     <div className="event-view-page">
@@ -250,11 +267,22 @@ function EventViewPage() {
         />
 
         <div className="px-1">
-          <DailyScheduleCard
-            items={todoItems}
-            onToggleItem={handleToggleItem}
-            onCompleteAllClick={handleCompleteAll}
-          />
+          {isActionItemsPending ? (
+            <p className="py-6 text-center text-text-additional default-body-medium">
+              준비 항목을 불러오는 중이에요.
+            </p>
+          ) : isActionItemsError ? (
+            <p className="py-6 text-center text-text-additional default-body-medium">
+              준비 항목을 불러오지 못했어요.
+            </p>
+          ) : (
+            <DailyScheduleCard
+              items={todoItems}
+              // TODO: E106 상태 변경 API 연결 후 콜백을 다시 전달한다.
+              // onToggleItem={handleToggleItem}
+              // onCompleteAllClick={handleCompleteAll}
+            />
+          )}
         </div>
       </div>
 
