@@ -133,7 +133,7 @@ export interface ParsedEventCandidate {
   warnings: { code?: string; message?: string }[];
   // CreateModal.tsx가 EventParseResponse(apis/types/event.ts)를 매핑할 때 그대로 채우는 부가 필드
   tempEventId?: string | null;
-  dateSource?: 'EXPLICIT' | 'RELATIVE_EXPRESSION' | 'DEFAULT_TODAY' | null;
+  dateSource?: 'EXPLICIT' | 'RELATIVE_EXPRESSION' | 'SELECTED_DATE' | 'DEFAULT_TODAY' | null;
   endDateCandidate?: string | null;
   endTimeCandidate?: string | null;
   embeddingWords?: string[];
