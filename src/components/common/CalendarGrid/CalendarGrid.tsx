@@ -27,7 +27,7 @@ interface CalendarGridProps {
   onSelectDate: (date: string) => void;
   onLongPressDate?: (date: string) => void;
   onSearchClick?: () => void;
-  onViewToggleClick?: () => void;
+  onViewToggleClick?: () => void; // TODO: 실제로는 라벨(label_small.svg) 버튼 클릭 핸들러라 이름이 실제 동작과 안 맞음 — 추후 onLabelClick 등으로 정리 필요
   onSettingsClick?: () => void;
   onYearViewClick?: () => void;
   initialView?: string;

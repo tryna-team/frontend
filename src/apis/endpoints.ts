@@ -71,6 +71,15 @@ export const ENDPOINTS = {
     // 일정 기반 준비/실행 항목 추천
     ROOT: "/recommendations",
   },
+  LABELS: {
+    // B108-1 라벨 목록 조회(GET) / B108-2 라벨 생성(POST)
+    ROOT: "/labels",
+    // B108-3 라벨 수정(PATCH) / B108-4 라벨 삭제(DELETE)
+    DETAIL: (labelId: number | string) =>
+      `/labels/${encodeURIComponent(labelId)}`,
+    // B108-5 라벨 순서 변경(PATCH)
+    ORDER: "/labels/order",
+  },
   ALARMS: {
     PUSH_TOKEN: "/alarms/push-token", // POST 등록 / DELETE 삭제(Query: fcmPushToken)
     REMIND_EVENT: (userEventId: number | string) =>

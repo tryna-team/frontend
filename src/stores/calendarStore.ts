@@ -31,7 +31,7 @@ interface CalendarState {
   // 레이블은 개수가 적고 여러 화면(캘린더 셀 색상, 이벤트 뷰, 생성 패널의 레이블 선택)에서
   // 동시에 참조되므로, 서버에서 한 번 받아온 뒤 여기 전역 캐시로 들고 있는다.
   labels: CalendarLabel[]; // 사용자가 가진 전체 레이블 목록
-  selectedLabelId: string | null; // "레이블 수정" 화면에 진입할 때 대상이 되는 레이블 id (없으면 null)
+  selectedLabelId: number | null; // "레이블 수정" 화면에 진입할 때 대상이 되는 레이블 id (없으면 null)
 
   // ── 뷰 상태를 바꾸는 액션 ──
   setMonth: (year: number, month: number) => void; // 월간 캘린더에서 이전/다음 달 이동
@@ -41,8 +41,8 @@ interface CalendarState {
   // ── 레이블 목록을 바꾸는 액션 ──
   setLabels: (labels: CalendarLabel[]) => void; // 서버에서 받아온 레이블 목록을 통째로 캐시에 반영
   upsertLabel: (label: CalendarLabel) => void; // 1-9 "레이블 수정 완료" - 있으면 수정, 없으면 추가(update-or-insert)
-  removeLabel: (labelId: string) => void; // 레이블 삭제 후 캐시에서도 제거
-  selectLabel: (labelId: string | null) => void; // 레이블 수정 화면 진입/이탈 시 대상 지정·해제
+  removeLabel: (labelId: number) => void; // 레이블 삭제 후 캐시에서도 제거
+  selectLabel: (labelId: number | null) => void; // 레이블 수정 화면 진입/이탈 시 대상 지정·해제
 }
 
 // 스토어 초기값 계산용 "오늘" — 모듈(앱) 로드 시점의 스냅샷.
@@ -98,18 +98,34 @@ export const useCalendarStore = create<CalendarState>((set) => ({
       };
     }),
 
-  // 삭제된 레이블 labelId를 배열에서 필터링해서 제거.
-  // 가드 역할: 라벨_정책서.md 12번(실패 및 예외 정책) "기본 라벨 삭제 → 삭제 거부"를
-  // 서버 API 없이도 클라이언트에서 선제적으로 막기 위함 — 기본 라벨은 "라벨 미지정
-  // 일정이 귀속되는 서랍" 역할이라 지워지면 안 됨. 대상이 기본 라벨이면 아무 것도
-  // 하지 않고 상태를 그대로 반환한다(단, "소속 일정을 기본 라벨로 이동" 같은 나머지
-  // 삭제 정책은 이벤트 데이터를 안 갖고 있는 이 스토어 밖의 일이라 여전히 미반영).
+  // B108-4 삭제 정책 반영(이전 "기본 라벨이면 무조건 거부"는 스펙과 반대였음 — 수정함):
+  // - 기본 라벨도 삭제할 수 있다. 막아야 하는 건 "마지막으로 남은 활성 Tryna(사용자) 라벨"뿐.
+  // - 기본 라벨을 삭제하면, 남은 활성 Tryna 라벨 중 sortOrder가 가장 작은 라벨을 새 기본으로 지정.
+  // - 일반 라벨을 삭제하면 기존 기본 라벨을 그대로 유지한다.
+  // ⚠️ "소속 일정을 기본 라벨로 이동"은 이벤트 데이터를 안 갖고 있는 이 스토어 밖의 일이라
+  // 여전히 미반영 — 실제로는 서버가 movedEventCount 등으로 트랜잭션 처리해서 내려준다.
   removeLabel: (labelId) =>
     set((state) => {
-      const target = state.labels.find((l) => l.labelId === labelId);
-      if (target?.isDefault) return state;
+      const activeUserLabels = state.labels.filter((l) => l.labelType === 'USER');
+      if (activeUserLabels.length <= 1) return state; // 마지막 1개는 삭제 거부
 
-      return { labels: state.labels.filter((l) => l.labelId !== labelId) };
+      const target = state.labels.find((l) => l.labelId === labelId);
+      const remaining = state.labels.filter((l) => l.labelId !== labelId);
+
+      if (!target?.isDefault) {
+        return { labels: remaining };
+      }
+
+      const remainingUserLabels = remaining
+        .filter((l) => l.labelType === 'USER')
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+      const newDefaultId = remainingUserLabels[0]?.labelId;
+
+      return {
+        labels: remaining.map((l) =>
+          l.labelId === newDefaultId ? { ...l, isDefault: true } : l,
+        ),
+      };
     }),
 
   // 레이블 수정 화면 진입 시 대상 id 지정, 화면 나갈 때 null로 초기화

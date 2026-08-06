@@ -33,15 +33,18 @@ export type EventStatus = 'DRAFT' | 'CONFIRMED' | 'NEEDS_CONFIRMATION' | 'DELETE
 export type CalendarProvider = 'google' | 'apple';
 
 /**
- * B108 라벨_정책서.md 기준 (라벨 = tryna 일정의 최상위 카테고리, MVP는 기본/사용자 라벨만 지원).
- * ⚠️ 아직 swagger(실제 백엔드)엔 라벨 관련 API가 없어 필드명이 최종 확정된 건 아님 —
- * 실제 API가 나오면 이 타입이 정확히 일치하는지 다시 확인해야 한다.
+ * B108 라벨_정책서.md + B108-1~5 API 명세서 기준 (라벨 = tryna 일정의 최상위 카테고리).
+ * ⚠️ labelId는 명세서상 숫자(Long)이고, color는 실제 API에서 대문자 enum("GREEN" 등)으로
+ * 오간다 — 이 타입은 앱 내부(스토어/컴포넌트)용이라 color는 편의상 string으로 느슨하게 뒀고,
+ * apis/types/label.ts의 원본 API 타입(LabelResponseItem)과는 별도로 관리한다.
  */
 export interface CalendarLabel {
-  labelId: string;
+  labelId: number;
+  externalCalendarId: number | null; // 외부 캘린더 연동 라벨이면 연결된 외부 캘린더 식별자, 아니면 null
   name: string;
+  labelType: 'USER' | 'EXTERNAL_CALENDAR';
   color: string; // 6가지 프리셋 색상 중 하나
-  isDefault: boolean; // 기본 라벨 여부 — 삭제 불가, 미지정 일정이 여기로 귀속됨
+  isDefault: boolean; // 기본 라벨 여부. ⚠️ B108-4상 기본 라벨도 삭제 가능(마지막 1개만 삭제 금지) — "삭제 불가"였던 이전 설명은 부정확했음
   isVisible: boolean; // 캘린더 화면 표시 여부 (숨겨도 일정 데이터는 유지됨)
   sortOrder: number; // 라벨 설정 화면 표시 순서
 }
