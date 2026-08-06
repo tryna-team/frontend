@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import Overlay from '@/components/common/Popup/Overlay';
 import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
@@ -10,6 +10,8 @@ import ColorPicker from '@/components/common/ColorPicker/ColorPicker';
 import type { LabelColor } from '@/components/common/ActionRow/ActionRow.constant';
 import { useCalendarStore } from '@/stores';
 import type { CalendarLabel } from '@/stores/types';
+import { queryKeys } from '@/hooks/queries/queryKeys';
+import type { LabelListResponseData } from '@/apis/types/label';
 import {
   labelService,
   toCalendarLabel,
@@ -41,6 +43,7 @@ export default function LabelEditSheet({
   const otherLabels = useCalendarStore((s) =>
     s.labels.filter((l) => l.labelId !== label.labelId),
   );
+  const queryClient = useQueryClient();
 
   // 라벨_정책서 §5.2/§6: 이름의 앞뒤 공백을 제거하고, 공백만 있는 이름과 동일 사용자 내
   // 중복 이름(정규화 기준)을 금지한다. B108-2/B108-3의 400/409 응답과 대응된다.
@@ -71,6 +74,19 @@ export default function LabelEditSheet({
     updateMutation.mutate(undefined, {
       onSuccess: (updated) => {
         upsertLabel(toCalendarLabel(updated));
+
+        // 코드래빗 리뷰 반영: LabelListSheet는 calendarStore.labels가 아니라
+        // queryKeys.labels.list() 캐시를 기준으로 다시 채워지므로, 위 upsertLabel만으로는
+        // 부족하다 — staleTime(1분) 안에 목록으로 돌아가면 옛 캐시가 방금 한 수정을 덮어씀.
+        // 여기서 캐시도 같이 패치해서 그 문제를 막는다.
+        queryClient.setQueryData<LabelListResponseData>(
+          queryKeys.labels.list(),
+          (old) =>
+            old && {
+              labels: old.labels.map((l) => (l.labelId === updated.labelId ? updated : l)),
+            },
+        );
+
         onComplete();
       },
     });
@@ -104,6 +120,13 @@ export default function LabelEditSheet({
           />
           {nameError && (
             <p className="pl-1 pt-1 text-danger-200 default-caption-large">{nameError}</p>
+          )}
+          {/* 코드래빗 리뷰 반영: 실패해도 화면에 아무 표시가 없어서(특히 로컬처럼 백엔드가
+              없는 환경에서) "완료"를 눌러도 멈춘 것처럼 보이던 문제 — 실패 안내 추가 */}
+          {updateMutation.isError && (
+            <p className="pl-1 pt-1 text-danger-200 default-caption-large">
+              라벨을 저장하지 못했어요. 다시 시도해주세요.
+            </p>
           )}
         </div>
 
