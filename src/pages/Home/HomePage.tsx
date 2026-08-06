@@ -8,6 +8,7 @@ import CalendarGrid from '@/components/common/CalendarGrid/CalendarGrid';
 import CreateModal from '@/components/common/CreateModal/CreateModal';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
+import { useGuestConversionPrompt } from '@/hooks/useGuestConversionPrompt';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
 import { generateDailyPath, PATH } from '@/routes/paths';
@@ -37,6 +38,7 @@ function HomePage() {
   const selectDate = useCalendarStore((s) => s.selectDate);
   const setMonth = useCalendarStore((s) => s.setMonth);
   const goToToday = useCalendarStore((s) => s.goToToday);
+  const { promptIfGuest } = useGuestConversionPrompt();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
@@ -128,6 +130,10 @@ function HomePage() {
     setCreateInputValue('');
     setIsCreateModalOpen(false);
     setInitialCreateDate(null);
+
+    // 비회원이 생성+추천을 체험한 직후에만 회원 전환을 유도한다 (기기당 1회).
+    // 화면 전환을 막지 않도록 await하지 않으며, 실패해도 훅 내부에서 조용히 넘어간다.
+    void promptIfGuest();
   };
 
   const handleLongPressDate = (date: string) => {
