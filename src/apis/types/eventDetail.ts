@@ -24,9 +24,9 @@ export type RecurrenceDayOfWeek =
 
 /**
  * GET /api/v1/events/{eventId} 응답 data 필드
- * 주의: 라벨/색상 필드는 없음 — 아직 API 미지원.
- * (수정: 반복(recurrence) 정보는 실제 스웨거 스키마엔 존재해서 아래에 필드 추가함 —
- *  이전엔 "반복 정보도 없음"으로 적혀 있었는데 실제 스펙과 달라서 정정)
+ * ⚠️ labelId: 실제 GET 상세조회 응답 예시(연동_관련정보.md)엔 아직 없는 필드 —
+ * C104(POST /events) 요청/응답엔 이미 존재해서 미리 추가해뒀지만, 상세조회에서
+ * 실제로 내려주는지는 백엔드 확인 필요. 그 전까진 값이 없다고 가정하고 다뤄야 함.
  */
 export interface EventDetailResponseData {
   eventId: number;
@@ -43,6 +43,7 @@ export interface EventDetailResponseData {
   recurrenceDayOfWeek: RecurrenceDayOfWeek;
   recurrenceDayOfMonth: number;
   recurrenceEndDate: string;
+  labelId: number;
   location: string;
   eventTypeCandidate: string;
   eventType: string;

@@ -24,16 +24,13 @@ import { useCanGoBack } from '@/hooks/useCanGoBack';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { eventDetailService } from '@/apis/services/eventDetailService';
 import { actionItemsService } from '@/apis/services/actionItemsService';
+import type { EventDetailResponseData, RecurrenceDayOfWeek } from '@/apis/types/eventDetail';
 
 import './EventViewPage.css';
 
 // ⚠️ mock: EventDetailResponse(GET /events/{eventId})엔 색상/라벨 필드가 없음
 // (라벨 API 자체가 아직 미구현) — 실제 라벨 연동 전까지 모든 일정에 고정으로 사용.
 const MOCK_CATEGORY_COLOR: CategoryColor = 'green';
-
-// ⚠️ mock: EventDetailResponse엔 반복(recurrence) 정보 필드가 없음
-// (반복 일정 관련 API 자체가 스펙에 없음) — 실제 값 대신 임시로 채워둔 문구.
-const MOCK_ROTATION_TEXT = '매주 수요일';
 
 // ⚠️ mock: action-items 목록 응답(GET /events/{eventId}/action-items)의 Item엔
 // 완료 여부(체크 상태) 필드가 없음 — 전부 미완료(false)로 시작하는 것으로 대체.
@@ -43,6 +40,40 @@ const MOCK_DEFAULT_CHECKED = false;
 function formatDateLabel(dateStr: string): string {
   const date = new Date(dateStr);
   return `${date.getMonth() + 1}월 ${date.getDate()}일`;
+}
+
+const RECURRENCE_DAY_LABEL: Record<RecurrenceDayOfWeek, string> = {
+  NONE: '',
+  MON: '월요일',
+  TUE: '화요일',
+  WED: '수요일',
+  THU: '목요일',
+  FRI: '금요일',
+  SAT: '토요일',
+  SUN: '일요일',
+};
+
+// 반복 문구: DAILY/WEEKLY/MONTHLY/YEARLY만 취급(CUSTOM 등은 표시 안 함),
+// recurrenceInterval은 현재 단계에서 사용하지 않음(정책 미정).
+function formatRecurrenceText(eventDetail: EventDetailResponseData): string | undefined {
+  if (!eventDetail.isRecurring) return undefined;
+
+  switch (eventDetail.recurrenceType) {
+    case 'DAILY':
+      return '매일';
+    case 'WEEKLY': {
+      const day = RECURRENCE_DAY_LABEL[eventDetail.recurrenceDayOfWeek];
+      return day ? `매주 ${day}` : '매주';
+    }
+    case 'MONTHLY':
+      return `매월 ${eventDetail.recurrenceDayOfMonth}일`;
+    case 'YEARLY': {
+      const month = new Date(eventDetail.startDate).getMonth() + 1;
+      return `매년 ${month}월 ${eventDetail.recurrenceDayOfMonth}일`;
+    }
+    default:
+      return undefined;
+  }
 }
 
 function EventViewPage() {
@@ -173,7 +204,7 @@ function EventViewPage() {
           categoryColor={MOCK_CATEGORY_COLOR}
           startTime={eventDetail.startTime}
           endTime={eventDetail.endTime}
-          rotationText={MOCK_ROTATION_TEXT}
+          rotationText={formatRecurrenceText(eventDetail)}
           location={eventDetail.location}
         />
 
