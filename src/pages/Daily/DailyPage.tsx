@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
 import { useSwipeable } from 'react-swipeable';
 import { useCanGoBack } from '@/hooks/useCanGoBack';
 
@@ -12,6 +13,8 @@ import ScheduleCard from '@/features/calendar/components/ScheduleCard';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import type { CategoryColor } from '@/features/calendar/types';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
+import { queryKeys } from '@/hooks/queries/queryKeys';
+import { calendarService } from '@/apis/services/calendarService';
 import { generateDailyPath, generateEventPath, PATH } from '@/routes/paths';
 
 import './DailyPage.css';
@@ -69,69 +72,9 @@ interface BannerItem {
   date: string;
 }
 
-// mock 데이터: 2026-06-04로 고정
-
-// Daily 일정 mock 데이터
-const MOCK_SCHEDULES: ScheduleItem[] = [
-  {
-    id: '1',
-    categoryColor: 'green',
-    title: '동아리 정기 미팅',
-    location: '매주 스타벅스 여의도점',
-    startTime: '18:00',
-    endTime: '18:30',
-    date: '2026-06-04',
-    checklist: [
-      { id: '1-1', text: '회의록 검토 및 의견 정리', checked: false },
-      { id: '1-2', text: '회의 장소 확인', checked: false },
-    ],
-  },
-  {
-    id: '2',
-    categoryColor: 'pink',
-    title: '꽃 픽업',
-    location: '플라워아워',
-    startTime: '18:00',
-    endTime: '18:30',
-    date: '2026-06-04',
-    linkedSchedule: {
-      date: '오늘',
-      time: '20:00',
-      title: '아빠 생신 식사',
-    },
-  },
-  {
-    id: '3',
-    categoryColor: 'apricot',
-    title: '아빠 생신 식사',
-    location: '여의도 켄싱턴 호텔',
-    startTime: '20:00',
-    endTime: '21:00',
-    date: '2026-06-04',
-    checklist: [
-      { id: '3-1', text: '선물 사기', checked: true },
-      { id: '3-2', text: '꽃 픽업', checked: true },
-    ],
-  },
-];
-
-// Daily 배너 mock 데이터
-const MOCK_BANNERS: BannerItem[] = [
-  {
-    id: 'b1',
-    categoryColor: 'green',
-    title: '아빠 생일',
-    dateText: '하루',
-    date: '2026-06-04',
-  },
-  {
-    id: 'b2',
-    categoryColor: 'apricot',
-    title: 'KOTRA',
-    dateText: '3일차',
-    date: '2026-06-04',
-  },
-];
+// B103 응답엔 라벨/카테고리 색상 필드가 아직 없어 임시로 고정 색상 사용
+// TODO: 백엔드에 카테고리 색상 필드 추가되면 실제 값으로 교체
+const DEFAULT_CATEGORY_COLOR: CategoryColor = 'yellow';
 
 function DailyPage() {
   // Daily 경로의 날짜를 화면 기준값으로 사용
@@ -142,7 +85,6 @@ function DailyPage() {
   const calendarSelectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
   const goToToday = useCalendarStore((s) => s.goToToday);
-  const [schedules, setSchedules] = useState<ScheduleItem[]>(MOCK_SCHEDULES);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
 
@@ -161,6 +103,29 @@ function DailyPage() {
       selectDate(routeDate);
     }
   }, [calendarSelectedDate, isValidRouteDate, navigate, routeDate, selectDate]);
+
+  // B103 날짜별 일정 목록 조회 — mock(MOCK_SCHEDULES) 대신 실 서버 데이터 사용
+  const { data, isPending, isError } = useQuery({
+    queryKey: queryKeys.calendars.dateEvents(selectedDate),
+    queryFn: () => calendarService.getDateEvents(selectedDate),
+  });
+
+  // API 응답(CalendarEventDetail[])을 기존 JSX가 기대하는 ScheduleItem 형태로 변환
+  // ⚠️ checklist, linkedSchedule은 B103 응답에 없는 필드 — 추후 별도 API 연동 필요
+  const schedules: ScheduleItem[] = (data?.events ?? []).map((event) => ({
+    id: String(event.eventId),
+    categoryColor: DEFAULT_CATEGORY_COLOR,
+    title: event.title,
+    location: event.location ?? '',
+    startTime: event.startTime ?? '',
+    endTime: event.endTime ?? '',
+    date: event.startDate,
+    checklist: undefined,
+    linkedSchedule: undefined,
+  }));
+
+  // ⚠️ 배너(장기 일정)에 대응하는 API가 아직 없어 빈 배열로 처리 — 추후 API 확정 시 연결
+  const banners: BannerItem[] = [];
 
   // 날짜 선택 시 화면 상태, URL을 함께 갱신
   const handleSelectDate = (nextDate: string) => {
@@ -242,21 +207,10 @@ function DailyPage() {
   const titleText = `${monthText} ${displayDate.getDate()}일 (${DAY_LABELS[displayDate.getDay()]})`;
 
   const todaySchedules = schedules.filter((s) => s.date === selectedDate);
-  const todayBanners = MOCK_BANNERS.filter((b) => b.date === selectedDate);
+  const todayBanners = banners.filter((b) => b.date === selectedDate);
 
-  const handleToggleItem = (scheduleId: string, itemId: string) => {
-    setSchedules((prev) =>
-      prev.map((schedule) => {
-        if (schedule.id !== scheduleId || !schedule.checklist) return schedule;
-        return {
-          ...schedule,
-          checklist: schedule.checklist.map((item) =>
-            item.id === itemId ? { ...item, checked: !item.checked } : item,
-          ),
-        };
-      }),
-    );
-  };
+  // ⚠️ checklist가 API에 없어 현재는 토글할 데이터가 없음 (추후 action-items 연동 시 구현)
+  const handleToggleItem = () => {};
 
   return (
     <div className="daily-page">
@@ -289,7 +243,11 @@ function DailyPage() {
         )}
 
         <div className="daily-page-content">
-          {todaySchedules.length === 0 ? (
+          {isPending ? (
+            <p className="daily-page-empty">불러오는 중...</p>
+          ) : isError ? (
+            <p className="daily-page-empty">일정을 불러오지 못했어요</p>
+          ) : todaySchedules.length === 0 ? (
             <p className="daily-page-empty">일정이 없어요</p>
           ) : (
             todaySchedules.map((schedule) => (
@@ -302,7 +260,7 @@ function DailyPage() {
                 endTime={schedule.endTime}
                 checklist={schedule.checklist}
                 onScheduleClick={() => handleScheduleClick(schedule.id)}
-                onToggleItem={(itemId) => handleToggleItem(schedule.id, itemId)}
+                onToggleItem={handleToggleItem}
                 linkedSchedule={schedule.linkedSchedule}
               />
             ))
