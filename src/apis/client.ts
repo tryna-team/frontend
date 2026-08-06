@@ -66,8 +66,11 @@ function processQueue(error: unknown, token: string | null = null) {
  * 응답의 data 자체가 곧 AuthTokenResponse (A105/A106과 달리 data.auth로 감싸지 않음).
  * Redis 세션 불일치(탈취 의심) 등으로 재발급이 거부되면 401(code: A108_AUTH_REFRESH_401)이
  * 반환되며, 이 경우 아래에서 던진 에러를 응답 인터셉터가 받아 clearAuth()를 호출한다.
+ *
+ * 401 인터셉터 외에 앱 진입 부트스트랩(apis/bootstrap.ts)에서도 선제적으로 호출한다 —
+ * accessToken이 메모리에만 있어서 새로고침 직후엔 항상 비어있기 때문.
  */
-async function reissueTokens(): Promise<string> {
+export async function reissueTokens(): Promise<string> {
   const { refreshToken } = getAuthState();
 
   if (!refreshToken) {

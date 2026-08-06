@@ -67,10 +67,6 @@ export const ENDPOINTS = {
     // 캘린더 내 시간형 실행 항목 조회 - Query: date
     CALENDAR_TIMED: "/calendar/action-items/timed",
   },
-  RECOMMENDATIONS: {
-    // 일정 기반 준비/실행 항목 추천
-    ROOT: "/recommendations",
-  },
   LABELS: {
     // B108-1 라벨 목록 조회(GET) / B108-2 라벨 생성(POST)
     ROOT: "/labels",
@@ -79,6 +75,10 @@ export const ENDPOINTS = {
       `/labels/${encodeURIComponent(labelId)}`,
     // B108-5 라벨 순서 변경(PATCH)
     ORDER: "/labels/order",
+  },
+  RECOMMENDATIONS: {
+    // 일정 기반 준비/실행 항목 추천
+    ROOT: "/recommendations",
   },
   ALARMS: {
     PUSH_TOKEN: "/alarms/push-token", // POST 등록 / DELETE 삭제(Query: fcmPushToken)

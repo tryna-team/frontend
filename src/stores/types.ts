@@ -3,6 +3,9 @@
 // 정책서(A~G 그룹) + tryna APISpec(Notion)의 필드명을 그대로 따른다.
 // ============================================================
 
+import type { LabelType } from '@/apis/types/label';
+import type { LabelColor } from '@/components/common/LabelModal/LabelItem';
+
 export type EventSourceType =
   | 'USER_NATURAL_LANGUAGE'
   | 'USER_MANUAL_EDIT'
@@ -35,15 +38,17 @@ export type CalendarProvider = 'google' | 'apple';
 /**
  * B108 라벨_정책서.md + B108-1~5 API 명세서 기준 (라벨 = tryna 일정의 최상위 카테고리).
  * ⚠️ labelId는 명세서상 숫자(Long)이고, color는 실제 API에서 대문자 enum("GREEN" 등)으로
- * 오간다 — 이 타입은 앱 내부(스토어/컴포넌트)용이라 color는 편의상 string으로 느슨하게 뒀고,
- * apis/types/label.ts의 원본 API 타입(LabelResponseItem)과는 별도로 관리한다.
+ * 오간다 — apis/types/label.ts의 원본 API 타입(LabelResponseItem)과는 별도로 관리하되,
+ * labelType/color는 각각 apis/types/label.ts의 LabelType, LabelModal/LabelItem.tsx의
+ * LabelColor(lowercase, 아이콘 매핑용 COLOR_ICON과 함께 정의됨)를 재사용해 느슨한 string보다
+ * 타입을 엄격하게 뒀다.
  */
 export interface CalendarLabel {
   labelId: number;
   externalCalendarId: number | null; // 외부 캘린더 연동 라벨이면 연결된 외부 캘린더 식별자, 아니면 null
   name: string;
-  labelType: 'USER' | 'EXTERNAL_CALENDAR';
-  color: string; // 6가지 프리셋 색상 중 하나
+  labelType: LabelType;
+  color: LabelColor;
   isDefault: boolean; // 기본 라벨 여부. ⚠️ B108-4상 기본 라벨도 삭제 가능(마지막 1개만 삭제 금지) — "삭제 불가"였던 이전 설명은 부정확했음
   isVisible: boolean; // 캘린더 화면 표시 여부 (숨겨도 일정 데이터는 유지됨)
   sortOrder: number; // 라벨 설정 화면 표시 순서
@@ -128,7 +133,7 @@ export interface ParsedEventCandidate {
   warnings: { code?: string; message?: string }[];
   // CreateModal.tsx가 EventParseResponse(apis/types/event.ts)를 매핑할 때 그대로 채우는 부가 필드
   tempEventId?: string | null;
-  dateSource?: 'EXPLICIT' | 'RELATIVE_EXPRESSION' | 'DEFAULT_TODAY' | null;
+  dateSource?: 'EXPLICIT' | 'RELATIVE_EXPRESSION' | 'SELECTED_DATE' | 'DEFAULT_TODAY' | null;
   endDateCandidate?: string | null;
   endTimeCandidate?: string | null;
   embeddingWords?: string[];

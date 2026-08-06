@@ -86,16 +86,29 @@
   gap: 40px;
 }
 
+/* 검색 결과 없음 / 검색 실패 안내. 결과 목록과 같은 패널 안에 표시된다 */
+.search-overlay-message {
+  margin: 0;
+  padding: 24px 0;
+  text-align: center;
+  font-family: var(--font-default);
+  font-size: 14px;
+  color: var(--color-text-disable);
+}
+
 .search-overlay-group {
   margin-bottom: 0;
 }
 
+/* 날짜 구분 헤더 — 회색 텍스트 아래에 구분선을 둬서 날짜 그룹을 나눈다 */
 .search-overlay-date-header {
   font-family: var(--font-default);
   font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-default);
+  font-weight: 500;
+  color: var(--color-text-additional);
   margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-divider-default);
 }
 
 .search-overlay-result-list {
@@ -135,6 +148,7 @@
 .search-overlay-result-title {
   font-family: var(--font-default);
   font-size: 15px;
+  font-weight: 600;
   color: var(--color-text-default);
 }
 

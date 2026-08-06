@@ -11,6 +11,7 @@ import type {
   LabelColorCode,
 } from "../types/label";
 import type { CalendarLabel } from "../../stores/types";
+import type { LabelColor } from "@/components/common/LabelModal/LabelItem";
 
 /**
  * API 응답(LabelResponseItem)을 스토어/화면용 타입(CalendarLabel)으로 변환한다.
@@ -23,7 +24,7 @@ export function toCalendarLabel(item: LabelResponseItem): CalendarLabel {
     externalCalendarId: item.externalCalendarId,
     name: item.name,
     labelType: item.labelType,
-    color: item.color.toLowerCase(),
+    color: item.color.toLowerCase() as LabelColor,
     isDefault: item.isDefault,
     isVisible: item.isVisible,
     sortOrder: item.sortOrder,

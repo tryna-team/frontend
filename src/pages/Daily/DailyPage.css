@@ -7,11 +7,12 @@
   flex-direction: column;
   gap: 0;
 }
+/* 좌우 12px — 피그마 00-2에서 카드가 프레임 양옆으로부터 12px 떨어져 있다 */
 .daily-page-content {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 8px 12px;
 }
 
 .daily-page-empty {

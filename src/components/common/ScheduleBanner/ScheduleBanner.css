@@ -10,12 +10,31 @@
   text-align: left;
 }
 
+/* CategoryColor 6종의 배경색.
+   기존 green/apricot이 쓰던 Figma 변수명(--Base-*)은 실제로 정의된 적이 없어 폴백 hex가
+   적용되고 있었다. 값이 동일한 tds 팔레트 토큰(--color-{색}-50)으로 통일했다. */
 .schedule-banner-green {
-  background: var(--Base-Green-Green-50, #E3FDF0);
+  background: var(--color-green-50);
 }
 
 .schedule-banner-apricot {
-  background: var(--Base-Apricot-Apricot-50, #FFEEDF);
+  background: var(--color-apricot-50);
+}
+
+.schedule-banner-yellow {
+  background: var(--color-yellow-50);
+}
+
+.schedule-banner-blue {
+  background: var(--color-blue-50);
+}
+
+.schedule-banner-pink {
+  background: var(--color-pink-50);
+}
+
+.schedule-banner-purple {
+  background: var(--color-purple-50);
 }
 
 .schedule-banner-left {
@@ -24,9 +43,10 @@
   gap: 8px;
 }
 
+/* dot_*.svg 원본이 6x6이라 그 크기 그대로 쓴다 (8px로 늘리면 확대되어 커 보임) */
 .schedule-banner-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   flex-shrink: 0;
 }
 
@@ -49,10 +69,27 @@
   letter-spacing: var(--Default-Caption-Large-LetterSpacing, -0.12px);
 }
 
+/* 기간 텍스트("하루종일", "N일차")는 배경과 같은 계열의 진한 색을 쓴다 */
 .schedule-banner-green .schedule-banner-date {
-  color: var(--Base-Green-Green-500, #29C878);
+  color: var(--color-green-500);
 }
 
 .schedule-banner-apricot .schedule-banner-date {
-  color: var(--Base-Apricot-Apricot-500, #DC710E);
+  color: var(--color-apricot-500);
+}
+
+.schedule-banner-yellow .schedule-banner-date {
+  color: var(--color-yellow-500);
+}
+
+.schedule-banner-blue .schedule-banner-date {
+  color: var(--color-blue-500);
+}
+
+.schedule-banner-pink .schedule-banner-date {
+  color: var(--color-pink-500);
+}
+
+.schedule-banner-purple .schedule-banner-date {
+  color: var(--color-purple-500);
 }

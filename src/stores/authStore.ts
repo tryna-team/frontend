@@ -16,6 +16,7 @@ interface AuthState {
   setTokens: (tokens: { accessToken: string; refreshToken: string }) => void;
   setAccessToken: (accessToken: string) => void;
   setUser: (userId: number, userRole?: UserRole) => void;
+  setUserRole: (userRole: UserRole) => void;
   clearAuth: () => void;
 }
 
@@ -45,6 +46,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   setAccessToken: (accessToken) => set({ accessToken }),
 
   setUser: (userId, userRole) => set({ userId, userRole: userRole ?? null }),
+
+  // A101(/users/status)은 userRole만 주고 userId는 주지 않으므로,
+  // 앱 진입 시 권한만 갱신할 때 사용한다.
+  setUserRole: (userRole) => set({ userRole }),
 
   clearAuth: () => {
     localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);

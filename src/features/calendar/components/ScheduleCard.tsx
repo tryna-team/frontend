@@ -50,7 +50,7 @@ function ScheduleCard({
               alt=""
               className="schedule-card-dot"
             />
-            <span className="schedule-card-title-text">{title}</span>
+            <span className="schedule-card-title-text default-body-large">{title}</span>
           </div>
           <div className="schedule-card-location-wrap">
             <span className="schedule-card-location">{location}</span>
@@ -77,15 +77,16 @@ function ScheduleCard({
               alt=""
               className="schedule-card-dot"
             />
-            <span className="schedule-card-title-text">{title}</span>
+            <span className="schedule-card-title-text default-body-large">{title}</span>
           </div>
           <div className="schedule-card-location-wrap">
             <span className="schedule-card-location">{location}</span>
           </div>
         </div>
+        {/* 종일 일정은 시작·종료 시간이 없다. 값이 없으면 "~"만 남지 않도록 아예 렌더링하지 않는다 */}
         <div className="schedule-card-time">
-          <span className="schedule-card-time-start">{startTime}</span>
-          <span className="schedule-card-time-end">~{endTime}</span>
+          {startTime && <span className="schedule-card-time-start">{startTime}</span>}
+          {endTime && <span className="schedule-card-time-end">~{endTime}</span>}
         </div>
       </button>
 

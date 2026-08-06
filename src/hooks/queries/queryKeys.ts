@@ -41,13 +41,13 @@ export const queryKeys = {
       [...queryKeys.actionItems.all, "calendar-timed", date] as const,
   },
 
-  recommendations: {
-    all: ["recommendations"] as const,
-  },
-
   labels: {
     all: ["labels"] as const,
     list: () => [...queryKeys.labels.all, "list"] as const, // B108-1
+  },
+
+  recommendations: {
+    all: ["recommendations"] as const,
   },
 
   alarms: {
