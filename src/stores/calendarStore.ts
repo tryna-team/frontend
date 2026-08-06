@@ -1,5 +1,5 @@
 // ============================================================
-// store/useCalendarStore.ts
+// stores/calendarStore.ts
 // 커버: B101(캘린더 메인 조회)/B102(월간 조회)/B103(날짜별 목록)/레이블(홈/레이블 수정) 화면
 // ============================================================
 //
@@ -31,7 +31,7 @@ interface CalendarState {
   // 레이블은 개수가 적고 여러 화면(캘린더 셀 색상, 이벤트 뷰, 생성 패널의 레이블 선택)에서
   // 동시에 참조되므로, 서버에서 한 번 받아온 뒤 여기 전역 캐시로 들고 있는다.
   labels: CalendarLabel[]; // 사용자가 가진 전체 레이블 목록
-  selectedLabelId: number | null; // "레이블 수정" 화면에 진입할 때 대상이 되는 레이블 id (없으면 null) — CalendarLabel.labelId와 동일하게 number
+  selectedLabelId: number | null; // "레이블 수정" 화면에 진입할 때 대상이 되는 레이블 id (없으면 null)
 
   // ── 뷰 상태를 바꾸는 액션 ──
   setMonth: (year: number, month: number) => void; // 월간 캘린더에서 이전/다음 달 이동
@@ -64,8 +64,6 @@ export const useCalendarStore = create<CalendarState>((set) => ({
   selectedLabelId: null,
 
   // 월 이동: currentYear/currentMonth만 바꾼다. selectedDate는 건드리지 않으므로
-  // "3월 15일 보다가 4월로 넘기면 selectedDate는 여전히 3월 15일"로 남는 점 주의
-  // (필요하면 여기서 selectedDate도 해당 월 1일 등으로 같이 리셋하도록 정책 확인 필요)
   setMonth: (year, month) => set({ currentYear: year, currentMonth: month }),
 
   // "오늘" 버튼: 연/월/선택날짜 세 값을 한 번에 오늘 기준으로 되돌림
@@ -86,8 +84,10 @@ export const useCalendarStore = create<CalendarState>((set) => ({
   // 서버에서 받아온 레이블 배열로 캐시를 통째로 교체 (최초 로드, 새로고침 시 사용)
   setLabels: (labels) => set({ labels }),
 
-  // update-or-insert: id가 이미 있으면 해당 항목만 교체, 없으면 배열 끝에 추가.
+  // update-or-insert: labelId가 이미 있으면 해당 항목만 교체, 없으면 배열 끝에 추가.
   // "레이블 생성"과 "레이블 수정"을 액션 하나로 함께 처리하기 위한 설계.
+  // ⚠️ 실제 API 연동 시 라벨_정책서.md의 삭제 정책(소속 일정 기본 라벨로 이동 등)은
+  // 여기 반영 안 돼있음 — 단순 클라이언트 캐시 갱신만 함.
   upsertLabel: (label) =>
     set((state) => {
       const exists = state.labels.some((l) => l.labelId === label.labelId);
@@ -98,9 +98,35 @@ export const useCalendarStore = create<CalendarState>((set) => ({
       };
     }),
 
-  // 삭제된 레이블 id를 배열에서 필터링해서 제거
+  // B108-4 삭제 정책 반영(이전 "기본 라벨이면 무조건 거부"는 스펙과 반대였음 — 수정함):
+  // - 기본 라벨도 삭제할 수 있다. 막아야 하는 건 "마지막으로 남은 활성 Tryna(사용자) 라벨"뿐.
+  // - 기본 라벨을 삭제하면, 남은 활성 Tryna 라벨 중 sortOrder가 가장 작은 라벨을 새 기본으로 지정.
+  // - 일반 라벨을 삭제하면 기존 기본 라벨을 그대로 유지한다.
+  // ⚠️ "소속 일정을 기본 라벨로 이동"은 이벤트 데이터를 안 갖고 있는 이 스토어 밖의 일이라
+  // 여전히 미반영 — 실제로는 서버가 movedEventCount 등으로 트랜잭션 처리해서 내려준다.
   removeLabel: (labelId) =>
-    set((state) => ({ labels: state.labels.filter((l) => l.labelId !== labelId) })),
+    set((state) => {
+      const activeUserLabels = state.labels.filter((l) => l.labelType === 'USER');
+      if (activeUserLabels.length <= 1) return state; // 마지막 1개는 삭제 거부
+
+      const target = state.labels.find((l) => l.labelId === labelId);
+      const remaining = state.labels.filter((l) => l.labelId !== labelId);
+
+      if (!target?.isDefault) {
+        return { labels: remaining };
+      }
+
+      const remainingUserLabels = remaining
+        .filter((l) => l.labelType === 'USER')
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+      const newDefaultId = remainingUserLabels[0]?.labelId;
+
+      return {
+        labels: remaining.map((l) =>
+          l.labelId === newDefaultId ? { ...l, isDefault: true } : l,
+        ),
+      };
+    }),
 
   // 레이블 수정 화면 진입 시 대상 id 지정, 화면 나갈 때 null로 초기화
   selectLabel: (labelId) => set({ selectedLabelId: labelId }),
