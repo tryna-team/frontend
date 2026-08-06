@@ -37,8 +37,10 @@ const MOCK_CATEGORY_COLOR: CategoryColor = 'green';
 const MOCK_DEFAULT_CHECKED = false;
 
 // 'YYYY-MM-DD' → '6월 4일' 형태로 변환
+// 시각 없이 new Date(dateStr)만 쓰면 UTC 자정으로 파싱되어, UTC보다 느린 타임존(여행 중 기기
+// 타임존 변경 등)에서 하루 밀려 보일 수 있다 — 로컬 자정을 명시해 방지한다.
 function formatDateLabel(dateStr: string): string {
-  const date = new Date(dateStr);
+  const date = new Date(`${dateStr}T00:00:00`);
   return `${date.getMonth() + 1}월 ${date.getDate()}일`;
 }
 
@@ -68,7 +70,7 @@ function formatRecurrenceText(eventDetail: EventDetailResponseData): string | un
     case 'MONTHLY':
       return `매월 ${eventDetail.recurrenceDayOfMonth}일`;
     case 'YEARLY': {
-      const month = new Date(eventDetail.startDate).getMonth() + 1;
+      const month = new Date(`${eventDetail.startDate}T00:00:00`).getMonth() + 1;
       return `매년 ${month}월 ${eventDetail.recurrenceDayOfMonth}일`;
     }
     default:
