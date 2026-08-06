@@ -74,8 +74,50 @@ interface BannerItem {
 }
 
 // B103 응답엔 라벨/카테고리 색상 필드가 아직 없어 임시로 고정 색상 사용
-// TODO: 백엔드에 카테고리 색상 필드 추가되면 실제 값으로 교체
-const DEFAULT_CATEGORY_COLOR: CategoryColor = 'yellow';
+// TODO: 백엔드에 카테고리 색상 필드(labelId) 추가되면 실제 값으로 교체
+const DEFAULT_CATEGORY_COLOR: CategoryColor = 'green';
+
+/**
+ * 배너 색상 임시 팔레트.
+ * 라벨 색상이 응답에 없어서 전부 같은 색이 되면 배너끼리 구분이 안 된다.
+ * 피그마(00-2)의 배너가 초록 → 주황 순서라 그 순서대로 돌려 쓴다.
+ * TODO: 응답에 labelId가 추가되면 라벨의 실제 색상으로 교체
+ */
+const BANNER_COLOR_CYCLE: CategoryColor[] = [
+  'green',
+  'apricot',
+  'blue',
+  'pink',
+  'purple',
+  'yellow',
+];
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * 배너에 표시할 기간 텍스트를 만든다.
+ * - 하루짜리 종일 일정: "하루종일"
+ * - 여러 날 걸친 일정: 선택한 날짜가 시작일로부터 몇 번째 날인지 "N일차"
+ *
+ * ⚠️ 현재 B103은 startDate가 조회일과 같은 일정만 반환한다. 그래서 여러 날 일정은
+ * 시작일에만 보이고 항상 "1일차"가 된다. 조회 날짜가 startDate~endDate 범위에 포함되는
+ * 일정도 반환되도록 백엔드가 수정되면, 중간 날짜에서도 이 계산이 그대로 맞는다.
+ */
+function formatBannerDateText(
+  startDate: string,
+  endDate: string | null,
+  selectedDate: string,
+): string {
+  if (!endDate || endDate === startDate) {
+    return '하루종일';
+  }
+
+  const startTime = new Date(`${startDate}T00:00:00`).getTime();
+  const selectedTime = new Date(`${selectedDate}T00:00:00`).getTime();
+  const dayIndex = Math.round((selectedTime - startTime) / MS_PER_DAY) + 1;
+
+  return `${dayIndex}일차`;
+}
 
 function DailyPage() {
   // Daily 경로의 날짜를 화면 기준값으로 사용
@@ -112,6 +154,11 @@ function DailyPage() {
     queryFn: () => calendarService.getDateEvents(selectedDate),
   });
 
+  // 종일 일정은 상단에 배너로 한 번 더 요약해서 보여준다 (피그마 00-2).
+  // 배너 전용 API는 따로 없고, B103 응답의 isAllDay로 판별한다.
+  // 배너에 올라간 일정도 아래 목록에는 그대로 남는다 — 배너는 목록을 대체하는 게 아니라 요약이다.
+  const allDayEvents = (data?.events ?? []).filter((event) => event.isAllDay);
+
   // API 응답(CalendarEventDetail[])을 기존 JSX가 기대하는 ScheduleItem 형태로 변환
   // ⚠️ checklist, linkedSchedule은 B103 응답에 없는 필드 — 추후 별도 API 연동 필요
   const schedules: ScheduleItem[] = (data?.events ?? []).map((event) => ({
@@ -126,8 +173,16 @@ function DailyPage() {
     linkedSchedule: undefined,
   }));
 
-  // ⚠️ 배너(장기 일정)에 대응하는 API가 아직 없어 빈 배열로 처리 — 추후 API 확정 시 연결
-  const banners: BannerItem[] = [];
+  // date를 event.startDate가 아니라 selectedDate로 두는 이유: 여러 날 걸친 일정이
+  // 중간 날짜 조회에도 내려오게 되면 startDate는 과거 날짜라 아래 필터에서 걸러진다.
+  // B103은 날짜 단위 조회라 응답에 담긴 일정은 모두 그 날짜에 속한다고 봐도 된다.
+  const banners: BannerItem[] = allDayEvents.map((event, index) => ({
+    id: String(event.eventId),
+    categoryColor: BANNER_COLOR_CYCLE[index % BANNER_COLOR_CYCLE.length],
+    title: event.title,
+    dateText: formatBannerDateText(event.startDate, event.endDate, selectedDate),
+    date: selectedDate,
+  }));
 
   // 날짜 선택 시 화면 상태, URL을 함께 갱신
   const handleSelectDate = (nextDate: string) => {
@@ -243,6 +298,7 @@ function DailyPage() {
                 categoryColor={banner.categoryColor}
                 title={banner.title}
                 dateText={banner.dateText}
+                onClick={() => handleScheduleClick(banner.id)}
               />
             ))}
           </div>
