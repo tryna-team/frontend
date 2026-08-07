@@ -124,7 +124,7 @@ function EventViewPage() {
           // 비시간형 준비 항목은 일정 상세에서 날짜 없이 표시한다.
           dateText:
             item.itemType === 'TIMED_ACTION' && displayDate && isValid(displayDate)
-              ? format(displayDate, 'MM. dd.')
+              ? format(displayDate, 'M월 d일')
               : undefined,
         };
       }),
@@ -315,11 +315,20 @@ function EventViewPage() {
             <p className="py-6 text-center text-text-additional default-body-medium">
               준비 항목을 불러오지 못했어요.
             </p>
+          ) : todoItems.length === 0 ? (
+            <p className="py-6 text-center text-text-additional default-body-medium">
+              준비 항목이 없어요.
+            </p>
           ) : (
             <DailyScheduleCard
               items={todoItems}
               onToggleItem={handleToggleItem}
               onCompleteAllClick={handleCompleteAll}
+              updatingItemId={
+                actionItemStatusMutation.isPending
+                  ? String(actionItemStatusMutation.variables?.actionItemId)
+                  : undefined
+              }
             />
           )}
         </div>

@@ -13,6 +13,7 @@ interface DailyScheduleCardProps {
   onToggleItem?: (id: string) => void;
   onAddClick?: () => void;
   onCompleteAllClick?: () => void;
+  updatingItemId?: string;
 }
 
 export default function DailyScheduleCard({
@@ -20,6 +21,7 @@ export default function DailyScheduleCard({
   onToggleItem,
   onAddClick,
   onCompleteAllClick,
+  updatingItemId,
 }: DailyScheduleCardProps) {
   return (
     <div className="flex w-full flex-col items-center gap-4 rounded-[24px] bg-white px-4 py-6 shadow-[0px_4px_16px_0px_rgba(0,0,0,0.04),0px_9.701px_58.209px_0px_rgba(0,0,0,0.1)]">
@@ -36,7 +38,9 @@ export default function DailyScheduleCard({
              → onLeadingClick={(id) => onToggleItem?.(String(id))}
            로 바꿔서 index로 items 배열을 다시 뒤지는 우회 없이 item.id를 그대로 전달.
       */}
+      {/* EventView에서는 큰 체크 아이콘과 양 끝 정렬을 사용한다. */}
       <Checklist
+        radioVariant="event"
         items={items.map((item, index) => ({
           id: index,
           label: item.text,
@@ -44,6 +48,8 @@ export default function DailyScheduleCard({
           trailing: item.dateText
             ? { type: 'date' as const, text: item.dateText }
             : { type: 'none' as const },
+          // 상태 변경을 요청한 항목만 잠시 비활성화한다.
+          disabled: item.id === updatingItemId,
         }))}
         onLeadingClick={(index) => onToggleItem?.(items[index].id)}
       />
