@@ -1,8 +1,17 @@
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import Button from '@/components/common/Buttons/Button';
 import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
 import Overlay from '@/components/common/Popup/Overlay';
+import ToastPopup from '@/components/common/Popup/ToastPopup';
+import TermsAgreementSheet from '@/components/common/Popup/TermsAgreementSheet';
+import type { TermType } from '@/apis/types/auth';
+import {
+  AlreadyRegisteredError,
+  TermsAgreementRequiredError,
+  useSocialLogin,
+} from '@/hooks/useSocialLogin';
+import { GoogleLoginCancelledError } from '@/utils/googleAuth';
 import { useUIStore } from '@/stores/uiStore';
 
 /**
@@ -103,49 +112,133 @@ function splitGuideMessage(guideMessage: string) {
   return { title: firstParagraph, description: rest.join('\n\n') };
 }
 
+/** 로그인 시트에서 이어지는 하위 단계 (구글 인증 결과에 따라 갈린다) */
+type LoginStep = 'idle' | 'terms' | 'alreadyRegistered';
+
 export default function GlobalBottomSheet() {
   const activeBottomSheet = useUIStore((state) => state.activeBottomSheet);
   const bottomSheetContext = useUIStore((state) => state.bottomSheetContext);
   const openBottomSheet = useUIStore((state) => state.openBottomSheet);
   const closeBottomSheet = useUIStore((state) => state.closeBottomSheet);
+  const showToast = useUIStore((state) => state.showToast);
+  const toast = useUIStore((state) => state.toast);
+  const clearToast = useUIStore((state) => state.clearToast);
+
+  const [loginStep, setLoginStep] = useState<LoginStep>('idle');
+  const { login, reset, isPending } = useSocialLogin();
+
+  const closeLoginFlow = () => {
+    reset();
+    setLoginStep('idle');
+    closeBottomSheet();
+  };
+
+  const runLogin = async (agreedTermTypes: TermType[] = [], discardGuestData = false) => {
+    try {
+      await login(agreedTermTypes, { discardGuestData });
+      closeLoginFlow();
+    } catch (error) {
+      // 사용자가 구글 팝업을 닫은 것뿐이라 에러로 알리지 않는다
+      if (error instanceof GoogleLoginCancelledError) {
+        return;
+      }
+
+      // 실패가 아니라 "약관 동의를 받아오라"는 신호
+      if (error instanceof TermsAgreementRequiredError) {
+        setLoginStep('terms');
+        return;
+      }
+
+      // 이미 가입된 계정이라 비회원 전환이 막힌 경우 — 기존 계정 로그인 여부를 물어본다
+      if (error instanceof AlreadyRegisteredError) {
+        setLoginStep('alreadyRegistered');
+        return;
+      }
+
+      showToast('loginFailed');
+    }
+  };
 
   // 4-1-1 로그인 바텀시트 — 4-1에서 "로그인"을 누르면 전환된다.
   // 이 시트의 문구는 서버 안내가 아니라 화면 고정 문구라 여기서 정의한다.
-  if (activeBottomSheet === 'login') {
+  const renderSheet = () => {
+    if (activeBottomSheet === 'login') {
+      if (loginStep === 'terms') {
+        return (
+          <TermsAgreementSheet
+            isPending={isPending}
+            onAgree={(agreedTermTypes) => void runLogin(agreedTermTypes)}
+            onClose={closeLoginFlow}
+          />
+        );
+      }
+
+      // 비회원 데이터를 포기하고 기존 계정으로 로그인할지 확인받는다 (A106 AUTH_409 분기).
+      // 확인하면 전환(A106) 대신 새 로그인(A105)을 태운다.
+      if (loginStep === 'alreadyRegistered') {
+        return (
+          <SheetLayout
+            title="이미 가입된 계정이에요"
+            description={
+              '이 구글 계정으로 이미 가입하셨어요.\n\n' +
+              '기존 계정으로 로그인하면 지금 비회원으로 만든 일정과 준비 항목은 옮겨지지 않아요.'
+            }
+            confirmText="기존 계정으로 로그인"
+            cancelText="취소"
+            onConfirm={() => void runLogin([], true)}
+            onClose={closeLoginFlow}
+          />
+        );
+      }
+
+      return (
+        <SheetLayout
+          title="로그인"
+          description="구글 계정으로 로그인하세요."
+          confirmText={isPending ? '로그인 중...' : 'Google로 시작하기'}
+          confirmIcon="google.svg"
+          cancelText="다음에 하기"
+          onConfirm={() => void runLogin()}
+          onClose={closeLoginFlow}
+        />
+      );
+    }
+
+    if (activeBottomSheet !== 'loginRequired') {
+      return null;
+    }
+
+    // context는 Record<string, unknown>이라 사용 전에 타입을 좁힌다
+    const guideMessage =
+      typeof bottomSheetContext?.guideMessage === 'string' ? bottomSheetContext.guideMessage : '';
+    const { title, description } = splitGuideMessage(guideMessage);
+
     return (
       <SheetLayout
-        title="로그인"
-        description="구글 계정으로 로그인하세요."
-        confirmText="Google로 시작하기"
-        confirmIcon="google.svg"
+        title={title}
+        description={description}
+        confirmText="로그인"
         cancelText="다음에 하기"
-        // TODO: 구글 로그인 SDK 연동 후 A105(authService.socialLogin) 또는
-        // 비회원 데이터가 있으면 A106(convertGuestToMember)으로 연결할 것.
-        // 지금은 oauthAccessToken을 발급받을 수단이 없어 닫기만 한다.
-        onConfirm={closeBottomSheet}
+        // 4-1 → 4-1-1로 전환. 로그인 시트는 고정 문구라 context를 넘기지 않아도 된다.
+        onConfirm={() => openBottomSheet('login')}
         onClose={closeBottomSheet}
       />
     );
-  }
-
-  if (activeBottomSheet !== 'loginRequired') {
-    return null;
-  }
-
-  // context는 Record<string, unknown>이라 사용 전에 타입을 좁힌다
-  const guideMessage =
-    typeof bottomSheetContext?.guideMessage === 'string' ? bottomSheetContext.guideMessage : '';
-  const { title, description } = splitGuideMessage(guideMessage);
+  };
 
   return (
-    <SheetLayout
-      title={title}
-      description={description}
-      confirmText="로그인"
-      cancelText="다음에 하기"
-      // 4-1 → 4-1-1로 전환. 로그인 시트는 고정 문구라 context를 넘기지 않아도 된다.
-      onConfirm={() => openBottomSheet('login')}
-      onClose={closeBottomSheet}
-    />
+    <>
+      {renderSheet()}
+
+      {/* 전역 토스트도 여기서 한 번만 렌더링한다 (uiStore 설계 노트 참고).
+          바텀시트와 동시에 뜰 수 있어서 시트 분기와 독립적으로 둔다. */}
+      {toast === 'loginFailed' && (
+        <ToastPopup
+          GuideText="로그인에 실패했어요"
+          DetailText="잠시 후 다시 시도해주세요."
+          onClose={clearToast}
+        />
+      )}
+    </>
   );
 }
