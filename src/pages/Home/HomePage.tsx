@@ -156,17 +156,26 @@ function HomePage() {
     setInitialCreateDate(null);
   };
 
+  // 지금 보고 있는 달에 오늘이 들어있으면 "오늘" 버튼은 할 일이 없으므로 비활성화한다.
+  // (예: 오늘이 8월 7일일 때 7월을 보고 있으면 활성화, 8월을 보고 있으면 비활성화)
+  //
+  // 매 렌더마다 new Date()를 만드는 이유: 모듈 상수로 캐시해두면 앱을 자정 너머까지
+  // 켜둔 경우 날짜가 바뀌어도 갱신되지 않는다 (calendarStore의 동일한 주의사항 참고).
+  const now = new Date();
+  const isTodayInCurrentMonth =
+    currentYear === now.getFullYear() && currentMonth === now.getMonth() + 1;
+
   const floatingButtonsContent = useMemo(
     () => (
       <div className="flex w-full items-center justify-between">
-        <Button variant="LargeStrongFit" onClick={goToToday}>
+        <Button variant="LargeStrongFit" onClick={goToToday} disabled={isTodayInCurrentMonth}>
           오늘
         </Button>
         {/* 생성 모달을 현재 화면 위에 연다. */}
         <Button variant="MainCTAButton" onClick={() => setIsCreateModalOpen(true)} />
       </div>
     ),
-    [goToToday],
+    [goToToday, isTodayInCurrentMonth],
   );
   useFloatingButtons(floatingButtonsContent);
 
