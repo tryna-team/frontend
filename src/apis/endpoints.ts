@@ -31,8 +31,6 @@ export const ENDPOINTS = {
   CALENDAR: {
     // 캘린더 메인 화면 조회 - Query: year, month, selectedDate
     MAIN: "/calendars/main",
-    // 월간 캘린더 조회 - Query: year, month
-    MONTHLY: "/calendars/monthly",
     // 날짜별 일정 목록 조회
     DATE_EVENTS: (date: string) =>
       `/calendars/dates/${encodeURIComponent(date)}/events`,
