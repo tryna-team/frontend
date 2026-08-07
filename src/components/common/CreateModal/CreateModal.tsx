@@ -157,6 +157,48 @@ const mapRecommendationCandidate = (
   edited: false,
 });
 
+// 추천 서버 없이 저장·상태 변경 흐름을 확인하는 개발용 항목이다.
+const createDevelopmentFallbackCandidates = (
+  displayDate: string,
+): RecommendationCandidate[] => [
+  {
+    candidateId: 'development-timed-1',
+    title: '필요한 준비물 챙기기',
+    itemType: 'TIMED_ACTION',
+    apiItemType: 'TIMED_ACTION',
+    sourceTemplateId: null,
+    offsetDays: 0,
+    originalTitle: '필요한 준비물 챙기기',
+    displayDate,
+    selected: true,
+    edited: false,
+  },
+  {
+    candidateId: 'development-timed-2',
+    title: '참석자에게 일정 공유하기',
+    itemType: 'TIMED_ACTION',
+    apiItemType: 'TIMED_ACTION',
+    sourceTemplateId: null,
+    offsetDays: 0,
+    originalTitle: '참석자에게 일정 공유하기',
+    displayDate,
+    selected: true,
+    edited: false,
+  },
+  {
+    candidateId: 'development-untimed-1',
+    title: '일정 세부 내용 확인하기',
+    itemType: 'CHECKLIST',
+    apiItemType: 'UNTIMED_PREP',
+    sourceTemplateId: null,
+    offsetDays: null,
+    originalTitle: '일정 세부 내용 확인하기',
+    displayDate: null,
+    selected: true,
+    edited: false,
+  },
+];
+
 const hasRecommendationFailed = (response: RecommendationResponse) =>
   response.suggestionStatus === 'ERROR' || response.suggestionStatus === 'EMPTY';
 
@@ -495,6 +537,19 @@ export default function CreateModal({
       draftRevisionRef.current += 1;
       setLoadingRecommendations(true);
 
+      const applyDevelopmentFallback = () => {
+        const fallbackDate =
+          latestParsedCandidate.dateCandidate ?? format(startDateRef.current, 'yyyy-MM-dd');
+
+        setRecommendationCandidates(
+          createDevelopmentFallbackCandidates(fallbackDate),
+        );
+        setRecommendedTitle(latestParsedCandidate.titleCandidate ?? request.input);
+        hasRecommendedRef.current = true;
+        setHasRecommended(true);
+        setStep('recommendation');
+      };
+
       try {
         const response = await recommendationService.getRecommendations(
           {
@@ -528,6 +583,11 @@ export default function CreateModal({
         }
 
         if (hasRecommendationFailed(response) || !response.suggestions?.length) {
+          if (import.meta.env.DEV) {
+            applyDevelopmentFallback();
+            return;
+          }
+
           // TODO: 공통 추천 오류 UI가 준비되면 alert을 교체한다.
           window.alert('체크리스트 추천에 실패했습니다. 잠시 후 다시 시도해주세요.');
           setStep('input');
@@ -551,6 +611,11 @@ export default function CreateModal({
         setStep('recommendation');
       } catch {
         if (!controller.signal.aborted && request.revision === revisionRef.current) {
+          if (import.meta.env.DEV) {
+            applyDevelopmentFallback();
+            return;
+          }
+
           // TODO: 공통 추천 오류 UI가 준비되면 alert을 교체한다.
           window.alert('체크리스트 추천 중 오류가 발생했습니다.');
           setStep('input');
@@ -926,7 +991,7 @@ export default function CreateModal({
     setIsSaving(true);
 
     try {
-      await eventService.create(
+      const createResponse = await eventService.create(
         {
           eventTitle: trimmedInput,
           description: null,
@@ -970,10 +1035,35 @@ export default function CreateModal({
         controller.signal,
       );
 
-      // 새 일정을 다시 조회할 수 있도록 관련 캐시를 무효화한다.
+      const timedActionDates = [
+        ...new Set(
+          (createResponse.savedActionItems ?? [])
+            .filter(
+              (item) =>
+                item.itemType === 'TIMED_ACTION' && Boolean(item.displayDate),
+            )
+            .map((item) => item.displayDate as string),
+        ),
+      ];
+
+      // 생성된 일정과 시간형 항목을 각 화면에서 다시 조회한다.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.events.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.calendars.all }),
+        ...(createResponse.eventId !== undefined
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: queryKeys.actionItems.byEvent(
+                  createResponse.eventId,
+                ),
+              }),
+            ]
+          : []),
+        ...timedActionDates.map((date) =>
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.actionItems.calendarTimed(date),
+          }),
+        ),
       ]);
 
       // 이전 초안의 완료 응답은 현재 생성 세션을 변경하지 않는다.

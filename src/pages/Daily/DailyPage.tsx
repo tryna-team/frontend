@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { useSwipeable } from 'react-swipeable';
 import { useCanGoBack } from '@/hooks/useCanGoBack';
 
@@ -17,6 +17,7 @@ import { useGuestConversionPrompt } from '@/hooks/useGuestConversionPrompt';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
 import { actionItemService } from '@/apis/services/actionItemService';
+import { eventDetailService } from '@/apis/services/eventDetailService';
 import { generateDailyPath, generateEventPath, PATH } from '@/routes/paths';
 
 import './DailyPage.css';
@@ -59,12 +60,23 @@ interface ScheduleItem {
   startTime: string;
   endTime: string;
   date: string;
-  checklist?: { id: string; text: string; checked: boolean }[];
+  checklist?: { id: string; text: string; checked: boolean; dateText?: string }[];
   linkedSchedule?: {
     date: string;
     time: string;
     title: string;
   };
+}
+
+function formatTime(value: string | null | undefined) {
+  if (!value) return '';
+  return value.includes('T') ? value.slice(11, 16) : value.slice(0, 5);
+}
+
+function formatMonthDay(value: string | null | undefined) {
+  if (!value) return '';
+  const [, month, day] = value.split('-').map(Number);
+  return `${month}월 ${day}일`;
 }
 
 interface BannerItem {
@@ -191,45 +203,62 @@ function DailyPage() {
     (item) => item.itemType === 'TIMED_ACTION',
   );
 
-  // 같은 날짜의 원래 일정에는 실행 항목을 합치고, 없는 부모 일정은 별도 카드로 만든다.
-  const schedulesWithTimedItems: ScheduleItem[] = schedules.map((schedule) => ({
+  // 부모 일정 날짜에는 시간형과 비시간형 하위 항목을 모두 표시한다.
+  const eventActionItemQueries = useQueries({
+    queries: schedules.map((schedule) => ({
+      queryKey: queryKeys.actionItems.byEvent(schedule.eventId),
+      queryFn: () => actionItemService.getByEvent(schedule.eventId),
+    })),
+  });
+
+  const schedulesWithActionItems: ScheduleItem[] = schedules.map((schedule, index) => ({
     ...schedule,
-    checklist: timedActionItems
-      .filter((item) => String(item.parentEventId) === schedule.eventId)
-      .map((item) => ({
-        id: String(item.actionItemId),
-        text: item.title,
-        checked: item.actionItemStatus === 'COMPLETED',
-      })),
+    checklist: (eventActionItemQueries[index]?.data?.items ?? []).map((item) => ({
+      id: String(item.actionItemId),
+      text: item.title,
+      checked: item.actionItemStatus === 'COMPLETED',
+      dateText: item.itemType === 'TIMED_ACTION' ? formatMonthDay(item.displayDate) : undefined,
+    })),
   }));
 
-  const linkedTimedSchedules: ScheduleItem[] = timedActionItems
-    .filter(
-      (item) =>
-        !schedules.some(
-          (schedule) => schedule.eventId === String(item.parentEventId),
-        ),
-    )
-    .map((item) => ({
+  const timedParentEventIds = [
+    ...new Set(timedActionItems.map((item) => String(item.parentEventId))),
+  ];
+
+  // 실행 항목 카드에서 원래 일정을 안내하기 위해 부모 일정 정보를 조회한다.
+  const timedParentEventQueries = useQueries({
+    queries: timedParentEventIds.map((eventId) => ({
+      queryKey: queryKeys.events.detail(eventId),
+      queryFn: () => eventDetailService.getDetail(eventId),
+    })),
+  });
+
+  const timedParentEvents = new Map(
+    timedParentEventIds.map((eventId, index) => [eventId, timedParentEventQueries[index]?.data]),
+  );
+
+  // 실행 날짜에는 시간형 항목을 독립 카드로 표시하고 원래 일정과 연결한다.
+  const linkedTimedSchedules: ScheduleItem[] = timedActionItems.map((item) => {
+    const parentEvent = timedParentEvents.get(String(item.parentEventId));
+
+    return {
       id: `action-item-${item.actionItemId}`,
       eventId: String(item.parentEventId),
       categoryColor: DEFAULT_CATEGORY_COLOR,
-      title: item.parentEventTitle,
+      title: item.title,
       location: '',
-      startTime: item.displayTime?.includes('T')
-        ? item.displayTime.slice(11, 16)
-        : (item.displayTime?.slice(0, 5) ?? ''),
+      startTime: formatTime(item.displayTime),
       endTime: '',
       date: item.displayDate,
-      checklist: [
-        {
-          id: String(item.actionItemId),
-          text: item.title,
-          checked: item.actionItemStatus === 'COMPLETED',
-        },
-      ],
-      linkedSchedule: undefined,
-    }));
+      checklist: undefined,
+      linkedSchedule: {
+        date:
+          parentEvent?.startDate === selectedDate ? '오늘' : formatMonthDay(parentEvent?.startDate),
+        time: formatTime(parentEvent?.startTime),
+        title: parentEvent?.eventTitle ?? item.parentEventTitle,
+      },
+    };
+  });
 
   // date를 event.startDate가 아니라 selectedDate로 두는 이유: 여러 날 걸친 일정이
   // 중간 날짜 조회에도 내려오게 되면 startDate는 과거 날짜라 아래 필터에서 걸러진다.
@@ -325,10 +354,9 @@ function DailyPage() {
   const monthText = `${displayDate.getMonth() + 1}월`;
   const titleText = `${monthText} ${displayDate.getDate()}일 (${DAY_LABELS[displayDate.getDay()]})`;
 
-  const todaySchedules = [
-    ...schedulesWithTimedItems,
-    ...linkedTimedSchedules,
-  ].filter((schedule) => schedule.date === selectedDate);
+  const todaySchedules = [...schedulesWithActionItems, ...linkedTimedSchedules].filter(
+    (schedule) => schedule.date === selectedDate,
+  );
   const todayBanners = banners.filter((b) => b.date === selectedDate);
 
   // Daily 체크리스트는 상태 확인용이므로 이 단계에서는 변경하지 않는다.
@@ -366,9 +394,14 @@ function DailyPage() {
         )}
 
         <div className="daily-page-content">
-          {isPending || isTimedActionItemPending ? (
+          {isPending ||
+          isTimedActionItemPending ||
+          eventActionItemQueries.some((query) => query.isPending) ||
+          timedParentEventQueries.some((query) => query.isPending) ? (
             <p className="daily-page-empty">불러오는 중...</p>
-          ) : isError || isTimedActionItemError ? (
+          ) : isError ||
+            isTimedActionItemError ||
+            eventActionItemQueries.some((query) => query.isError) ? (
             <p className="daily-page-empty">일정을 불러오지 못했어요</p>
           ) : todaySchedules.length === 0 ? (
             <p className="daily-page-empty">일정이 없어요</p>
@@ -385,6 +418,9 @@ function DailyPage() {
                 onScheduleClick={() => handleScheduleClick(schedule.eventId)}
                 onToggleItem={handleToggleItem}
                 linkedSchedule={schedule.linkedSchedule}
+                onLinkedScheduleClick={
+                  schedule.linkedSchedule ? () => handleScheduleClick(schedule.eventId) : undefined
+                }
               />
             ))
           )}
