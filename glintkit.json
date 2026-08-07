@@ -1,0 +1,10 @@
+{
+  "aliases": {
+    "components": "@/pages/Landing/glintkit",
+    "hooks": "@/pages/Landing/glintkit/hooks",
+    "utils": "@/lib"
+  },
+  "tailwind": {
+    "css": "src/index.css"
+  }
+}
