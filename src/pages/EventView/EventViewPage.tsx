@@ -7,7 +7,11 @@ import {
   useNavigate,
   useParams,
 } from 'react-router';
-import { useQuery } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { format, isValid, parseISO } from 'date-fns';
 
 import Header from '@/components/common/Header/Header';
@@ -25,6 +29,10 @@ import { useCanGoBack } from '@/hooks/useCanGoBack';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { eventDetailService } from '@/apis/services/eventDetailService';
 import { actionItemService } from '@/apis/services/actionItemService';
+import type {
+  ActionItemCompletionStatus,
+  EventActionItemResponse,
+} from '@/apis/types/actionItem';
 import type { EventDetailResponseData, RecurrenceDayOfWeek } from '@/apis/types/eventDetail';
 
 import './EventViewPage.css';
@@ -77,6 +85,7 @@ function formatRecurrenceText(eventDetail: EventDetailResponseData): string | un
 
 function EventViewPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // URL에서 조회할 일정 ID를 읽음
   const { eventId } = useParams<{ eventId: string }>();
@@ -122,17 +131,8 @@ function EventViewPage() {
     [actionItemsData],
   );
 
-  // E106 연동 전에도 기존 체크 UI가 동작하도록 화면 상태를 유지한다.
-  const [checkedOverrides, setCheckedOverrides] = useState<Record<string, boolean>>({});
-
-  const todoItems = useMemo(
-    () =>
-      baseTodoItems.map((item) => ({
-        ...item,
-        checked: checkedOverrides[item.id] ?? item.checked,
-      })),
-    [baseTodoItems, checkedOverrides],
-  );
+  // 서버 응답 상태를 체크 UI에 반영한다.
+  const todoItems = baseTodoItems;
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -156,20 +156,117 @@ function EventViewPage() {
     }
   };
 
-  // TODO: E106 연동 시 로컬 변경을 상태 변경 mutation으로 교체한다.
-  const handleToggleItem = (id: string) => {
-    const currentItem = todoItems.find((item) => item.id === id);
+  // E106 요청 전후의 캐시와 체크 상태를 동기화한다.
+  const actionItemStatusMutation = useMutation({
+    mutationFn: ({
+      actionItemId,
+      status,
+    }: {
+      actionItemId: number;
+      status: ActionItemCompletionStatus;
+      displayDate: string | null;
+    }) =>
+      actionItemService.updateStatus(actionItemId, {
+        actionItemStatus: status,
+      }),
+    onMutate: async ({ actionItemId, status }) => {
+      const eventItemsQueryKey = queryKeys.actionItems.byEvent(eventId ?? '');
 
-    setCheckedOverrides((previous) => ({
-      ...previous,
-      [id]: !(previous[id] ?? currentItem?.checked ?? false),
-    }));
+      await queryClient.cancelQueries({ queryKey: eventItemsQueryKey });
+      const previousItems = queryClient.getQueryData<EventActionItemResponse>(
+        eventItemsQueryKey,
+      );
+
+      // 응답 전에도 체크 상태를 즉시 반영한다.
+      queryClient.setQueryData<EventActionItemResponse>(
+        eventItemsQueryKey,
+        (current) =>
+          current
+            ? {
+                ...current,
+                items: current.items.map((item) =>
+                  item.actionItemId === actionItemId
+                    ? { ...item, actionItemStatus: status }
+                    : item,
+                ),
+              }
+            : current,
+      );
+
+      return { previousItems };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousItems) {
+        queryClient.setQueryData(
+          queryKeys.actionItems.byEvent(eventId ?? ''),
+          context.previousItems,
+        );
+      }
+
+      // TODO: 공통 상태 변경 오류 UI가 준비되면 alert을 교체한다.
+      window.alert('항목 상태를 변경하지 못했습니다. 다시 시도해주세요.');
+    },
+    onSettled: async (_data, _error, variables) => {
+      const invalidations = [
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.actionItems.byEvent(eventId ?? ''),
+        }),
+      ];
+
+      if (variables.displayDate) {
+        invalidations.push(
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.actionItems.calendarTimed(variables.displayDate),
+          }),
+        );
+      }
+
+      await Promise.all(invalidations);
+    },
+  });
+
+  const handleToggleItem = (id: string) => {
+    if (actionItemStatusMutation.isPending) {
+      return;
+    }
+
+    const actionItem = actionItemsData?.items.find(
+      (item) => String(item.actionItemId) === id,
+    );
+
+    if (!actionItem) {
+      return;
+    }
+
+    actionItemStatusMutation.mutate({
+      actionItemId: actionItem.actionItemId,
+      status:
+        actionItem.actionItemStatus === 'COMPLETED'
+          ? 'PENDING'
+          : 'COMPLETED',
+      displayDate:
+        actionItem.itemType === 'TIMED_ACTION'
+          ? actionItem.displayDate
+          : null,
+    });
   };
 
   const handleCompleteAll = () => {
-    setCheckedOverrides(
-      Object.fromEntries(baseTodoItems.map((item) => [item.id, true])),
-    );
+    if (actionItemStatusMutation.isPending) {
+      return;
+    }
+
+    // 일괄 API가 없어 미완료 항목을 각각 완료 처리한다.
+    actionItemsData?.items
+      .filter((item) => item.actionItemStatus !== 'COMPLETED')
+      .forEach((item) => {
+        actionItemStatusMutation.mutate({
+          actionItemId: item.actionItemId,
+          status: 'COMPLETED',
+          displayDate:
+            item.itemType === 'TIMED_ACTION' ? item.displayDate : null,
+        });
+      });
   };
 
   // 일정 ID가 없거나 조회 실패(존재하지 않는 일정 등)하면 Home으로 이동한다.
