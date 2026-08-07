@@ -156,26 +156,32 @@ function HomePage() {
     setInitialCreateDate(null);
   };
 
-  // 지금 보고 있는 달에 오늘이 들어있으면 "오늘" 버튼은 할 일이 없으므로 비활성화한다.
-  // (예: 오늘이 8월 7일일 때 7월을 보고 있으면 활성화, 8월을 보고 있으면 비활성화)
+  // "오늘" 버튼은 goToToday로 연/월/선택날짜를 한 번에 오늘로 되돌린다.
+  // 그래서 셋 다 이미 오늘일 때 — 즉 버튼을 눌러도 바뀔 게 없을 때만 비활성화한다.
+  //
+  // 달만 보고 판단하면, 8월을 보면서 8월 20일을 선택한 경우처럼
+  // 선택 날짜는 오늘이 아닌데 버튼이 죽어버리는 구멍이 생긴다.
   //
   // 매 렌더마다 new Date()를 만드는 이유: 모듈 상수로 캐시해두면 앱을 자정 너머까지
   // 켜둔 경우 날짜가 바뀌어도 갱신되지 않는다 (calendarStore의 동일한 주의사항 참고).
   const now = new Date();
-  const isTodayInCurrentMonth =
-    currentYear === now.getFullYear() && currentMonth === now.getMonth() + 1;
+  const isViewingToday =
+    currentYear === now.getFullYear() &&
+    currentMonth === now.getMonth() + 1 &&
+    // calendarStore와 같은 방식으로 로컬 기준 "YYYY-MM-DD"를 만든다 (자정 근처 하루 밀림 방지)
+    selectedDate === now.toLocaleDateString('sv-SE');
 
   const floatingButtonsContent = useMemo(
     () => (
       <div className="flex w-full items-center justify-between">
-        <Button variant="LargeStrongFit" onClick={goToToday} disabled={isTodayInCurrentMonth}>
+        <Button variant="LargeStrongFit" onClick={goToToday} disabled={isViewingToday}>
           오늘
         </Button>
         {/* 생성 모달을 현재 화면 위에 연다. */}
         <Button variant="MainCTAButton" onClick={() => setIsCreateModalOpen(true)} />
       </div>
     ),
-    [goToToday, isTodayInCurrentMonth],
+    [goToToday, isViewingToday],
   );
   useFloatingButtons(floatingButtonsContent);
 
