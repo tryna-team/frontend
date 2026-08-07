@@ -140,9 +140,8 @@ function HomePage() {
     setIsCreateModalOpen(false);
     setInitialCreateDate(null);
 
-    // 비회원이 생성+추천을 체험한 직후에만 회원 전환을 유도한다 (기기당 1회).
-    // 화면 전환을 막지 않도록 await하지 않으며, 실패해도 훅 내부에서 조용히 넘어간다.
-    void promptIfGuest();
+    // 비회원이 생성+추천을 체험한 직후에만 로그인을 유도한다 (기기당 1회)
+    promptIfGuest();
   };
 
   const handleLongPressDate = (date: string) => {
