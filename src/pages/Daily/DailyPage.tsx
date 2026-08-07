@@ -359,9 +359,6 @@ function DailyPage() {
   );
   const todayBanners = banners.filter((b) => b.date === selectedDate);
 
-  // Daily 체크리스트는 상태 확인용이므로 이 단계에서는 변경하지 않는다.
-  const handleToggleItem = () => {};
-
   return (
     <div className="daily-page">
       <Header
@@ -416,7 +413,6 @@ function DailyPage() {
                 endTime={schedule.endTime}
                 checklist={schedule.checklist}
                 onScheduleClick={() => handleScheduleClick(schedule.eventId)}
-                onToggleItem={handleToggleItem}
                 linkedSchedule={schedule.linkedSchedule}
                 onLinkedScheduleClick={
                   schedule.linkedSchedule ? () => handleScheduleClick(schedule.eventId) : undefined

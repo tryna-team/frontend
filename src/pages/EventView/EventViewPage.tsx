@@ -1,5 +1,6 @@
 import {
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -135,6 +136,10 @@ function EventViewPage() {
   const todoItems = baseTodoItems;
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const pendingActionItemIdsRef = useRef(new Set<number>());
+  const [pendingActionItemIds, setPendingActionItemIds] = useState<Set<number>>(
+    () => new Set(),
+  );
 
   const floatingButtonsContent = useMemo(
     () => (
@@ -172,10 +177,13 @@ function EventViewPage() {
     onMutate: async ({ actionItemId, status }) => {
       const eventItemsQueryKey = queryKeys.actionItems.byEvent(eventId ?? '');
 
+      pendingActionItemIdsRef.current.add(actionItemId);
+      setPendingActionItemIds(new Set(pendingActionItemIdsRef.current));
+
       await queryClient.cancelQueries({ queryKey: eventItemsQueryKey });
-      const previousItems = queryClient.getQueryData<EventActionItemResponse>(
-        eventItemsQueryKey,
-      );
+      const previousStatus = queryClient
+        .getQueryData<EventActionItemResponse>(eventItemsQueryKey)
+        ?.items.find((item) => item.actionItemId === actionItemId)?.actionItemStatus;
 
       // 응답 전에도 체크 상태를 즉시 반영한다.
       queryClient.setQueryData<EventActionItemResponse>(
@@ -193,13 +201,25 @@ function EventViewPage() {
             : current,
       );
 
-      return { previousItems };
+      return { previousStatus };
     },
-    onError: (_error, _variables, context) => {
-      if (context?.previousItems) {
-        queryClient.setQueryData(
+    onError: (_error, variables, context) => {
+      const previousStatus = context?.previousStatus;
+
+      if (previousStatus) {
+        queryClient.setQueryData<EventActionItemResponse>(
           queryKeys.actionItems.byEvent(eventId ?? ''),
-          context.previousItems,
+          (current) =>
+            current
+              ? {
+                  ...current,
+                  items: current.items.map((item) =>
+                    item.actionItemId === variables.actionItemId
+                      ? { ...item, actionItemStatus: previousStatus }
+                      : item,
+                  ),
+                }
+              : current,
         );
       }
 
@@ -207,6 +227,9 @@ function EventViewPage() {
       window.alert('항목 상태를 변경하지 못했습니다. 다시 시도해주세요.');
     },
     onSettled: async (_data, _error, variables) => {
+      pendingActionItemIdsRef.current.delete(variables.actionItemId);
+      setPendingActionItemIds(new Set(pendingActionItemIdsRef.current));
+
       const invalidations = [
         queryClient.invalidateQueries({
           queryKey: queryKeys.actionItems.byEvent(eventId ?? ''),
@@ -226,15 +249,11 @@ function EventViewPage() {
   });
 
   const handleToggleItem = (id: string) => {
-    if (actionItemStatusMutation.isPending) {
-      return;
-    }
-
     const actionItem = actionItemsData?.items.find(
       (item) => String(item.actionItemId) === id,
     );
 
-    if (!actionItem) {
+    if (!actionItem || pendingActionItemIdsRef.current.has(actionItem.actionItemId)) {
       return;
     }
 
@@ -252,13 +271,13 @@ function EventViewPage() {
   };
 
   const handleCompleteAll = () => {
-    if (actionItemStatusMutation.isPending) {
-      return;
-    }
-
     // 일괄 API가 없어 미완료 항목을 각각 완료 처리한다.
     actionItemsData?.items
-      .filter((item) => item.actionItemStatus !== 'COMPLETED')
+      .filter(
+        (item) =>
+          item.actionItemStatus !== 'COMPLETED' &&
+          !pendingActionItemIdsRef.current.has(item.actionItemId),
+      )
       .forEach((item) => {
         actionItemStatusMutation.mutate({
           actionItemId: item.actionItemId,
@@ -324,11 +343,7 @@ function EventViewPage() {
               items={todoItems}
               onToggleItem={handleToggleItem}
               onCompleteAllClick={handleCompleteAll}
-              updatingItemId={
-                actionItemStatusMutation.isPending
-                  ? String(actionItemStatusMutation.variables?.actionItemId)
-                  : undefined
-              }
+              updatingItemIds={new Set([...pendingActionItemIds].map(String))}
             />
           )}
         </div>
