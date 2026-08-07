@@ -1,5 +1,6 @@
 import {
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -7,7 +8,12 @@ import {
   useNavigate,
   useParams,
 } from 'react-router';
-import { useQuery } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { format, isValid, parseISO } from 'date-fns';
 
 import Header from '@/components/common/Header/Header';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
@@ -23,7 +29,11 @@ import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useCanGoBack } from '@/hooks/useCanGoBack';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { eventDetailService } from '@/apis/services/eventDetailService';
-import { actionItemsService } from '@/apis/services/actionItemsService';
+import { actionItemService } from '@/apis/services/actionItemService';
+import type {
+  ActionItemCompletionStatus,
+  EventActionItemResponse,
+} from '@/apis/types/actionItem';
 import type { EventDetailResponseData, RecurrenceDayOfWeek } from '@/apis/types/eventDetail';
 
 import './EventViewPage.css';
@@ -31,10 +41,6 @@ import './EventViewPage.css';
 // ⚠️ mock: EventDetailResponse(GET /events/{eventId})엔 색상/라벨 필드가 없음
 // (라벨 API 자체가 아직 미구현) — 실제 라벨 연동 전까지 모든 일정에 고정으로 사용.
 const MOCK_CATEGORY_COLOR: CategoryColor = 'green';
-
-// ⚠️ mock: action-items 목록 응답(GET /events/{eventId}/action-items)의 Item엔
-// 완료 여부(체크 상태) 필드가 없음 — 전부 미완료(false)로 시작하는 것으로 대체.
-const MOCK_DEFAULT_CHECKED = false;
 
 // 'YYYY-MM-DD' → '6월 4일' 형태로 변환
 // 시각 없이 new Date(dateStr)만 쓰면 UTC 자정으로 파싱되어, UTC보다 느린 타임존(여행 중 기기
@@ -80,11 +86,10 @@ function formatRecurrenceText(eventDetail: EventDetailResponseData): string | un
 
 function EventViewPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // URL에서 조회할 일정 ID를 읽음
-  const { eventId } = useParams<{
-    eventId: string;
-  }>();
+  const { eventId } = useParams<{ eventId: string }>();
   const canGoBack = useCanGoBack();
 
   const {
@@ -97,41 +102,44 @@ function EventViewPage() {
     enabled: !!eventId,
   });
 
-  const { data: actionItemsData } = useQuery({
+  const {
+    data: actionItemsData,
+    isPending: isActionItemsPending,
+    isError: isActionItemsError,
+  } = useQuery({
     queryKey: queryKeys.actionItems.byEvent(eventId ?? ''),
-    queryFn: () => actionItemsService.getByEvent(eventId as string),
+    queryFn: () => actionItemService.getByEvent(eventId as string),
     enabled: !!eventId,
   });
 
-  // action-items 응답(ActionItemEntry[])을 화면이 쓰는 DailyScheduleTodoItem[]로 변환.
-  // 응답이 바뀌면 자동으로 다시 계산되는 순수 파생값(useMemo)이라 effect+setState 동기화가 필요 없음.
-  const baseTodoItems = useMemo<DailyScheduleTodoItem[]>(() => {
-    if (!actionItemsData) return [];
-
-    return actionItemsData.items.map((item, index) => ({
-      // ⚠️ mock: actionItemId가 목록 응답에 없어 index로 임시 id 생성 (재조회 시 순서가
-      // 바뀌면 다른 항목으로 인식될 수 있음 — 실제 id 내려오면 교체 필요)
-      id: `${eventId}-${index}`,
-      text: item.title,
-      // ⚠️ mock: 완료 여부 필드가 API에 없어 항상 false로 시작
-      checked: MOCK_DEFAULT_CHECKED,
-      dateText: item.displayDate ? formatDateLabel(item.displayDate) : '오늘',
-    }));
-  }, [actionItemsData, eventId]);
-
-  // 서버 저장 없이 화면에서만 토글되는 체크 상태 오버라이드(id -> checked).
-  const [checkedOverrides, setCheckedOverrides] = useState<Record<string, boolean>>({});
-
-  const todoItems = useMemo(
+  // F103 응답을 일정 상세 카드에서 사용하는 형태로 변환한다.
+  const baseTodoItems = useMemo<DailyScheduleTodoItem[]>(
     () =>
-      baseTodoItems.map((item) => ({
-        ...item,
-        checked: checkedOverrides[item.id] ?? item.checked,
-      })),
-    [baseTodoItems, checkedOverrides],
+      (actionItemsData?.items ?? []).map((item) => {
+        const displayDate = item.displayDate ? parseISO(item.displayDate) : null;
+
+        return {
+          id: String(item.actionItemId),
+          text: item.title,
+          checked: item.actionItemStatus === 'COMPLETED',
+          // 비시간형 준비 항목은 오늘 확인할 항목으로 표시한다.
+          dateText:
+            item.itemType === 'TIMED_ACTION' && displayDate && isValid(displayDate)
+              ? format(displayDate, 'M월 d일')
+              : '오늘',
+        };
+      }),
+    [actionItemsData],
   );
 
+  // 서버 응답 상태를 체크 UI에 반영한다.
+  const todoItems = baseTodoItems;
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const pendingActionItemIdsRef = useRef(new Set<number>());
+  const [pendingActionItemIds, setPendingActionItemIds] = useState<Set<number>>(
+    () => new Set(),
+  );
 
   const floatingButtonsContent = useMemo(
     () => (
@@ -153,32 +161,139 @@ function EventViewPage() {
     }
   };
 
-  // ⚠️ 실제 PATCH(/action-items/{actionItemId}/status) 연동 불가 — 목록 응답에
-  // actionItemId가 없어 서버에 어떤 항목인지 알려줄 방법이 없음. 화면에서만 토글됨.
+  // E106 요청 전후의 캐시와 체크 상태를 동기화한다.
+  const actionItemStatusMutation = useMutation({
+    mutationFn: ({
+      actionItemId,
+      status,
+    }: {
+      actionItemId: number;
+      status: ActionItemCompletionStatus;
+      displayDate: string | null;
+    }) =>
+      actionItemService.updateStatus(actionItemId, {
+        actionItemStatus: status,
+      }),
+    onMutate: async ({ actionItemId, status }) => {
+      const eventItemsQueryKey = queryKeys.actionItems.byEvent(eventId ?? '');
+
+      pendingActionItemIdsRef.current.add(actionItemId);
+      setPendingActionItemIds(new Set(pendingActionItemIdsRef.current));
+
+      await queryClient.cancelQueries({ queryKey: eventItemsQueryKey });
+      const previousStatus = queryClient
+        .getQueryData<EventActionItemResponse>(eventItemsQueryKey)
+        ?.items.find((item) => item.actionItemId === actionItemId)?.actionItemStatus;
+
+      // 응답 전에도 체크 상태를 즉시 반영한다.
+      queryClient.setQueryData<EventActionItemResponse>(
+        eventItemsQueryKey,
+        (current) =>
+          current
+            ? {
+                ...current,
+                items: current.items.map((item) =>
+                  item.actionItemId === actionItemId
+                    ? { ...item, actionItemStatus: status }
+                    : item,
+                ),
+              }
+            : current,
+      );
+
+      return { previousStatus };
+    },
+    onError: (_error, variables, context) => {
+      const previousStatus = context?.previousStatus;
+
+      if (previousStatus) {
+        queryClient.setQueryData<EventActionItemResponse>(
+          queryKeys.actionItems.byEvent(eventId ?? ''),
+          (current) =>
+            current
+              ? {
+                  ...current,
+                  items: current.items.map((item) =>
+                    item.actionItemId === variables.actionItemId
+                      ? { ...item, actionItemStatus: previousStatus }
+                      : item,
+                  ),
+                }
+              : current,
+        );
+      }
+
+      // TODO: 공통 상태 변경 오류 UI가 준비되면 alert을 교체한다.
+      window.alert('항목 상태를 변경하지 못했습니다. 다시 시도해주세요.');
+    },
+    onSettled: async (_data, _error, variables) => {
+      pendingActionItemIdsRef.current.delete(variables.actionItemId);
+      setPendingActionItemIds(new Set(pendingActionItemIdsRef.current));
+
+      const invalidations = [
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.actionItems.byEvent(eventId ?? ''),
+        }),
+      ];
+
+      if (variables.displayDate) {
+        invalidations.push(
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.actionItems.calendarTimed(variables.displayDate),
+          }),
+        );
+      }
+
+      await Promise.all(invalidations);
+    },
+  });
+
   const handleToggleItem = (id: string) => {
-    setCheckedOverrides((previous) => ({
-      ...previous,
-      [id]: !(previous[id] ?? MOCK_DEFAULT_CHECKED),
-    }));
+    const actionItem = actionItemsData?.items.find(
+      (item) => String(item.actionItemId) === id,
+    );
+
+    if (!actionItem || pendingActionItemIdsRef.current.has(actionItem.actionItemId)) {
+      return;
+    }
+
+    actionItemStatusMutation.mutate({
+      actionItemId: actionItem.actionItemId,
+      status:
+        actionItem.actionItemStatus === 'COMPLETED'
+          ? 'PENDING'
+          : 'COMPLETED',
+      displayDate:
+        actionItem.itemType === 'TIMED_ACTION'
+          ? actionItem.displayDate
+          : null,
+    });
   };
 
   const handleCompleteAll = () => {
-    setCheckedOverrides(
-      Object.fromEntries(baseTodoItems.map((item) => [item.id, true])),
-    );
+    // 일괄 API가 없어 미완료 항목을 각각 완료 처리한다.
+    actionItemsData?.items
+      .filter(
+        (item) =>
+          item.actionItemStatus !== 'COMPLETED' &&
+          !pendingActionItemIdsRef.current.has(item.actionItemId),
+      )
+      .forEach((item) => {
+        actionItemStatusMutation.mutate({
+          actionItemId: item.actionItemId,
+          status: 'COMPLETED',
+          displayDate:
+            item.itemType === 'TIMED_ACTION' ? item.displayDate : null,
+        });
+      });
   };
 
-  // 일정 ID가 없거나 조회 실패(존재하지 않는 일정 등)하면 Home으로
+  // 일정 ID가 없거나 조회 실패(존재하지 않는 일정 등)하면 Home으로 이동한다.
   if (!eventId || isEventError) {
-    return (
-      <Navigate
-        to={PATH.HOME}
-        replace
-      />
-    );
+    return <Navigate to={PATH.HOME} replace />;
   }
 
-  // TODO: 자리만 있는 로딩 상태 — 실제 로딩 UI(스피너 등)로 교체 필요
+  // TODO: 실제 로딩 UI(스피너 등)로 교체한다.
   if (isEventLoading || !eventDetail) {
     return null;
   }
@@ -211,18 +326,33 @@ function EventViewPage() {
         />
 
         <div className="px-1">
-          <DailyScheduleCard
-            items={todoItems}
-            onToggleItem={handleToggleItem}
-            onCompleteAllClick={handleCompleteAll}
-          />
+          {isActionItemsPending ? (
+            <p className="py-6 text-center text-text-additional default-body-medium">
+              준비 항목을 불러오는 중이에요.
+            </p>
+          ) : isActionItemsError ? (
+            <p className="py-6 text-center text-text-additional default-body-medium">
+              준비 항목을 불러오지 못했어요.
+            </p>
+          ) : todoItems.length === 0 ? (
+            <p className="py-6 text-center text-text-additional default-body-medium">
+              준비 항목이 없어요.
+            </p>
+          ) : (
+            <DailyScheduleCard
+              items={todoItems}
+              onToggleItem={handleToggleItem}
+              onCompleteAllClick={handleCompleteAll}
+              updatingItemIds={new Set([...pendingActionItemIds].map(String))}
+            />
+          )}
         </div>
       </div>
 
       {isDeleteModalOpen && (
         <QuickModal
           // ⚠️ DELETE /events/{eventId} 엔드포인트가 API 스펙에 없어 실제 삭제 호출 없이
-          // 모달만 닫는다 — 백엔드에 삭제 API가 추가되면 여기서 실제 호출로 교체 필요.
+          // 모달만 닫는다 — 백엔드에 삭제 API가 추가되면 실제 호출로 교체한다.
           onConfirm={() => setIsDeleteModalOpen(false)}
           onClose={() => setIsDeleteModalOpen(false)}
         />
