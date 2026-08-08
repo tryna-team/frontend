@@ -10,8 +10,9 @@ import CreateModal from '@/components/common/CreateModal/CreateModal';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
 import LabelListSheet from '@/components/common/Popup/BottomSheet/Label/LabelListSheet';
 import LabelEditSheet from '@/components/common/Popup/BottomSheet/Label/LabelEditSheet';
+import LabelCreateSheet from '@/components/common/Popup/BottomSheet/Label/LabelCreateSheet';
 import Setting from '@/components/common/Popup/BottomSheet/Setting';
-import Modal from '@/components/common/Popup/BottomSheet/BottomSheet';
+import QuickModal from '@/components/common/Popup/QuickModal';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useGuestConversionPrompt } from '@/hooks/useGuestConversionPrompt';
 import { useLabelColors } from '@/hooks/queries/useLabelColors';
@@ -94,10 +95,14 @@ function HomePage() {
   const [createInputValue, setCreateInputValue] = useState('');
   const [initialCreateDate, setInitialCreateDate] = useState<Date | null>(null);
 
-  // 라벨 목록('list') ↔ 라벨 수정('edit') 바텀시트 전환. editingLabel은 'edit' 단계로 넘어갈 때만 채워짐.
-  const [labelSheetView, setLabelSheetView] = useState<'list' | 'edit' | null>(null);
+  // 라벨 목록('list') ↔ 라벨 수정('edit') ↔ 라벨 추가('create') 바텀시트 전환.
+  // editingLabel은 'edit' 단계로 넘어갈 때만 채워짐.
+  const [labelSheetView, setLabelSheetView] = useState<'list' | 'edit' | 'create' | null>(null);
   const [editingLabel, setEditingLabel] = useState<CalendarLabel | null>(null);
   const [isSettingOpen, setIsSettingOpen] = useState(false);
+  // CreateModal(이벤트 생성 흐름)의 "새로운 레이블" → 라벨 생성 시트. labelSheetView와는
+  // 별개 흐름(CreateModal이 뒤에 계속 열려 있는 채로 위에 뜬다)이라 상태를 분리한다.
+  const [isLabelCreateForEventOpen, setIsLabelCreateForEventOpen] = useState(false);
   // 계정 관리 확인 모달. 되돌릴 수 없거나 영향이 큰 동작이라 한 번 더 확인받는다.
   const [accountConfirm, setAccountConfirm] = useState<'logout' | 'delete' | null>(null);
 
@@ -280,9 +285,16 @@ function HomePage() {
           inputValue={createInputValue}
           initialScheduleDate={initialCreateDate ?? undefined}
           onInputChange={setCreateInputValue}
-          onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
+          onCreateLabel={() => setIsLabelCreateForEventOpen(true)}
           onCreate={handleCreate}
           onClose={handleCreateModalClose}
+        />
+      )}
+
+      {isLabelCreateForEventOpen && (
+        <LabelCreateSheet
+          onClose={() => setIsLabelCreateForEventOpen(false)}
+          onComplete={() => setIsLabelCreateForEventOpen(false)}
         />
       )}
 
@@ -293,6 +305,7 @@ function HomePage() {
             setEditingLabel(label);
             setLabelSheetView('edit');
           }}
+          onCreateLabel={() => setLabelSheetView('create')}
         />
       )}
 
@@ -305,6 +318,13 @@ function HomePage() {
             // 여기선 목록 화면으로 돌아가기만 하면 된다.
             setLabelSheetView('list');
           }}
+        />
+      )}
+
+      {labelSheetView === 'create' && (
+        <LabelCreateSheet
+          onClose={() => setLabelSheetView('list')}
+          onComplete={() => setLabelSheetView('list')}
         />
       )}
 
@@ -325,30 +345,28 @@ function HomePage() {
       )}
 
       {accountConfirm === 'logout' && (
-        <Modal
-          icon="warning"
-          title="로그아웃하시겠어요?"
-          description={'로그아웃하면 저장된 일정은 다시 로그인해야 볼 수 있어요.'}
-          confirmText="로그아웃"
-          cancelText="취소"
-          onConfirm={() => {
-            setAccountConfirm(null);
-            void logout();
+        <QuickModal
+          message="로그아웃 하시겠습니까?"
+          primaryAction={{
+            text: '로그아웃',
+            onClick: () => {
+              setAccountConfirm(null);
+              void logout();
+            },
           }}
           onClose={() => setAccountConfirm(null)}
         />
       )}
 
       {accountConfirm === 'delete' && (
-        <Modal
-          icon="danger"
-          title="정말 탈퇴하시겠어요?"
-          description={'탈퇴하면 지금까지 만든 일정과 준비 항목이 모두 삭제돼요.\n삭제된 데이터는 복구할 수 없어요.'}
-          confirmText="회원탈퇴"
-          cancelText="취소"
-          onConfirm={() => {
-            setAccountConfirm(null);
-            void deleteAccount();
+        <QuickModal
+          message="회원탈퇴 하시겠습니까?"
+          primaryAction={{
+            text: '회원탈퇴',
+            onClick: () => {
+              setAccountConfirm(null);
+              void deleteAccount();
+            },
           }}
           onClose={() => setAccountConfirm(null)}
         />

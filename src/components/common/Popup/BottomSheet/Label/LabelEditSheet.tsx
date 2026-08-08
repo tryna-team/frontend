@@ -7,6 +7,8 @@ import ContentBox from '@/components/common/Popup/BottomSheet/Layout/ContentBox'
 import Header from '@/components/common/Header/Header';
 import Input from '@/components/common/Input/Input';
 import ColorPicker from '@/components/common/ColorPicker/ColorPicker';
+import QuickModal from '@/components/common/Popup/QuickModal';
+import Button from '@/components/common/Buttons/Button';
 import type { LabelColor } from '@/components/common/ActionRow/ActionRow.constant';
 import { useCalendarStore } from '@/stores';
 import type { CalendarLabel } from '@/stores/types';
@@ -30,16 +32,18 @@ export default function LabelEditSheet({
   onBack,
   onComplete,
 }: LabelEditSheetProps) {
-  // 원래 여기에 `const isNameEditable = label.source === 'tryna';`가 있었음
-  // (source: 'tryna'|'external'로 일반/외부 라벨을 구분해 이름 수정 가능 여부를 갈랐음).
-  // origin/dev 병합으로 CalendarLabel에서 source가 사라지고 isDefault/isVisible/sortOrder로
-  // 재정의되면서, "일반/외부"를 구분할 필드 자체가 없어짐(정책서상 외부 라벨은 Post-MVP라
-  // 현재 타입엔 반영되지 않음). 대체할 필드가 없어 지금은 라벨 이름을 항상 수정 가능하게
-  // 처리함 — 나중에 외부 라벨 개념이 타입에 다시 생기면 이 자리에 분기를 복원할 것.
+  // 외부 캘린더 연동으로 생긴 라벨(labelType==='EXTERNAL_CALENDAR')은 이름이 연동된 계정에
+  // 고정돼 있어 수정할 수 없고, 삭제도 할 수 없다(피그마 "1-9. 홈/라벨 수정" 참고 —
+  // 이름 자리에 읽기 전용 텍스트만 있고 하단 삭제 버튼이 없음). B108-3/4 명세도 동일
+  // (외부 라벨은 name 필드를 보낼 수 없고, 삭제 API 대상이 아님).
+  const isExternal = label.labelType === 'EXTERNAL_CALENDAR';
+
   const [name, setName] = useState(label.name);
   const [color, setColor] = useState<LabelColor>(label.color as LabelColor);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const upsertLabel = useCalendarStore((s) => s.upsertLabel);
+  const removeLabel = useCalendarStore((s) => s.removeLabel);
   const otherLabels = useCalendarStore((s) =>
     s.labels.filter((l) => l.labelId !== label.labelId),
   );
@@ -47,23 +51,26 @@ export default function LabelEditSheet({
 
   // 라벨_정책서 §5.2/§6: 이름의 앞뒤 공백을 제거하고, 공백만 있는 이름과 동일 사용자 내
   // 중복 이름(정규화 기준)을 금지한다. B108-2/B108-3의 400/409 응답과 대응된다.
+  // 외부 라벨은 이름을 수정하지 않으므로 이 검증 자체가 필요 없다.
   const trimmedName = name.trim();
   const isNameEmpty = trimmedName.length === 0;
   const isDuplicateName = otherLabels.some((l) => l.name.trim() === trimmedName);
-  const nameError = isNameEmpty
-    ? '라벨 이름을 입력해주세요.'
-    : isDuplicateName
-      ? '이미 사용 중인 라벨 이름이에요.'
-      : null;
+  const nameError = isExternal
+    ? null
+    : isNameEmpty
+      ? '라벨 이름을 입력해주세요.'
+      : isDuplicateName
+        ? '이미 사용 중인 라벨 이름이에요.'
+        : null;
 
-  const isDirty = trimmedName !== label.name || color !== label.color;
+  const isDirty = (!isExternal && trimmedName !== label.name) || color !== label.color;
   const canSubmit = isDirty && !nameError;
 
   // B108-3 라벨 수정 — PATCH /api/v1/labels/{labelId}
   const updateMutation = useMutation({
     mutationFn: () =>
       labelService.updateLabel(label.labelId, {
-        name: trimmedName,
+        ...(isExternal ? {} : { name: trimmedName }),
         color: toLabelColorCode(color),
       }),
   });
@@ -92,6 +99,19 @@ export default function LabelEditSheet({
     });
   };
 
+  // B108-4 라벨 삭제 — DELETE /api/v1/labels/{labelId}
+  const deleteMutation = useMutation({
+    mutationFn: () => labelService.deleteLabel(label.labelId),
+    onSuccess: () => {
+      removeLabel(label.labelId);
+      // 삭제 응답엔 갱신된 전체 목록이 없어(deletedLabelId 등 요약 정보만) 캐시는
+      // setQueryData로 직접 패치하지 않고 무효화해서 다음 조회 때 서버 값을 다시 받는다.
+      queryClient.invalidateQueries({ queryKey: queryKeys.labels.list() });
+      setIsDeleteConfirmOpen(false);
+      onBack();
+    },
+  });
+
   return (
     <Overlay className="flex items-end justify-center" onClick={onBack}>
       {/* 피그마 프레임 높이 비율(788/852 ≈ 92%)에 맞춰 고정 — 콘텐츠 아래 빈 공간 포함 */}
@@ -108,32 +128,58 @@ export default function LabelEditSheet({
           }}
         />
 
-        {/* 원래 여기가 isNameEditable ? <Input .../> : <p>{label.title}</p> 삼항분기였음
-            (외부 라벨이면 이름 대신 읽기 전용 텍스트를 보여줬음). 위 설명대로 그 분기 기준이
-            없어져서 지금은 Input만 무조건 렌더링함. */}
-        <div className="w-full rounded-medium bg-background-white p-3 shadow-[0px_4px_8px_rgba(0,0,0,0.04),0px_9.701px_29.104px_rgba(0,0,0,0.1)]">
-          <Input
-            value={name}
-            onChange={setName}
-            onClear={() => setName('')}
-            ariaLabel="라벨 이름"
-          />
-          {nameError && (
-            <p className="pl-1 pt-1 text-danger-200 default-caption-large">{nameError}</p>
-          )}
-          {/* 코드래빗 리뷰 반영: 실패해도 화면에 아무 표시가 없어서(특히 로컬처럼 백엔드가
-              없는 환경에서) "완료"를 눌러도 멈춘 것처럼 보이던 문제 — 실패 안내 추가 */}
-          {updateMutation.isError && (
-            <p className="pl-1 pt-1 text-danger-200 default-caption-large">
-              라벨을 저장하지 못했어요. 다시 시도해주세요.
-            </p>
-          )}
-        </div>
+        {isExternal ? (
+          // 외부 라벨은 이름 대신 연동된 계정 이름을 읽기 전용으로 보여준다(수정 불가)
+          <div className="w-full px-4 py-3">
+            <p className="default-body-large text-text-default">{label.name}</p>
+          </div>
+        ) : (
+          <div className="w-full rounded-medium bg-background-white p-3 shadow-[0px_4px_8px_rgba(0,0,0,0.04),0px_9.701px_29.104px_rgba(0,0,0,0.1)]">
+            <Input
+              value={name}
+              onChange={setName}
+              onClear={() => setName('')}
+              ariaLabel="라벨 이름"
+            />
+            {nameError && (
+              <p className="pl-1 pt-1 text-danger-200 default-caption-large">{nameError}</p>
+            )}
+            {/* 코드래빗 리뷰 반영: 실패해도 화면에 아무 표시가 없어서(특히 로컬처럼 백엔드가
+                없는 환경에서) "완료"를 눌러도 멈춘 것처럼 보이던 문제 — 실패 안내 추가 */}
+            {updateMutation.isError && (
+              <p className="pl-1 pt-1 text-danger-200 default-caption-large">
+                라벨을 저장하지 못했어요. 다시 시도해주세요.
+              </p>
+            )}
+          </div>
+        )}
 
-        <ContentBox title="색상" variant="bottom">
+        <ContentBox title="색상" variant={isExternal ? 'bottom' : 'default'}>
           <ColorPicker selectedColor={color} onSelect={setColor} />
         </ContentBox>
+
+        {/* 외부 라벨은 삭제할 수 없음(위 isExternal 설명 참고) — tryna 라벨에만 노출 */}
+        {!isExternal && (
+          <Button
+            variant="LargeWarningRegular"
+            className="w-full"
+            onClick={() => setIsDeleteConfirmOpen(true)}
+          >
+            라벨 삭제
+          </Button>
+        )}
       </Frame>
+
+      {isDeleteConfirmOpen && (
+        <QuickModal
+          message="이 라벨을 삭제하시겠습니까?"
+          primaryAction={{
+            text: '라벨 삭제',
+            onClick: () => deleteMutation.mutate(),
+          }}
+          onClose={() => setIsDeleteConfirmOpen(false)}
+        />
+      )}
     </Overlay>
   );
 }

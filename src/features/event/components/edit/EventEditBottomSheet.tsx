@@ -19,7 +19,7 @@ import EventScheduleRow, {
 } from '@/features/event/components/create/EventScheduleRow';
 import RepeatScheduleBottomSheet from '@/features/event/components/create/RepeatScheduleBottomSheet';
 import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial.types';
-import QuickModal from '@/features/event/components/QuickModal';
+import QuickModal from '@/components/common/Popup/QuickModal';
 import { eventDetailService } from '@/apis/services/eventDetailService';
 import type { UpdateScope } from '@/apis/types/eventDetail';
 import { queryKeys } from '@/hooks/queries/queryKeys';

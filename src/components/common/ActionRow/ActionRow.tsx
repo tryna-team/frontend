@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, MouseEvent } from 'react';
 
 import {
   COLOR_ICON,
@@ -19,6 +19,11 @@ type IconTextLeading = {
   type: 'icon-text';
   text: string;
   color: LabelColor;
+  // 라벨 목록의 표시/숨김 토글처럼 색상 아이콘만 따로 눌러야 하는 경우를 위해 추가.
+  // 지정하면 아이콘이 행의 onClick과 분리된 별도 버튼이 된다(행 클릭 전파 차단).
+  onIconClick?: (event: MouseEvent) => void;
+  // 숨김 라벨을 흑백 아이콘으로 표시하기 위한 플래그
+  dimmed?: boolean;
 };
 
 export type ActionRowLeading =
@@ -52,16 +57,37 @@ export default function ActionRow({
       );
     }
 
+    const handleIconClick = (event: MouseEvent) => {
+      event.stopPropagation();
+      leading.onIconClick?.(event);
+    };
+
     return (
       <div className="flex min-w-0 items-center gap-3">
-        <span className="flex shrink-0 items-center justify-center">
-          <img
-            src={COLOR_ICON[leading.color]}
-            alt=""
-            aria-hidden="true"
-            className="block h-auto w-auto shrink-0"
-          />
-        </span>
+        {leading.onIconClick ? (
+          <button
+            type="button"
+            onClick={handleIconClick}
+            aria-label="표시 여부 전환"
+            className="flex shrink-0 items-center justify-center border-0 bg-transparent p-0"
+          >
+            <img
+              src={COLOR_ICON[leading.color]}
+              alt=""
+              aria-hidden="true"
+              className={`block h-auto w-auto shrink-0 ${leading.dimmed ? 'grayscale' : ''}`}
+            />
+          </button>
+        ) : (
+          <span className="flex shrink-0 items-center justify-center">
+            <img
+              src={COLOR_ICON[leading.color]}
+              alt=""
+              aria-hidden="true"
+              className={`block h-auto w-auto shrink-0 ${leading.dimmed ? 'grayscale' : ''}`}
+            />
+          </span>
+        )}
 
         <span className="min-w-0 truncate text-text-default default-body-large">
           {leading.text}
