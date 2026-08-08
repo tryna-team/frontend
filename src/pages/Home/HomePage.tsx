@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQueries, useQuery, keepPreviousData } from '@tanstack/react-query';
 
 import { useCalendarStore } from '@/stores';
 import type { CalendarLabel } from '@/stores/types';
@@ -11,9 +11,11 @@ import SearchOverlay from '@/features/calendar/components/SearchOverlay';
 import LabelListSheet from '@/components/common/Popup/BottomSheet/Label/LabelListSheet';
 import LabelEditSheet from '@/components/common/Popup/BottomSheet/Label/LabelEditSheet';
 import Setting from '@/components/common/Popup/BottomSheet/Setting';
+import Modal from '@/components/common/Popup/BottomSheet/BottomSheet';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useGuestConversionPrompt } from '@/hooks/useGuestConversionPrompt';
 import { useLabelColors } from '@/hooks/queries/useLabelColors';
+import { useAutoSyncExternalCalendar } from '@/hooks/queries/useExternalCalendar';
 import { useAccountActions } from '@/hooks/useAccountActions';
 import { useAuthStore } from '@/stores/authStore';
 import { queryKeys } from '@/hooks/queries/queryKeys';
@@ -27,6 +29,41 @@ import './HomePage.css';
 // interface HomePageProps {
 //   onSelectDate?: (date: string) => void;
 // }
+
+interface CalendarEvent {
+  title: string;
+  start: string;
+  end?: string;
+  allDay: boolean;
+  backgroundColor: string;
+  textColor: string;
+  borderColor: string;
+}
+
+/** "yyyy-mm-dd"가 해당 연/월에 속하는지 (month는 1-based) */
+function isSameMonth(date: string, year: number, month: number) {
+  return date.startsWith(`${year}-${String(month).padStart(2, '0')}`);
+}
+
+/** 그 달의 1일을 "yyyy-mm-dd"로 (month는 1-based) */
+function firstDayOf(year: number, month: number) {
+  return `${year}-${String(month).padStart(2, '0')}-01`;
+}
+
+/** n개월 뒤(음수면 앞)의 연/월. month는 1-based */
+function shiftMonth(year: number, month: number, offset: number) {
+  const date = new Date(year, month - 1 + offset, 1);
+
+  return { year: date.getFullYear(), month: date.getMonth() + 1 };
+}
+
+/** FullCalendar의 종료일은 배타적이라 실제 마지막 날의 다음 날을 넘겨야 한다 */
+function addExclusiveEnd(endDate: string): string {
+  const date = new Date(`${endDate}T00:00:00`);
+  date.setDate(date.getDate() + 1);
+
+  return date.toLocaleDateString('sv-SE');
+}
 
 const CATEGORY_COLOR_MAP: Record<string, string> = {
   green: '#E3FDF0',
@@ -61,21 +98,48 @@ function HomePage() {
   const [labelSheetView, setLabelSheetView] = useState<'list' | 'edit' | null>(null);
   const [editingLabel, setEditingLabel] = useState<CalendarLabel | null>(null);
   const [isSettingOpen, setIsSettingOpen] = useState(false);
-
-  // selectedDate("YYYY-MM-DD")에서 year/month 추출 — B101이 요구하는 쿼리 파라미터
-  const [year, month] = selectedDate.split('-').map(Number);
-
-  const { data } = useQuery({
-    queryKey: queryKeys.calendars.main(year, month, selectedDate),
-    queryFn: () => calendarService.getMain(year, month, selectedDate),
-    // 날짜가 바뀔 때마다 queryKey가 바뀌어 매번 새 쿼리로 취급됨 —
-    // 기본값이면 새 데이터 오기 전까지 data가 undefined가 되어 "일정 없음"이 잠깐 깜빡임.
-    // 새 데이터가 도착하기 전까지는 이전 날짜의 데이터를 그대로 보여줘서 깜빡임 방지.
-    placeholderData: keepPreviousData,
-  });
+  // 계정 관리 확인 모달. 되돌릴 수 없거나 영향이 큰 동작이라 한 번 더 확인받는다.
+  const [accountConfirm, setAccountConfirm] = useState<'logout' | 'delete' | null>(null);
 
   const currentYear = useCalendarStore((s) => s.currentYear);
   const currentMonth = useCalendarStore((s) => s.currentMonth);
+
+  // year/month는 반드시 보고 있는 달이어야 한다 — selectedDate에서 뽑으면 달을 넘겨도
+  // 쿼리 키가 그대로라 새 달을 불러오지 않아 캘린더가 빈 채로 남는다.
+  //
+  // ⚠️ 서버는 selectedDate가 year/month와 같은 달일 때만 200을 준다(다르면 400).
+  // 명세서에는 없는 제약이라 백엔드에 확인 요청해둘 것. 그전까지는 조회하는 달에
+  // 맞춰 selectedDate를 만들어 보낸다 — 선택 날짜가 다른 달이면 그 달 1일을 쓴다.
+  const mainSelectedDate = isSameMonth(selectedDate, currentYear, currentMonth)
+    ? selectedDate
+    : firstDayOf(currentYear, currentMonth);
+
+  const { data } = useQuery({
+    queryKey: queryKeys.calendars.main(currentYear, currentMonth, mainSelectedDate),
+    queryFn: () => calendarService.getMain(currentYear, currentMonth, mainSelectedDate),
+    // 달이 바뀔 때마다 새 쿼리로 취급되어 응답 전까지 data가 undefined가 되면 일정이
+    // 잠깐 사라진다. 새 데이터가 올 때까지 직전 응답을 그대로 보여줘 깜빡임을 막는다.
+    placeholderData: keepPreviousData,
+  });
+
+  // 격자 첫 줄·마지막 줄에는 앞뒤 달 날짜가 함께 보인다. B101은 요청한 달의 일정만 주므로,
+  // 그 칸에도 일정을 옅게 표시하려면 인접 달을 따로 불러와야 한다.
+  const adjacentMonths = useMemo(
+    () => [shiftMonth(currentYear, currentMonth, -1), shiftMonth(currentYear, currentMonth, 1)],
+    [currentYear, currentMonth],
+  );
+
+  const adjacentQueries = useQueries({
+    queries: adjacentMonths.map(({ year, month }) => ({
+      // 인접 달을 조회할 때도 selectedDate는 그 달 안이어야 한다
+      queryKey: queryKeys.calendars.main(year, month, firstDayOf(year, month)),
+      queryFn: () => calendarService.getMain(year, month, firstDayOf(year, month)),
+    })),
+  });
+
+  // 외부 캘린더가 연동돼 있으면 홈에 들어올 때와 연도를 옮길 때 구글 일정을 적재한다.
+  // 동기화된 일정은 별도 조회 없이 B101 응답에 sourceType: EXTERNAL_CALENDAR로 섞여 온다.
+  useAutoSyncExternalCalendar(currentYear);
 
   // B101 하나로 그 달 전체의 날짜별 일정을 받는다.
   // 예전에는 B102(월간)로 "일정 있는 날짜"를 받고 날짜마다 B103을 또 호출했는데,
@@ -84,17 +148,56 @@ function HomePage() {
   // 응답이 요청한 달과 일치할 때만 그린다. placeholderData(keepPreviousData)로 이전 달
   // 응답을 잠깐 그대로 보여주는 동안, 그 일정들을 새 달의 것으로 잘못 표시하지 않기 위함이다.
   const isFreshForCurrentMonth = data?.year === currentYear && data.month === currentMonth;
-  const visibleCalendarEvents = isFreshForCurrentMonth
-    ? data.monthlyEventDays.flatMap((day) =>
-        day.previewEvents.map((event) => ({
+
+  // 서버는 일정이 걸치는 날짜마다 같은 항목을 담아서 준다. 그대로 그리면 날짜별로
+  // 끊긴 칩이 여러 개 생기므로 합쳐야 하는데, 두 경우를 구분해야 한다.
+  //
+  //   여러 날 일정: 08-10~12 칸에 전부 start=08-10 (같은 회차가 반복해서 담김)
+  //   반복 일정:    08-09/16/23 칸에 start가 각각 그 날짜 (회차가 서로 다름)
+  //
+  // 둘 다 eventId가 같아서 eventId로만 합치면 반복 회차가 첫 번째만 남고 사라진다.
+  // startDate까지 묶어야 여러 날 일정은 하나로 합쳐지고 반복 회차는 각각 남는다.
+  //
+  // start/end를 주면 FullCalendar가 날짜를 가로지르는 막대로 그려준다.
+  //
+  // 인접 달 응답도 함께 넣는다. 격자 첫·마지막 줄에 걸친 앞뒤 달 날짜에도 일정이
+  // 보여야 하기 때문이다 (FullCalendar가 격자 밖 일정은 알아서 무시한다).
+  const adjacentDays = adjacentQueries.flatMap((query) => query.data?.monthlyEventDays ?? []);
+
+  const visibleCalendarEvents = useMemo(() => {
+    if (!isFreshForCurrentMonth) {
+      return [];
+    }
+
+    const byOccurrence = new Map<string, CalendarEvent>();
+
+    for (const day of [...data.monthlyEventDays, ...adjacentDays]) {
+      for (const event of day.previewEvents) {
+        const occurrenceKey = `${event.eventId}-${event.startDate}`;
+
+        if (byOccurrence.has(occurrenceKey)) {
+          continue;
+        }
+
+        byOccurrence.set(occurrenceKey, {
           title: event.title,
-          date: day.date,
+          start: event.startDate,
+          // FullCalendar의 end는 배타적(exclusive)이라 마지막 날 다음 날을 넘겨야
+          // 그 날까지 칠해진다. 종료일이 없으면 하루짜리로 둔다.
+          end: event.endDate ? addExclusiveEnd(event.endDate) : undefined,
+          allDay: true,
           backgroundColor: CATEGORY_COLOR_MAP[getLabelColor(event.labelId)],
           textColor: '#1C1630',
           borderColor: 'transparent',
-        })),
-      )
-    : [];
+        });
+      }
+    }
+
+    return [...byOccurrence.values()];
+    // adjacentDays는 매 렌더 새 배열이라 의존성에 넣으면 매번 재계산되지만,
+    // 항목 수가 적고 계산도 가벼워 그대로 둔다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFreshForCurrentMonth, data, adjacentDays, getLabelColor]);
 
   const handleSelectDate = (date: string) => {
     selectDate(date);
@@ -212,21 +315,42 @@ function HomePage() {
           onOpenPrivacy={() => console.log('개인정보 처리 방침(연동 예정)')}
           onLogout={() => {
             if (!isMember || isAccountActionPending) return;
-            // TODO: 확인 창 디자인이 나오면 교체할 것 (회원탈퇴와 동일)
-            if (!window.confirm('로그아웃하시겠어요?')) {
-              return;
-            }
-            void logout();
+            setAccountConfirm('logout');
           }}
           onDeleteAccount={() => {
             if (!isMember || isAccountActionPending) return;
-            // TODO: 확인 창 디자인이 나오면 교체할 것. 되돌릴 수 없는 동작이라
-            // 확인 절차 없이 바로 실행되면 안 되어서 브라우저 기본 확인창으로 임시 처리한다.
-            if (!window.confirm('회원탈퇴 시 모든 일정과 준비 항목이 삭제됩니다. 진행할까요?')) {
-              return;
-            }
+            setAccountConfirm('delete');
+          }}
+        />
+      )}
+
+      {accountConfirm === 'logout' && (
+        <Modal
+          icon="warning"
+          title="로그아웃하시겠어요?"
+          description={'로그아웃하면 저장된 일정은 다시 로그인해야 볼 수 있어요.'}
+          confirmText="로그아웃"
+          cancelText="취소"
+          onConfirm={() => {
+            setAccountConfirm(null);
+            void logout();
+          }}
+          onClose={() => setAccountConfirm(null)}
+        />
+      )}
+
+      {accountConfirm === 'delete' && (
+        <Modal
+          icon="danger"
+          title="정말 탈퇴하시겠어요?"
+          description={'탈퇴하면 지금까지 만든 일정과 준비 항목이 모두 삭제돼요.\n삭제된 데이터는 복구할 수 없어요.'}
+          confirmText="회원탈퇴"
+          cancelText="취소"
+          onConfirm={() => {
+            setAccountConfirm(null);
             void deleteAccount();
           }}
+          onClose={() => setAccountConfirm(null)}
         />
       )}
     </div>

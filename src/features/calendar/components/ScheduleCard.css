@@ -1,7 +1,8 @@
 .schedule-card {
   box-sizing: border-box;
   width: 100%;
-  padding: 8px;
+  /* 피그마 기준 상·좌·우 8px, 하단만 12px */
+  padding: 8px 8px 12px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -39,10 +40,11 @@
   gap: 2px;
 }
 
+/* 점~제목 간격은 배너(8px)와 맞춰서, 두 영역의 텍스트가 같은 세로선에서 시작하게 한다 */
 .schedule-card-title {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 /* dot_*.svg 원본이 6x6이라 그 크기 그대로 쓴다 (8px로 늘리면 확대되어 커 보임) */
@@ -84,7 +86,8 @@
 
 .schedule-card-location-wrap {
   display: flex;
-  padding-left: 22px;
+  /* 점(6px) + 점~제목 간격(8px) = 14px. 제목 첫 글자와 세로선을 맞춘다 */
+  padding-left: 14px;
   align-items: flex-start;
   gap: 4px;
   width: 100%;

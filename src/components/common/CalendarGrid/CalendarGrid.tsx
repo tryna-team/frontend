@@ -12,7 +12,14 @@ import './CalendarGrid.css';
 
 interface CalendarEvent {
   title: string;
-  date: string;
+  /** 시작일 "yyyy-mm-dd" */
+  start: string;
+  /**
+   * 종료일. FullCalendar 규칙상 배타적이라 실제 마지막 날의 다음 날을 넣는다.
+   * 값이 있으면 날짜를 가로지르는 하나의 막대로 그려진다.
+   */
+  end?: string;
+  allDay?: boolean;
   backgroundColor?: string;
   textColor?: string;
   borderColor?: string;
