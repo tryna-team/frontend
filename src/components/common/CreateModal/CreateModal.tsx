@@ -98,6 +98,13 @@ const COLOR_ICON = {
 // 실제 체크리스트 ID와 겹치지 않도록 음수를 사용
 const ADD_CHECKLIST_ITEM_ID = -1;
 
+const createManualCandidateId = () =>
+  `manual-${
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random()}`
+  }`;
+
 const PARSING_THROTTLE_DELAY = 300;
 const RECOMMENDATION_DEBOUNCE_DELAY = 1000;
 
@@ -406,6 +413,7 @@ export default function CreateModal({
   );
   const toggleCandidateSelected = useEventCreationStore((state) => state.toggleCandidateSelected);
   const editCandidate = useEventCreationStore((state) => state.editCandidate);
+  const addManualCandidate = useEventCreationStore((state) => state.addManualCandidate);
   const resetCreation = useEventCreationStore((state) => state.reset);
   const { data: labelData } = useQuery({
     queryKey: queryKeys.labels.list(),
@@ -982,6 +990,7 @@ export default function CreateModal({
             data-recommendation-title-input="true"
             aria-label={`${candidate.title || '추천 항목'} 제목 수정`}
             value={candidate.title}
+            placeholder={candidate.createdBy === 'USER' ? '하위 목록을 작성하세요' : undefined}
             disabled={isSaving || !candidate.selected}
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
@@ -1007,16 +1016,7 @@ export default function CreateModal({
       };
     });
 
-    const addItem: ChecklistItemData = {
-      id: ADD_CHECKLIST_ITEM_ID,
-      label: '직접 추가',
-      status: 'plus',
-      trailing: {
-        type: 'none',
-      },
-    };
-
-    return [...recommendedItems, addItem];
+    return recommendedItems;
   }, [
     checklistItems,
     editCandidate,
@@ -1026,12 +1026,47 @@ export default function CreateModal({
     startDate,
   ]);
 
+  const directAddChecklistItem = useMemo<ChecklistItemData[]>(
+    () => [
+      {
+        id: ADD_CHECKLIST_ITEM_ID,
+        label: '직접 추가',
+        status: 'plus',
+        trailing: {
+          type: 'none',
+        },
+      },
+    ],
+    [],
+  );
+
+  // 항목이 늘어나면 모달이 위로 확장되고, 남은 공간부터 목록만 스크롤한다.
+  const checklistScrollMaxHeight = Math.max(
+    52,
+    Math.min(312, visualViewportRect.height - 188),
+  );
+
   const handleChecklistClick = (id: number) => {
     if (isSaving) {
       return;
     }
 
     if (id === ADD_CHECKLIST_ITEM_ID) {
+      addManualCandidate({
+        candidateId: createManualCandidateId(),
+        title: '',
+        createdBy: 'USER',
+        itemType: 'CHECKLIST',
+        apiItemType: 'UNTIMED_PREP',
+        sourceTemplateId: null,
+        offsetDays: null,
+        originalTitle: '',
+        displayDate: null,
+        displayEndDate: null,
+        displayTime: null,
+        selected: true,
+        edited: false,
+      });
       onAddChecklist?.();
       return;
     }
@@ -1210,7 +1245,12 @@ export default function CreateModal({
                   items: selectedCandidates.map((candidate) => ({
                     title: candidate.title,
                     itemType: candidate.apiItemType ?? 'UNRESOLVED',
-                    createdBy: candidate.edited ? 'USER_EDITED' : 'SYSTEM',
+                    createdBy:
+                      candidate.createdBy === 'USER'
+                        ? 'USER'
+                        : candidate.edited
+                          ? 'USER_EDITED'
+                          : 'SYSTEM',
                     displayDate:
                       candidate.apiItemType === 'TIMED_ACTION'
                         ? (candidate.displayDate ?? null)
@@ -1226,17 +1266,19 @@ export default function CreateModal({
                     sourceTemplateId: candidate.sourceTemplateId ?? null,
                   })),
                   // 제외·수정 여부도 추천 개선용 피드백으로 전달한다.
-                  feedbackLogs: recommendationCandidates.map((candidate) => ({
-                    actionType: candidate.selected
-                      ? candidate.edited
-                        ? 'EDITED'
-                        : 'SELECTED'
-                      : 'REJECTED',
-                    sourceTemplateId: candidate.sourceTemplateId ?? null,
-                    originalTitle: candidate.originalTitle ?? candidate.title,
-                    editedTitle: candidate.edited ? candidate.title : null,
-                    reason: null,
-                  })),
+                  feedbackLogs: recommendationCandidates
+                    .filter((candidate) => candidate.createdBy !== 'USER')
+                    .map((candidate) => ({
+                      actionType: candidate.selected
+                        ? candidate.edited
+                          ? 'EDITED'
+                          : 'SELECTED'
+                        : 'REJECTED',
+                      sourceTemplateId: candidate.sourceTemplateId ?? null,
+                      originalTitle: candidate.originalTitle ?? candidate.title,
+                      editedTitle: candidate.edited ? candidate.title : null,
+                      reason: null,
+                    })),
                 }
               : null,
         },
@@ -1370,11 +1412,26 @@ export default function CreateModal({
                         }
                       }}
                     >
-                      <Checklist
-                        items={renderedChecklistItems}
-                        radioVariant="create"
-                        onLeadingClick={handleChecklistClick}
-                      />
+                      <div className="flex min-h-0 w-full flex-col">
+                        <div
+                          className="min-h-0 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                          style={{ maxHeight: checklistScrollMaxHeight }}
+                        >
+                          <Checklist
+                            items={renderedChecklistItems}
+                            radioVariant="create"
+                            onLeadingClick={handleChecklistClick}
+                          />
+                        </div>
+
+                        <div className="shrink-0">
+                          <Checklist
+                            items={directAddChecklistItem}
+                            radioVariant="create"
+                            onLeadingClick={handleChecklistClick}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

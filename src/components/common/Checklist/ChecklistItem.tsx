@@ -327,9 +327,11 @@ function LegacyChecklistItem({
       iconSize,
     );
 
-  // small 아이콘은 상태 확인용으로만 사용한다.
+  // small 체크는 읽기 전용으로 유지하고 직접 추가는 허용한다.
   const isLeadingDisabled =
-    disabled || iconSize === 'small';
+    disabled ||
+    (iconSize === 'small' &&
+      status !== 'plus');
 
   return (
     <div
@@ -346,21 +348,27 @@ function LegacyChecklistItem({
             : ''
         }`}
       >
-        <button
-          type="button"
+        <Button
+          variant="Icon"
+          icon={leadingIcon.replace(
+            '/icon/',
+            '',
+          )}
+          alt={leadingAriaLabel}
+          size={
+            iconSize === 'medium'
+              ? 24
+              : 20
+          }
+          hitArea={
+            iconSize === 'medium'
+              ? 24
+              : 20
+          }
           onClick={onLeadingClick}
           disabled={isLeadingDisabled}
-          className="flex shrink-0 items-center justify-center bg-transparent p-0 disabled:cursor-default"
-          aria-label={
-            leadingAriaLabel
-          }
-        >
-          <img
-            src={leadingIcon}
-            alt=""
-            className="block shrink-0"
-          />
-        </button>
+          className="shrink-0 disabled:cursor-default"
+        />
 
         <span
           className={`min-w-0 flex-1 truncate text-left ${labelStyle} ${labelColor}`}
@@ -480,9 +488,11 @@ function VariantChecklistItem({
       radioVariant,
     );
 
-  // small 아이콘은 상태 확인용으로만 사용한다.
+  // small 체크는 읽기 전용으로 유지하고 직접 추가는 허용한다.
   const isLeadingDisabled =
-    disabled || iconSize === 'small';
+    disabled ||
+    (iconSize === 'small' &&
+      status !== 'plus');
 
   return (
     <div
@@ -504,26 +514,32 @@ function VariantChecklistItem({
             : ''
         }`}
       >
-        <button
-          type="button"
+        <Button
+          variant="Icon"
+          icon={icon.src.replace(
+            '/icon/',
+            '',
+          )}
+          alt={leadingAriaLabel}
+          size={
+            iconSize === 'medium'
+              ? 24
+              : 20
+          }
+          hitArea={
+            iconSize === 'medium'
+              ? 24
+              : 20
+          }
           onClick={onLeadingClick}
           disabled={isLeadingDisabled}
-          className="flex shrink-0 items-center justify-center bg-transparent p-0 disabled:cursor-default"
-          aria-label={
-            leadingAriaLabel
-          }
           aria-pressed={
             status === 'plus'
               ? undefined
               : isPressed
           }
-        >
-          <img
-            src={icon.src}
-            alt=""
-            className="block shrink-0"
-          />
-        </button>
+          className="shrink-0 disabled:cursor-default"
+        />
 
         <span
           className={`min-w-0 flex-1 truncate text-left ${labelStyle} ${labelColor}`}

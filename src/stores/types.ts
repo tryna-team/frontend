@@ -108,6 +108,8 @@ export interface ActionItemStatusUpdate {
 export interface RecommendationCandidate {
   candidateId: string;
   title: string;
+  /** E104 직접 추가 항목은 최종 저장 시 USER 출처로 전달한다. */
+  createdBy?: 'SYSTEM' | 'USER';
   // 'CHECKLIST'는 API 값이 아니라, 공용 체크리스트 화면에서 비시간형 항목을 표현하기 위한 클라이언트 전용 값
   itemType: ActionItemType | 'CHECKLIST';
   /** 서버 응답의 원본 항목 유형은 최종 저장 시 사용한다. */
