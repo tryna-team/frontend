@@ -1,5 +1,7 @@
 import Button from '@/components/common/Buttons/Button';
 
+import type { ReactNode } from 'react';
+
 // ChecklistItem의 현재 상태
 // plus: 직접 추가 항목
 // default: event, daily의 미완료 항목
@@ -54,6 +56,7 @@ export type ChecklistTrailing =
 // radioVariant만 선택적 Props로 추가
 export type ChecklistItemProps = {
   label: string;
+  labelContent?: ReactNode;
   status?: ChecklistStatus;
   iconSize?: ChecklistIconSize;
   trailing?: ChecklistTrailing;
@@ -266,6 +269,7 @@ function resolveLeadingAriaLabel(
 // 기존 레이아웃, delete, date 동작을 그대로 유지
 function LegacyChecklistItem({
   label,
+  labelContent,
   status,
   iconSize,
   trailing,
@@ -283,7 +287,7 @@ function LegacyChecklistItem({
 > &
   Pick<
     ChecklistItemProps,
-    'onLeadingClick'
+    'labelContent' | 'onLeadingClick'
   >) {
   const size = resolveChecklistSize(
     status,
@@ -323,9 +327,11 @@ function LegacyChecklistItem({
       iconSize,
     );
 
-  // small 아이콘은 상태 확인용으로만 사용한다.
+  // small 체크는 읽기 전용으로 유지하고 직접 추가는 허용한다.
   const isLeadingDisabled =
-    disabled || iconSize === 'small';
+    disabled ||
+    (iconSize === 'small' &&
+      status !== 'plus');
 
   return (
     <div
@@ -342,26 +348,32 @@ function LegacyChecklistItem({
             : ''
         }`}
       >
-        <button
-          type="button"
+        <Button
+          variant="Icon"
+          icon={leadingIcon.replace(
+            '/icon/',
+            '',
+          )}
+          alt={leadingAriaLabel}
+          size={
+            iconSize === 'medium'
+              ? 24
+              : 20
+          }
+          hitArea={
+            iconSize === 'medium'
+              ? 24
+              : 20
+          }
           onClick={onLeadingClick}
           disabled={isLeadingDisabled}
-          className="flex shrink-0 items-center justify-center bg-transparent p-0 disabled:cursor-default"
-          aria-label={
-            leadingAriaLabel
-          }
-        >
-          <img
-            src={leadingIcon}
-            alt=""
-            className="block shrink-0"
-          />
-        </button>
+          className="shrink-0 disabled:cursor-default"
+        />
 
         <span
-          className={`min-w-0 truncate text-left ${labelStyle} ${labelColor}`}
+          className={`min-w-0 flex-1 truncate text-left ${labelStyle} ${labelColor}`}
         >
-          {label}
+          {labelContent ?? label}
         </span>
       </div>
 
@@ -404,6 +416,7 @@ function LegacyChecklistItem({
 // radioVariant가 전달된 새 사용처에서 렌더링
 function VariantChecklistItem({
   label,
+  labelContent,
   status,
   iconSize,
   radioVariant,
@@ -423,7 +436,7 @@ function VariantChecklistItem({
 > &
   Pick<
     ChecklistItemProps,
-    'onLeadingClick'
+    'labelContent' | 'onLeadingClick'
   >) {
   const size = resolveChecklistSize(
     status,
@@ -475,9 +488,11 @@ function VariantChecklistItem({
       radioVariant,
     );
 
-  // small 아이콘은 상태 확인용으로만 사용한다.
+  // small 체크는 읽기 전용으로 유지하고 직접 추가는 허용한다.
   const isLeadingDisabled =
-    disabled || iconSize === 'small';
+    disabled ||
+    (iconSize === 'small' &&
+      status !== 'plus');
 
   return (
     <div
@@ -499,31 +514,37 @@ function VariantChecklistItem({
             : ''
         }`}
       >
-        <button
-          type="button"
+        <Button
+          variant="Icon"
+          icon={icon.src.replace(
+            '/icon/',
+            '',
+          )}
+          alt={leadingAriaLabel}
+          size={
+            iconSize === 'medium'
+              ? 24
+              : 20
+          }
+          hitArea={
+            iconSize === 'medium'
+              ? 24
+              : 20
+          }
           onClick={onLeadingClick}
           disabled={isLeadingDisabled}
-          className="flex shrink-0 items-center justify-center bg-transparent p-0 disabled:cursor-default"
-          aria-label={
-            leadingAriaLabel
-          }
           aria-pressed={
             status === 'plus'
               ? undefined
               : isPressed
           }
-        >
-          <img
-            src={icon.src}
-            alt=""
-            className="block shrink-0"
-          />
-        </button>
+          className="shrink-0 disabled:cursor-default"
+        />
 
         <span
-          className={`min-w-0 truncate text-left ${labelStyle} ${labelColor}`}
+          className={`min-w-0 flex-1 truncate text-left ${labelStyle} ${labelColor}`}
         >
-          {label}
+          {labelContent ?? label}
         </span>
       </div>
 
@@ -585,6 +606,7 @@ function VariantChecklistItem({
 // radioVariant가 있으면 새 화면별 UI를 사용
 export default function ChecklistItem({
   label,
+  labelContent,
   status = 'default',
   iconSize = 'medium',
   trailing = { type: 'none' },
@@ -596,6 +618,7 @@ export default function ChecklistItem({
     return (
       <LegacyChecklistItem
         label={label}
+        labelContent={labelContent}
         status={status}
         iconSize={iconSize}
         trailing={trailing}
@@ -610,6 +633,7 @@ export default function ChecklistItem({
   return (
     <VariantChecklistItem
       label={label}
+      labelContent={labelContent}
       status={status}
       iconSize={iconSize}
       radioVariant={radioVariant}

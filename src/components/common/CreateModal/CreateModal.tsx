@@ -17,7 +17,12 @@ import LabelModal, { type LabelItemData } from '@/components/common/LabelModal/L
 import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
 import Overlay from '@/components/common/Popup/Overlay';
 import ToastPopup from '@/components/common/Popup/ToastPopup';
-import { RepeatScheduleBottomSheet, type RepeatOption } from '@/features/event/components/create';
+import {
+  ActionItemScheduleBottomSheet,
+  RepeatScheduleBottomSheet,
+  type ActionItemScheduleValue,
+  type RepeatOption,
+} from '@/features/event/components/create';
 import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { useEventCreationStore } from '@/stores';
@@ -93,18 +98,49 @@ const COLOR_ICON = {
 // 실제 체크리스트 ID와 겹치지 않도록 음수를 사용
 const ADD_CHECKLIST_ITEM_ID = -1;
 
+const createManualCandidateId = () =>
+  `manual-${
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random()}`
+  }`;
+
 const PARSING_THROTTLE_DELAY = 300;
 const RECOMMENDATION_DEBOUNCE_DELAY = 1000;
 
-const formatChecklistDate = (date: string | null | undefined, fallbackDate: Date) => {
+const formatChecklistDate = (
+  date: string | null | undefined,
+  endDate: string | null | undefined,
+  fallbackDate: Date,
+) => {
   const parsedDate = date ? parseISO(date) : fallbackDate;
+  const validStartDate = isValid(parsedDate) ? parsedDate : fallbackDate;
+  const parsedEndDate = endDate ? parseISO(endDate) : null;
+  const startText = format(validStartDate, 'MM. dd.');
 
-  return format(isValid(parsedDate) ? parsedDate : fallbackDate, 'MM. dd.');
+  return parsedEndDate && isValid(parsedEndDate) && !isSameDay(validStartDate, parsedEndDate)
+    ? `${startText} - ${format(parsedEndDate, 'MM. dd.')}`
+    : startText;
 };
 
 type RevisionRequest = {
   input: string;
   revision: number;
+};
+
+type RecommendationEditDraft = {
+  candidateId: string;
+  title: string;
+  startDate: Date;
+  endDate: Date;
+  startTime: string;
+  endTime: string;
+  originalItemType: RecommendationCandidate['itemType'];
+  originalApiItemType: NonNullable<RecommendationCandidate['apiItemType']>;
+  originalDisplayDate: string | null;
+  originalDisplayEndDate: string | null;
+  originalDisplayTime: string | null;
+  hasTimeChanged: boolean;
 };
 
 // 실제 API 연결 시 내부만 파싱 요청으로 교체한다.
@@ -155,6 +191,7 @@ const mapRecommendationCandidate = (
   offsetDays: suggestion.offsetDays ?? null,
   originalTitle: suggestion.displayText ?? suggestion.sourceCode ?? '',
   displayDate: suggestion.displayDate ?? null,
+  displayTime: null,
   // 추천 항목은 모두 저장 대상인 상태로 시작한다.
   selected: true,
   edited: false,
@@ -247,6 +284,20 @@ const normalizeTime = (time: string) => {
   return `${String(hour).padStart(2, '0')}:${displayTime[2]}:00`;
 };
 
+const formatActionItemDisplayTime = (
+  displayDate: string | null | undefined,
+  displayTime: string | null | undefined,
+) => {
+  if (!displayDate || !displayTime) {
+    return null;
+  }
+
+  const time = displayTime.includes('T') ? displayTime.split('T')[1] : displayTime;
+  const normalizedTime = normalizeTime(time);
+
+  return normalizedTime ? `${displayDate}T${normalizedTime}` : null;
+};
+
 const FOCUSABLE_SELECTOR = [
   'a[href]',
   'button:not([disabled])',
@@ -264,6 +315,20 @@ const formatTriggerDate = (date: Date) => (isToday(date) ? '오늘' : format(dat
 const formatTriggerTime = (time: string) => normalizeTime(time)?.slice(0, 5) ?? time;
 
 const getCurrentTime = () => format(new Date(), 'h:mm a').toUpperCase();
+
+const formatApiTimeForPicker = (time: string | null | undefined) => {
+  const normalizedTime = time ? normalizeTime(time) : null;
+
+  if (!normalizedTime) {
+    return getCurrentTime();
+  }
+
+  const [hourText, minute] = normalizedTime.split(':');
+  const hour = Number(hourText);
+  const meridiem = hour >= 12 ? 'PM' : 'AM';
+
+  return `${hour % 12 || 12}:${minute} ${meridiem}`;
+};
 
 export default function CreateModal({
   mode = 'default',
@@ -326,6 +391,8 @@ export default function CreateModal({
   const [hasEndTimeChanged, setHasEndTimeChanged] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
+  const [recommendationEditDraft, setRecommendationEditDraft] =
+    useState<RecommendationEditDraft | null>(null);
   const [hasInputInteractionStarted, setHasInputInteractionStarted] = useState(false);
   const startDateRef = useRef(startDate);
   const [visualViewportRect, setVisualViewportRect] = useState(() => ({
@@ -351,6 +418,8 @@ export default function CreateModal({
     (state) => state.setRecommendationCandidates,
   );
   const toggleCandidateSelected = useEventCreationStore((state) => state.toggleCandidateSelected);
+  const editCandidate = useEventCreationStore((state) => state.editCandidate);
+  const addManualCandidate = useEventCreationStore((state) => state.addManualCandidate);
   const resetCreation = useEventCreationStore((state) => state.reset);
   const { data: labelData } = useQuery({
     queryKey: queryKeys.labels.list(),
@@ -376,6 +445,11 @@ export default function CreateModal({
 
   const trimmedInput = inputValue.trim();
   const isRecommendMode = mode === 'recommend' || hasRecommended;
+  const hasEmptySelectedRecommendationTitle =
+    isRecommendMode &&
+    recommendationCandidates.some(
+      (candidate) => candidate.selected && !candidate.title.trim(),
+    );
   const recommendationKeyword = keyword || recommendedTitle || trimmedInput;
   const recommendationMessage = message || '에 필요한 체크리스트를 추천했어요.';
 
@@ -837,33 +911,143 @@ export default function CreateModal({
     };
   }, []);
 
+  const handleOpenRecommendationEdit = useCallback(
+    (candidate: RecommendationCandidate) => {
+      if (isSaving || !candidate.selected) {
+        return;
+      }
+
+      const parsedDisplayDate = candidate.displayDate
+        ? parseISO(candidate.displayDate)
+        : startDate;
+      const initialDate = isValid(parsedDisplayDate) ? parsedDisplayDate : startDate;
+      const parsedDisplayEndDate = candidate.displayEndDate
+        ? parseISO(candidate.displayEndDate)
+        : initialDate;
+      const initialEndDate = isValid(parsedDisplayEndDate) ? parsedDisplayEndDate : initialDate;
+      const initialTime = formatApiTimeForPicker(candidate.displayTime);
+      const originalApiItemType =
+        candidate.apiItemType ??
+        (candidate.itemType === 'TIMED_ACTION' ? 'TIMED_ACTION' : 'UNTIMED_PREP');
+
+      setRecommendationEditDraft({
+        candidateId: candidate.candidateId,
+        title: candidate.title,
+        startDate: initialDate,
+        endDate: initialEndDate,
+        startTime: initialTime,
+        endTime: initialTime,
+        originalItemType: candidate.itemType,
+        originalApiItemType,
+        originalDisplayDate: candidate.displayDate ?? null,
+        originalDisplayEndDate: candidate.displayEndDate ?? null,
+        originalDisplayTime: candidate.displayTime
+          ? normalizeTime(candidate.displayTime)
+          : null,
+        hasTimeChanged: false,
+      });
+    },
+    [isSaving, startDate],
+  );
+
+  const handleSaveRecommendationEdit = () => {
+    if (!recommendationEditDraft) {
+      return;
+    }
+
+    const isDateRange = !isSameDay(
+      recommendationEditDraft.startDate,
+      recommendationEditDraft.endDate,
+    );
+    const isTimedAction = isDateRange || !isSameDay(recommendationEditDraft.startDate, startDate);
+
+    const nextItemType = isTimedAction ? 'TIMED_ACTION' : 'CHECKLIST';
+    const nextApiItemType = isTimedAction ? 'TIMED_ACTION' : 'UNTIMED_PREP';
+    const nextDisplayDate = isTimedAction
+      ? format(recommendationEditDraft.startDate, 'yyyy-MM-dd')
+      : null;
+    const nextDisplayEndDate =
+      isTimedAction && isDateRange
+        ? format(recommendationEditDraft.endDate, 'yyyy-MM-dd')
+        : null;
+    // 사용자가 시간을 직접 바꾸지 않았다면 기존 null 값을 유지한다.
+    const nextDisplayTime = isTimedAction
+      ? recommendationEditDraft.hasTimeChanged
+        ? normalizeTime(recommendationEditDraft.startTime)
+        : recommendationEditDraft.originalDisplayTime
+      : null;
+    const hasScheduleChanged =
+      nextItemType !== recommendationEditDraft.originalItemType ||
+      nextApiItemType !== recommendationEditDraft.originalApiItemType ||
+      nextDisplayDate !== recommendationEditDraft.originalDisplayDate ||
+      nextDisplayEndDate !== recommendationEditDraft.originalDisplayEndDate ||
+      nextDisplayTime !== recommendationEditDraft.originalDisplayTime;
+
+    // 상위 일정과 다른 날짜 또는 날짜 범위는 시간형 항목으로 분류한다.
+    if (hasScheduleChanged) {
+      editCandidate(recommendationEditDraft.candidateId, {
+        itemType: nextItemType,
+        apiItemType: nextApiItemType,
+        displayDate: nextDisplayDate,
+        displayEndDate: nextDisplayEndDate,
+        displayTime: nextDisplayTime,
+      });
+    }
+    setRecommendationEditDraft(null);
+  };
+
   // CreateModal에서 전달받은 기존 체크리스트 데이터를 공용 Checklist 컴포넌트의 데이터 형식으로 변환
   const renderedChecklistItems = useMemo<ChecklistItemData[]>(() => {
-    const effectiveChecklistItems =
-      checklistItems.length > 0
-        ? checklistItems
-        : recommendationCandidates.map((candidate, index) => ({
+    const hasRecommendationCandidates = recommendationCandidates.length > 0;
+    const effectiveChecklistItems = hasRecommendationCandidates
+      ? recommendationCandidates.map((candidate, index) => ({
             id: index + 1,
             label: candidate.title,
             status: candidate.selected ? ('add' as const) : ('done' as const),
             itemType: candidate.itemType,
             date: candidate.displayDate ?? undefined,
-          }));
+          }))
+      : checklistItems;
 
-    const recommendedItems = effectiveChecklistItems.map((item) => {
+    const recommendedItems = effectiveChecklistItems.map((item, index) => {
       const status = item.status ?? 'add';
       const hasDateTrailing = status === 'add' || status === 'done';
+      const candidate = hasRecommendationCandidates ? recommendationCandidates[index] : undefined;
       const trailingText =
-        item.itemType === 'TIMED_ACTION' ? formatChecklistDate(item.date, startDate) : '당일';
+        item.itemType === 'TIMED_ACTION'
+          ? formatChecklistDate(item.date, candidate?.displayEndDate, startDate)
+          : '당일';
 
       return {
         id: item.id,
         label: item.label,
+        labelContent: candidate ? (
+          <input
+            data-recommendation-title-input="true"
+            aria-label={`${candidate.title || '추천 항목'} 제목 수정`}
+            value={candidate.title}
+            placeholder={candidate.createdBy === 'USER' ? '하위 목록을 작성하세요' : undefined}
+            disabled={isSaving || !candidate.selected}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+            onChange={(event) =>
+              editCandidate(candidate.candidateId, {
+                title: event.target.value,
+              })
+            }
+            className="min-w-0 w-full bg-transparent text-left text-text-default outline-none disabled:cursor-default disabled:text-text-disable default-body-large"
+          />
+        ) : undefined,
         status,
         trailing: hasDateTrailing
           ? {
               type: 'date' as const,
               text: trailingText,
+              onClick:
+                candidate?.selected && !isSaving
+                  ? () => handleOpenRecommendationEdit(candidate)
+                  : undefined,
             }
           : {
               type: 'none' as const,
@@ -871,17 +1055,35 @@ export default function CreateModal({
       };
     });
 
-    const addItem: ChecklistItemData = {
-      id: ADD_CHECKLIST_ITEM_ID,
-      label: '직접 추가',
-      status: 'plus',
-      trailing: {
-        type: 'none',
-      },
-    };
+    return recommendedItems;
+  }, [
+    checklistItems,
+    editCandidate,
+    handleOpenRecommendationEdit,
+    isSaving,
+    recommendationCandidates,
+    startDate,
+  ]);
 
-    return [...recommendedItems, addItem];
-  }, [checklistItems, recommendationCandidates, startDate]);
+  const directAddChecklistItem = useMemo<ChecklistItemData[]>(
+    () => [
+      {
+        id: ADD_CHECKLIST_ITEM_ID,
+        label: '직접 추가',
+        status: 'plus',
+        trailing: {
+          type: 'none',
+        },
+      },
+    ],
+    [],
+  );
+
+  // 항목이 늘어나면 모달이 위로 확장되고, 남은 공간부터 목록만 스크롤한다.
+  const checklistScrollMaxHeight = Math.max(
+    52,
+    Math.min(312, visualViewportRect.height - 188),
+  );
 
   const handleChecklistClick = (id: number) => {
     if (isSaving) {
@@ -889,11 +1091,26 @@ export default function CreateModal({
     }
 
     if (id === ADD_CHECKLIST_ITEM_ID) {
+      addManualCandidate({
+        candidateId: createManualCandidateId(),
+        title: '',
+        createdBy: 'USER',
+        itemType: 'CHECKLIST',
+        apiItemType: 'UNTIMED_PREP',
+        sourceTemplateId: null,
+        offsetDays: null,
+        originalTitle: '',
+        displayDate: null,
+        displayEndDate: null,
+        displayTime: null,
+        selected: true,
+        edited: false,
+      });
       onAddChecklist?.();
       return;
     }
 
-    if (checklistItems.length === 0) {
+    if (recommendationCandidates.length > 0) {
       const candidate = recommendationCandidates[id - 1];
 
       if (candidate) {
@@ -935,6 +1152,14 @@ export default function CreateModal({
 
   // 생성 모달 안에서는 입력 포커스를 유지한다.
   const handleInputBlur = (event: FocusEvent<HTMLInputElement>) => {
+    // 추천 항목 제목을 누르면 해당 입력창으로 포커스를 넘긴다.
+    if (
+      event.relatedTarget instanceof HTMLElement &&
+      event.relatedTarget.dataset.recommendationTitleInput === 'true'
+    ) {
+      return;
+    }
+
     if (isKeyboardNavigationRef.current && event.relatedTarget instanceof HTMLElement) {
       isKeyboardNavigationRef.current = false;
       return;
@@ -1016,9 +1241,13 @@ export default function CreateModal({
     }
 
     const createRevision = revisionRef.current;
+    const selectedCandidates = recommendationCandidates.filter((candidate) => candidate.selected);
+    if (selectedCandidates.some((candidate) => !candidate.title.trim())) {
+      window.alert('추천 항목의 제목을 입력해주세요.');
+      return;
+    }
     const controller = new AbortController();
     createAbortControllerRef.current = controller;
-    const selectedCandidates = recommendationCandidates.filter((candidate) => candidate.selected);
     const hasParsedStartTime = Boolean(parsedCandidate?.timeCandidate);
     const hasParsedEndTime = Boolean(parsedCandidate?.endTimeCandidate);
     const startTimeValue =
@@ -1055,27 +1284,44 @@ export default function CreateModal({
                   items: selectedCandidates.map((candidate) => ({
                     title: candidate.title,
                     itemType: candidate.apiItemType ?? 'UNRESOLVED',
-                    createdBy: candidate.edited ? 'USER_EDITED' : 'SYSTEM',
+                    createdBy:
+                      candidate.createdBy === 'USER'
+                        ? 'USER'
+                        : candidate.edited
+                          ? 'USER_EDITED'
+                          : 'SYSTEM',
                     displayDate:
                       candidate.apiItemType === 'TIMED_ACTION'
                         ? (candidate.displayDate ?? null)
                         : null,
-                    displayTime: null,
+                    displayEndDate:
+                      candidate.apiItemType === 'TIMED_ACTION'
+                        ? (candidate.displayEndDate ?? null)
+                        : null,
+                    displayTime:
+                      candidate.apiItemType === 'TIMED_ACTION'
+                        ? formatActionItemDisplayTime(
+                            candidate.displayDate,
+                            candidate.displayTime,
+                          )
+                        : null,
                     offsetDays: candidate.offsetDays ?? null,
                     sourceTemplateId: candidate.sourceTemplateId ?? null,
                   })),
                   // 제외·수정 여부도 추천 개선용 피드백으로 전달한다.
-                  feedbackLogs: recommendationCandidates.map((candidate) => ({
-                    actionType: candidate.selected
-                      ? candidate.edited
-                        ? 'EDITED'
-                        : 'SELECTED'
-                      : 'REJECTED',
-                    sourceTemplateId: candidate.sourceTemplateId ?? null,
-                    originalTitle: candidate.originalTitle ?? candidate.title,
-                    editedTitle: candidate.edited ? candidate.title : null,
-                    reason: null,
-                  })),
+                  feedbackLogs: recommendationCandidates
+                    .filter((candidate) => candidate.createdBy !== 'USER')
+                    .map((candidate) => ({
+                      actionType: candidate.selected
+                        ? candidate.edited
+                          ? 'EDITED'
+                          : 'SELECTED'
+                        : 'REJECTED',
+                      sourceTemplateId: candidate.sourceTemplateId ?? null,
+                      originalTitle: candidate.originalTitle ?? candidate.title,
+                      editedTitle: candidate.edited ? candidate.title : null,
+                      reason: null,
+                    })),
                 }
               : null,
         },
@@ -1139,8 +1385,9 @@ export default function CreateModal({
 
   return (
     <>
-      {/* 생성 모달만 Portal로 분리하고 반복 바텀시트는 앱 레이아웃을 따른다. */}
+      {/* 하위 일정 설정 화면이 열리면 생성 모달을 숨긴다. */}
       {!isScheduleOpen &&
+        !recommendationEditDraft &&
         createPortal(
           <Overlay onClick={handleCreateOverlayClick}>
             {(hasInputInteractionStarted || isRecommendMode) && (
@@ -1201,13 +1448,33 @@ export default function CreateModal({
                     <div
                       aria-disabled={isSaving}
                       className={isSaving ? 'pointer-events-none' : undefined}
-                      onPointerDown={(event) => event.preventDefault()}
+                      onPointerDown={(event) => {
+                        // 추천 제목 입력은 포커스를 유지하고, 나머지 터치는 키보드를 유지한다.
+                        if (!(event.target instanceof HTMLInputElement)) {
+                          event.preventDefault();
+                        }
+                      }}
                     >
-                      <Checklist
-                        items={renderedChecklistItems}
-                        radioVariant="create"
-                        onLeadingClick={handleChecklistClick}
-                      />
+                      <div className="flex min-h-0 w-full flex-col">
+                        <div
+                          className="min-h-0 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                          style={{ maxHeight: checklistScrollMaxHeight }}
+                        >
+                          <Checklist
+                            items={renderedChecklistItems}
+                            radioVariant="create"
+                            onLeadingClick={handleChecklistClick}
+                          />
+                        </div>
+
+                        <div className="shrink-0">
+                          <Checklist
+                            items={directAddChecklistItem}
+                            radioVariant="create"
+                            onLeadingClick={handleChecklistClick}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1230,7 +1497,9 @@ export default function CreateModal({
                   <Button
                     variant="CheckCTAButton"
                     className="size-9"
-                    disabled={!trimmedInput || isSaving}
+                    disabled={
+                      !trimmedInput || isSaving || hasEmptySelectedRecommendationTitle
+                    }
                     onClick={handleCreate}
                   />
                 </div>
@@ -1293,6 +1562,7 @@ export default function CreateModal({
                   </div>
                 </div>
               </Frame>
+
             </div>
           </Overlay>,
           document.body,
@@ -1308,6 +1578,33 @@ export default function CreateModal({
           />,
           document.body,
         )}
+
+      {recommendationEditDraft && (
+        <ActionItemScheduleBottomSheet
+          title={recommendationEditDraft.title}
+          parentEventStartDate={startDate}
+          parentEventEndDate={endDate}
+          startDate={recommendationEditDraft.startDate}
+          endDate={recommendationEditDraft.endDate}
+          startTime={recommendationEditDraft.startTime}
+          endTime={recommendationEditDraft.endTime}
+          onChange={(value: ActionItemScheduleValue) =>
+            setRecommendationEditDraft((current) =>
+              current
+                ? {
+                    ...current,
+                    ...value,
+                    hasTimeChanged:
+                      current.hasTimeChanged ||
+                      current.startTime !== value.startTime ||
+                      current.endTime !== value.endTime,
+                  }
+                : current,
+            )
+          }
+          onClose={handleSaveRecommendationEdit}
+        />
+      )}
 
       {isScheduleOpen && (
         <RepeatScheduleBottomSheet
