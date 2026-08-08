@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -38,6 +39,7 @@ import { useCalendarStore } from '@/stores';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { eventDetailService } from '@/apis/services/eventDetailService';
 import { actionItemService } from '@/apis/services/actionItemService';
+import { labelService, toCalendarLabel } from '@/apis/services/labelService';
 import type {
   ActionItemCompletionStatus,
   EventActionItemResponse,
@@ -114,6 +116,23 @@ function EventViewPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const canGoBack = useCanGoBack();
   const labels = useCalendarStore((s) => s.labels);
+  const setLabels = useCalendarStore((s) => s.setLabels);
+
+  // 라벨 목록은 지금까지 LabelListSheet를 연 적이 있어야만 채워져 있었다(B108-1을
+  // 그 화면에서만 호출) — 홈을 거치지 않고 이 페이지로 바로 들어오면 카테고리 색상과
+  // 수정 바텀시트의 라벨 선택기가 계속 비어있는 문제가 있어, 여기서도 직접 불러온다.
+  // 실패/빈 응답이어도 mock으로 대체하지 않고 그대로 둔다(LabelListSheet의 임시
+  // MOCK_LABELS 폴백은 의도적으로 따라하지 않음).
+  const { data: labelsData } = useQuery({
+    queryKey: queryKeys.labels.list(),
+    queryFn: labelService.getLabels,
+  });
+
+  useEffect(() => {
+    if (labelsData) {
+      setLabels(labelsData.labels.map(toCalendarLabel));
+    }
+  }, [labelsData, setLabels]);
 
   const {
     data: eventDetail,
