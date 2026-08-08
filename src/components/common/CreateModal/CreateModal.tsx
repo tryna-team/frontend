@@ -1253,7 +1253,9 @@ export default function CreateModal({
     const startTimeValue =
       hasStartTimeChanged || hasParsedStartTime ? normalizeTime(startTime) : null;
     const endTimeValue = hasEndTimeChanged || hasParsedEndTime ? normalizeTime(endTime) : null;
+    // 종료 시간이 있으면 단일 날짜 일정도 종료 날짜를 함께 저장한다.
     const shouldSaveEndDate =
+      Boolean(endTimeValue) ||
       hasEndDateChanged ||
       Boolean(parsedCandidate?.endDateCandidate) ||
       !isSameDay(startDate, endDate);
@@ -1628,6 +1630,11 @@ export default function CreateModal({
             setHasScheduleChanged(true);
           }}
           onEndTimeChange={(value) => {
+            // 시작 시간이 없으면 바텀시트를 연 시점의 현재 시간으로 보완한다.
+            if (!startTime) {
+              setStartTime(scheduleOpenedAtTime);
+              setHasStartTimeChanged(true);
+            }
             setEndTime(formatTime(value));
             setHasEndTimeChanged(true);
             setHasScheduleChanged(true);
