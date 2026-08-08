@@ -4,6 +4,8 @@ import type {
   EventDetailResponseData,
   EventDeleteRequestBody,
   EventDeleteResponseData,
+  EventUpdateRequest,
+  EventUpdateResponseData,
 } from "../types/eventDetail";
 
 export const eventDetailService = {
@@ -16,4 +18,8 @@ export const eventDetailService = {
     apiClient.delete<EventDeleteResponseData>(ENDPOINTS.EVENTS.DETAIL(eventId), {
       data: body,
     }),
+
+  /** C107 일정 수정 — PATCH /api/v1/events/{eventId} */
+  updateEvent: (eventId: number | string, body: EventUpdateRequest) =>
+    apiClient.patch<EventUpdateResponseData>(ENDPOINTS.EVENTS.DETAIL(eventId), body),
 };

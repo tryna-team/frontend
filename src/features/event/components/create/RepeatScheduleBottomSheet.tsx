@@ -35,6 +35,9 @@ export type RepeatScheduleBottomSheetProps = {
   onRepeatClick?: () => void;
   onRepeatChange?: (repeat: RepeatOption) => void;
   onClose: () => void;
+  // 일정 생성 모달(CreateModal)에서 쓰던 배경 비디오. 생성 흐름이 아닌 곳(수정 등)에서는
+  // 어울리지 않아 꺼둘 수 있게 옵션으로 뺐다. 기존 사용처(CreateModal) 동작은 그대로 유지.
+  showBackgroundVideo?: boolean;
 };
 
 const formatScheduleDate = (date: Date) => format(date, 'yyyy. MM. dd.');
@@ -98,6 +101,7 @@ export default function RepeatScheduleBottomSheet({
   onRepeatClick,
   onRepeatChange,
   onClose,
+  showBackgroundVideo = true,
 }: RepeatScheduleBottomSheetProps) {
   const titleId = useId();
   const [activeDateField, setActiveDateField] = useState<ActiveDateField>('start');
@@ -299,15 +303,17 @@ export default function RepeatScheduleBottomSheet({
 
   return (
     <Overlay className="flex items-end justify-center" onClick={onClose}>
-      <video
-        src="/BlendDimVideo.mp4"
-        autoPlay
-        loop
-        muted
-        playsInline
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover opacity-100"
-      />
+      {showBackgroundVideo && (
+        <video
+          src="/BlendDimVideo.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover opacity-100"
+        />
+      )}
 
       <Frame className="relative z-10 gap-2 !bg-white px-4 pt-5 pb-1" aria-labelledby={titleId}>
         <h2 id={titleId} className="sr-only">

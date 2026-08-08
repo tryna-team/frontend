@@ -70,3 +70,36 @@ export interface EventDeleteResponseData {
   affectedEventCount: number;
   affectedActionItemCount: number;
 }
+
+/** C107 일정 수정 — PATCH /api/v1/events/{eventId}. deleteScope와 값이 같아 별칭으로 재사용. */
+export type UpdateScope = DeleteScope;
+
+/**
+ * C107 일정 수정 요청 (라이브 Swagger 확인, 08/08).
+ * recurrenceType 등 반복 관련 필드가 없음 — 반복 설정은 이 API로 수정할 수 없다
+ * (생성 시 C104에서만 정할 수 있음).
+ */
+export interface EventUpdateRequest {
+  eventTitle: string;
+  description?: string | null;
+  startDate?: string | null;
+  startTime?: string | null;
+  endDate?: string | null;
+  endTime?: string | null;
+  isAllDay: boolean;
+  location?: string | null;
+  labelId: number;
+  updateScope: UpdateScope;
+}
+
+/** C107 일정 수정 응답. updateStatus의 실제 enum 값은 스웨거 예시에 없어 EventStatus로 추정. */
+export interface EventUpdateResponseData {
+  eventId: number;
+  updateScope: UpdateScope;
+  updateStatus: EventStatus;
+  affectedEventCount: number;
+  adjustedActionItemCount: number;
+  requiresActionItemReview: boolean;
+  labelId: number;
+  updatedAt: string;
+}

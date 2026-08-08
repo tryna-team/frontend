@@ -1,3 +1,5 @@
+import type { ActionItemSaveItem } from './recommendation';
+
 /** 저장된 준비/실행 항목의 유형 */
 export type ActionItemType =
   | 'TIMED_ACTION'
@@ -71,4 +73,15 @@ export interface TimedActionItem {
 export interface TimedActionItemResponse {
   date: string;
   items: TimedActionItem[];
+}
+
+// 스카 추가
+/**
+ * E105 준비/실행 항목 저장 응답 (라이브 Swagger 확인, 08/08).
+ * 저장된 항목을 그대로 돌려주지만 actionItemId는 포함하지 않는다 — 새로 생긴 항목의
+ * 실제 id가 필요하면 F103(getByEvent)를 다시 조회해야 한다.
+ */
+export interface ActionItemSaveResponseData {
+  eventId: number;
+  items: ActionItemSaveItem[];
 }

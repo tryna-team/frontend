@@ -18,12 +18,18 @@ import { format, isValid, parseISO } from 'date-fns';
 import Header from '@/components/common/Header/Header';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import Button from '@/components/common/Buttons/Button';
+import type { LabelItemData } from '@/components/common/LabelModal/LabelModal';
 import DailyScheduleDetail from '@/features/event/components/DailyScheduleDetail';
 import DailyScheduleCard, {
   type DailyScheduleTodoItem,
 } from '@/features/event/components/DailyScheduleCard';
 import QuickModal from '@/features/event/components/QuickModal';
 import ToastPopup from '@/components/common/Popup/ToastPopup';
+import type { ActionItemEditItem } from '@/features/event/components/edit/ActionItemEditItem';
+import EventEditBottomSheet, {
+  type EventEditFormValue,
+} from '@/features/event/components/edit/EventEditBottomSheet';
+import type { RepeatOption } from '@/features/event/components/create/EventScheduleRow';
 import type { CategoryColor } from '@/features/calendar/types';
 import { PATH } from '@/routes/paths';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
@@ -39,6 +45,7 @@ import type {
 import type {
   EventDetailResponseData,
   RecurrenceDayOfWeek,
+  RecurrenceType,
   DeleteScope,
 } from '@/apis/types/eventDetail';
 
@@ -47,6 +54,15 @@ import './EventViewPage.css';
 // 라벨 목록에서 eventDetail.labelId와 일치하는 색상을 못 찾았을 때(라벨 목록 미로드,
 // 매칭 실패 등)의 폴백 색상.
 const DEFAULT_CATEGORY_COLOR: CategoryColor = 'green';
+
+// EventEditBottomSheet가 다루는 반복 옵션은 한글 4종(매일/매주/매월/매년)만 지원 —
+// NONE/CUSTOM은 매핑이 없어 매일로 기본 대체한다.
+const RECURRENCE_TYPE_TO_REPEAT_OPTION: Partial<Record<RecurrenceType, RepeatOption>> = {
+  DAILY: '매일',
+  WEEKLY: '매주',
+  MONTHLY: '매월',
+  YEARLY: '매년',
+};
 
 // 'YYYY-MM-DD' → '6월 4일' 형태로 변환
 // 시각 없이 new Date(dateStr)만 쓰면 UTC 자정으로 파싱되어, UTC보다 느린 타임존(여행 중 기기
@@ -144,6 +160,7 @@ function EventViewPage() {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleteErrorOpen, setIsDeleteErrorOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   // C106 일정 삭제 — DELETE /api/v1/events/{eventId}
   const deleteEventMutation = useMutation({
@@ -337,6 +354,36 @@ function EventViewPage() {
   const matchedLabel = labels.find((label) => label.labelId === eventDetail.labelId);
   const categoryColor = matchedLabel?.color ?? DEFAULT_CATEGORY_COLOR;
 
+  // EventEditBottomSheet/ActionItemEditBottomSheet에 넘길 라벨 목록 — CalendarLabel과
+  // LabelItemData의 color 타입이 동일(LabelModal/LabelItem 기준)해 별도 변환 없이 매핑된다.
+  const labelItems: LabelItemData[] = labels.map((label) => ({
+    id: label.labelId,
+    label: label.name,
+    color: label.color,
+  }));
+
+  // todoItems.id는 이미 실제 actionItemId를 문자열로 담고 있어(String(item.actionItemId)),
+  // 숫자로 되돌리기만 하면 된다 — 별도 mock id가 필요 없다.
+  const actionItemEditItems: ActionItemEditItem[] = todoItems.map((item) => ({
+    id: Number(item.id),
+    label: item.text,
+    checked: item.checked,
+    dateText: item.dateText,
+  }));
+
+  const eventEditInitialValue: EventEditFormValue = {
+    title: eventDetail.eventTitle,
+    description: eventDetail.description,
+    isAllDay: eventDetail.isAllDay,
+    startDate: new Date(`${eventDetail.startDate}T00:00:00`),
+    endDate: new Date(`${eventDetail.endDate ?? eventDetail.startDate}T00:00:00`),
+    startTime: eventDetail.startTime,
+    endTime: eventDetail.endTime ?? eventDetail.startTime,
+    repeat: RECURRENCE_TYPE_TO_REPEAT_OPTION[eventDetail.recurrenceType] ?? '매일',
+    location: eventDetail.location,
+    labelId: eventDetail.labelId,
+  };
+
   return (
     <div className="event-view-page">
       <Header
@@ -346,7 +393,7 @@ function EventViewPage() {
           text: formatDateLabel(eventDetail.startDate),
           onClick: handleBack,
         }}
-        trailing={{ type: 'text', text: '수정' }}
+        trailing={{ type: 'text', text: '수정', onClick: () => setIsEditOpen(true) }}
       />
 
       <div className="event-view-page-content">
@@ -378,6 +425,8 @@ function EventViewPage() {
               준비 항목이 없어요.
             </p>
           ) : (
+            // "직접 추가" 버튼(onAddClick)은 의도적으로 연결하지 않음 — 관련 기능인
+            // ActionItemEditBottomSheet를 제거하면서 함께 비활성화했다.
             <DailyScheduleCard
               items={todoItems}
               onToggleItem={handleToggleItem}
@@ -410,6 +459,17 @@ function EventViewPage() {
           GuideText="일정을 삭제하지 못했어요."
           DetailText="잠시 후 다시 시도해주세요."
           onClose={() => setIsDeleteErrorOpen(false)}
+        />
+      )}
+
+      {isEditOpen && (
+        <EventEditBottomSheet
+          eventId={eventId}
+          isRecurring={eventDetail.isRecurring}
+          initialValue={eventEditInitialValue}
+          actionItems={actionItemEditItems}
+          labels={labelItems}
+          onClose={() => setIsEditOpen(false)}
         />
       )}
     </div>
