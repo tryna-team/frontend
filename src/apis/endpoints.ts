@@ -34,17 +34,15 @@ export const ENDPOINTS = {
     // 날짜별 일정 목록 조회
     DATE_EVENTS: (date: string) =>
       `/calendars/dates/${encodeURIComponent(date)}/events`,
-    // 외부 캘린더 연동
-    EXTERNAL_CONNECTIONS: "/calendars/external/connections",
-    // 사용자 외부 캘린더 목록 등록(POST) / 조회(GET)
-    EXTERNAL_USER_LIST: "/calendars/external/user-list",
-    // 사용자 외부 캘린더 가져오기 on/off
-    EXTERNAL_TOGGLE: (externalCalendarId: number | string) =>
-      `/calendars/external/${encodeURIComponent(externalCalendarId)}`,
-    // 일자별 외부 캘린더 일정 목록 조회
-    EXTERNAL_EVENTS: "/calendars/external/events",
-    // 외부 캘린더 일정 등록 - Query: year, month, date
-    EXTERNAL_EVENT_CREATE: "/calendars/external/event",
+  },
+  EXTERNAL_CALENDAR: {
+    // G102 연동 상태 조회
+    CONNECTIONS: "/external-calendar-connections",
+    // G102 연동 해제 - provider 예: "GOOGLE"
+    DISCONNECT: (provider: string) =>
+      `/external-calendar-connections/${encodeURIComponent(provider)}`,
+    // B105 외부 일정 동기화 - Query: year (생략 시 올해 전체)
+    SYNC_EVENTS: "/external-events",
   },
   EVENTS: {
     ROOT: "/events",

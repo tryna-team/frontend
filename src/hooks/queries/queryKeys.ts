@@ -44,6 +44,11 @@ export const queryKeys = {
     list: () => [...queryKeys.labels.all, "list"] as const, // B108-1
   },
 
+  externalCalendar: {
+    all: ["external-calendar"] as const,
+    connection: () => [...queryKeys.externalCalendar.all, "connection"] as const, // G102
+  },
+
   recommendations: {
     all: ["recommendations"] as const,
   },
