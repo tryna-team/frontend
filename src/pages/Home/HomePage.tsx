@@ -14,6 +14,8 @@ import Setting from '@/components/common/Popup/BottomSheet/Setting';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useGuestConversionPrompt } from '@/hooks/useGuestConversionPrompt';
 import { useLabelColors } from '@/hooks/queries/useLabelColors';
+import { useAccountActions } from '@/hooks/useAccountActions';
+import { useAuthStore } from '@/stores/authStore';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
 import { generateDailyPath, PATH } from '@/routes/paths';
@@ -45,6 +47,9 @@ function HomePage() {
   const goToToday = useCalendarStore((s) => s.goToToday);
   const { promptIfGuest } = useGuestConversionPrompt();
   const { getLabelColor } = useLabelColors();
+  const { logout, deleteAccount, isPending: isAccountActionPending } = useAccountActions();
+  // 계정 관리는 정식 회원에게만 노출한다 (비회원은 로그아웃하면 데이터를 되찾을 수 없다)
+  const userRole = useAuthStore((s) => s.userRole);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
@@ -203,15 +208,19 @@ function HomePage() {
           onClose={() => setIsSettingOpen(false)}
           onOpenTerms={() => console.log('이용 약관(연동 예정)')}
           onOpenPrivacy={() => console.log('개인정보 처리 방침(연동 예정)')}
+          showAccountSection={userRole === 'USER'}
           onLogout={() => {
-            // TODO: authService.logout() 연동 예정
-            console.log('로그아웃(연동 예정)');
-            setIsSettingOpen(false);
+            if (isAccountActionPending) return;
+            void logout();
           }}
           onDeleteAccount={() => {
-            // TODO: 회원탈퇴 API 연동 및 확인 모달 추가 예정
-            console.log('회원탈퇴(연동 예정)');
-            setIsSettingOpen(false);
+            if (isAccountActionPending) return;
+            // TODO: 확인 창 디자인이 나오면 교체할 것. 되돌릴 수 없는 동작이라
+            // 확인 절차 없이 바로 실행되면 안 되어서 브라우저 기본 확인창으로 임시 처리한다.
+            if (!window.confirm('회원탈퇴 시 모든 일정과 준비 항목이 삭제됩니다. 진행할까요?')) {
+              return;
+            }
+            void deleteAccount();
           }}
         />
       )}

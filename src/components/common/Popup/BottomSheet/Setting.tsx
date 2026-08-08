@@ -10,6 +10,12 @@ type SettingProps = {
   onOpenPrivacy: () => void;
   onLogout: () => void;
   onDeleteAccount: () => void;
+  /**
+   * 계정 관리(로그아웃·회원탈퇴) 노출 여부. 비회원에게는 숨긴다.
+   * 비회원이 로그아웃하면 토큰이 지워지는데, 비회원 계정은 기기에 저장된 deviceId로만
+   * 되찾을 수 있어서 그동안 만든 일정에 다시 접근할 방법이 사라진다.
+   */
+  showAccountSection?: boolean;
 };
 
 // 피그마 "1-10. 설정"
@@ -19,6 +25,7 @@ export default function Setting({
   onOpenPrivacy,
   onLogout,
   onDeleteAccount,
+  showAccountSection = true,
 }: SettingProps) {
   return (
     <Overlay className="flex items-end justify-center" onClick={onClose}>
@@ -44,17 +51,16 @@ export default function Setting({
           />
         </ContentBox>
 
-        <ContentBox title="계정 관리" variant="bottom">
-          {/* 피그마상 오른쪽 chevron 없음 → accessory 생략 */}
-          <ActionRow
-            leading={{ type: 'text', text: '로그아웃' }}
-            onClick={onLogout}
-          />
-          <ActionRow
-            leading={{ type: 'text', text: '회원탈퇴', tone: 'danger' }}
-            onClick={onDeleteAccount}
-          />
-        </ContentBox>
+        {showAccountSection && (
+          <ContentBox title="계정 관리" variant="bottom">
+            {/* 피그마상 오른쪽 chevron 없음 → accessory 생략 */}
+            <ActionRow leading={{ type: 'text', text: '로그아웃' }} onClick={onLogout} />
+            <ActionRow
+              leading={{ type: 'text', text: '회원탈퇴', tone: 'danger' }}
+              onClick={onDeleteAccount}
+            />
+          </ContentBox>
+        )}
       </Frame>
     </Overlay>
   );
