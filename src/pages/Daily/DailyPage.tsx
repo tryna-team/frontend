@@ -177,7 +177,10 @@ function DailyPage() {
     location: event.location ?? '',
     startTime: event.startTime ?? '',
     endTime: event.endTime ?? '',
-    date: event.startDate,
+    // startDate가 아니라 selectedDate를 쓴다. B103은 날짜 단위 조회라 응답에 담긴 일정은
+    // 모두 그 날짜에 속하는데, 여러 날 걸친 일정은 startDate가 과거 날짜라서
+    // 아래 date === selectedDate 필터에 걸려 목록에서 사라진다.
+    date: selectedDate,
     checklist: undefined,
     linkedSchedule: undefined,
   }));

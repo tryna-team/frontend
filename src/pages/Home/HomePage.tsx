@@ -28,6 +28,24 @@ import './HomePage.css';
 //   onSelectDate?: (date: string) => void;
 // }
 
+interface CalendarEvent {
+  title: string;
+  start: string;
+  end?: string;
+  allDay: boolean;
+  backgroundColor: string;
+  textColor: string;
+  borderColor: string;
+}
+
+/** FullCalendar의 종료일은 배타적이라 실제 마지막 날의 다음 날을 넘겨야 한다 */
+function addExclusiveEnd(endDate: string): string {
+  const date = new Date(`${endDate}T00:00:00`);
+  date.setDate(date.getDate() + 1);
+
+  return date.toLocaleDateString('sv-SE');
+}
+
 const CATEGORY_COLOR_MAP: Record<string, string> = {
   green: '#E3FDF0',
   apricot: '#FFEEDF',
@@ -84,17 +102,48 @@ function HomePage() {
   // 응답이 요청한 달과 일치할 때만 그린다. placeholderData(keepPreviousData)로 이전 달
   // 응답을 잠깐 그대로 보여주는 동안, 그 일정들을 새 달의 것으로 잘못 표시하지 않기 위함이다.
   const isFreshForCurrentMonth = data?.year === currentYear && data.month === currentMonth;
-  const visibleCalendarEvents = isFreshForCurrentMonth
-    ? data.monthlyEventDays.flatMap((day) =>
-        day.previewEvents.map((event) => ({
+
+  // 서버는 일정이 걸치는 날짜마다 같은 항목을 담아서 준다. 그대로 그리면 날짜별로
+  // 끊긴 칩이 여러 개 생기므로 합쳐야 하는데, 두 경우를 구분해야 한다.
+  //
+  //   여러 날 일정: 08-10~12 칸에 전부 start=08-10 (같은 회차가 반복해서 담김)
+  //   반복 일정:    08-09/16/23 칸에 start가 각각 그 날짜 (회차가 서로 다름)
+  //
+  // 둘 다 eventId가 같아서 eventId로만 합치면 반복 회차가 첫 번째만 남고 사라진다.
+  // startDate까지 묶어야 여러 날 일정은 하나로 합쳐지고 반복 회차는 각각 남는다.
+  //
+  // start/end를 주면 FullCalendar가 날짜를 가로지르는 막대로 그려준다.
+  const visibleCalendarEvents = useMemo(() => {
+    if (!isFreshForCurrentMonth) {
+      return [];
+    }
+
+    const byOccurrence = new Map<string, CalendarEvent>();
+
+    for (const day of data.monthlyEventDays) {
+      for (const event of day.previewEvents) {
+        const occurrenceKey = `${event.eventId}-${event.startDate}`;
+
+        if (byOccurrence.has(occurrenceKey)) {
+          continue;
+        }
+
+        byOccurrence.set(occurrenceKey, {
           title: event.title,
-          date: day.date,
+          start: event.startDate,
+          // FullCalendar의 end는 배타적(exclusive)이라 마지막 날 다음 날을 넘겨야
+          // 그 날까지 칠해진다. 종료일이 없으면 하루짜리로 둔다.
+          end: event.endDate ? addExclusiveEnd(event.endDate) : undefined,
+          allDay: true,
           backgroundColor: CATEGORY_COLOR_MAP[getLabelColor(event.labelId)],
           textColor: '#1C1630',
           borderColor: 'transparent',
-        })),
-      )
-    : [];
+        });
+      }
+    }
+
+    return [...byOccurrence.values()];
+  }, [isFreshForCurrentMonth, data, getLabelColor]);
 
   const handleSelectDate = (date: string) => {
     selectDate(date);
