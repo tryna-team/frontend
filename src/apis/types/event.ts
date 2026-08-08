@@ -103,25 +103,33 @@ export interface EventCreateResponse {
  */
 export type EventSearchResultType = "EVENT" | "ACTION_ITEM";
 
-/**
- * B107 검색 결과 항목
- *
- * ⚠️ 응답에 장소(location)와 카테고리 색상이 없다 — 검색 목록에서는 그 둘을 표시할 수 없다.
- * (스웨거 스키마에 results 원소가 펼쳐져 있지 않아 실서버 응답으로 확인함, 08/06)
- */
+/** 검색 결과에 함께 오는 라벨 정보. 색상까지 들어와서 라벨 목록을 따로 조회할 필요가 없다 */
+export interface EventSearchLabel {
+  labelId: number;
+  name: string;
+  /** 서버는 대문자로 준다 (예: "GREEN") */
+  color: string;
+}
+
+/** B107 검색 결과 항목 */
 export interface EventSearchResult {
   type: EventSearchResultType;
   /** ACTION_ITEM인 경우엔 그 항목이 속한 부모 일정의 id (상세 화면 이동에 사용) */
   eventId: number;
   /** EVENT면 null */
   actionItemId: number | null;
+  /** 라벨이 없는 일정이면 null */
+  label: EventSearchLabel | null;
   title: string;
   /** ACTION_ITEM일 때만 채워지는 부모 일정 제목. EVENT면 null */
   parentEventTitle: string | null;
   /** "YYYY-MM-DD" */
   date: string;
   /** "HH:mm". 하루 종일 일정이면 null */
-  time: string | null;
+  startTime: string | null;
+  /** "HH:mm". 종료 시간이 없으면 null */
+  endTime: string | null;
+  location: string | null;
 }
 
 /**

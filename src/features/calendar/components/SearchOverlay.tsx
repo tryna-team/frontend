@@ -12,9 +12,8 @@ import './SearchOverlay.css';
 // 타이핑 한 글자마다 요청이 나가지 않도록 대기하는 시간
 const SEARCH_DEBOUNCE_DELAY = 300;
 
-// 검색 응답에는 카테고리 색상이 없어서 피그마 검색 화면의 기본 색(초록)을 쓴다.
-// TODO: 응답에 카테고리 색상이 추가되면 결과별 색으로 교체 (캘린더/데일리의 동일 TODO와 함께)
-const DEFAULT_DOT_COLOR = 'green';
+// 라벨이 없는 결과에 쓸 기본 색. 서버의 기본 라벨도 GREEN이라 값을 맞췄다.
+const FALLBACK_DOT_COLOR = 'green';
 
 function formatDateHeader(dateStr: string, isFirst: boolean): string {
   const [yearStr, monthStr, dayStr] = dateStr.split('-');
@@ -168,21 +167,26 @@ function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                         }}
                       >
                         <img
-                          src={`/icon/alert_indicator/dot_${DEFAULT_DOT_COLOR}.svg`}
+                          src={`/icon/alert_indicator/dot_${
+                            item.label?.color.toLowerCase() ?? FALLBACK_DOT_COLOR
+                          }.svg`}
                           alt=""
                           className="search-overlay-result-dot"
                         />
                         <div className="search-overlay-result-text">
                           <span className="search-overlay-result-title">{item.title}</span>
-                          {/* 준비/실행 항목이 검색된 경우 어느 일정에 속한 항목인지 보여준다 */}
-                          {item.parentEventTitle && (
+                          {/* 준비/실행 항목이면 어느 일정에 속한 항목인지, 일정이면 장소를 보여준다 */}
+                          {(item.parentEventTitle ?? item.location) && (
                             <span className="search-overlay-result-location">
-                              {item.parentEventTitle}
+                              {item.parentEventTitle ?? item.location}
                             </span>
                           )}
                         </div>
                         <div className="search-overlay-result-time">
-                          {item.time && <span>{item.time}</span>}
+                          {item.startTime && <span>{item.startTime}</span>}
+                          {item.endTime && (
+                            <span className="search-overlay-result-time-end">~{item.endTime}</span>
+                          )}
                         </div>
                       </li>
                     ))}
