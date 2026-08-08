@@ -1,5 +1,7 @@
 import { Fragment } from 'react';
 
+import type { ReactNode } from 'react';
+
 import ChecklistItem from './ChecklistItem';
 
 import type {
@@ -14,6 +16,7 @@ import type {
 export type ChecklistItemData = {
   id: number;
   label: string;
+  labelContent?: ReactNode;
   status?: ChecklistStatus;
   iconSize?: ChecklistIconSize;
   trailing?: ChecklistTrailing;
@@ -225,6 +228,7 @@ function LegacyChecklist({
           >
             <ChecklistItem
               label={item.label}
+              labelContent={item.labelContent}
               status={status}
               iconSize={
                 resolvedIconSize
@@ -303,6 +307,7 @@ function VariantChecklist({
             >
               <ChecklistItem
                 label={item.label}
+                labelContent={item.labelContent}
                 status={status}
                 iconSize={
                   resolvedIconSize

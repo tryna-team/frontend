@@ -116,6 +116,9 @@ export interface RecommendationCandidate {
   offsetDays?: number | null;
   originalTitle?: string;
   displayDate?: string | null;
+  /** 편집 중인 시간형 항목의 종료 날짜 */
+  displayEndDate?: string | null;
+  displayTime?: string | null;
   selected: boolean; // E101 제안 항목 선택
   edited: boolean; // E102 제안 항목 수정 여부
 }
