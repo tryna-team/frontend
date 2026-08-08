@@ -44,7 +44,7 @@ export type LabelStatus =
     }
   | {
       type: 'selected';
-      id?: number;
+      id: number;
       label: string;
       color: LabelColor;
     };
@@ -304,7 +304,7 @@ export default function CreateModal({
   const isKeyboardNavigationRef = useRef(false);
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
   const [selectedLabelId, setSelectedLabelId] = useState<number | null>(
-    labelStatus.type === 'selected' ? (labelStatus.id ?? null) : null,
+    labelStatus.type === 'selected' ? labelStatus.id : null,
   );
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [hasRecommended, setHasRecommended] = useState(false);
@@ -368,7 +368,10 @@ export default function CreateModal({
         })),
     [labelData],
   );
-  const selectableLabels = labels.length > 0 ? labels : apiLabels;
+  const selectableLabels = useMemo(
+    () => Array.from(new Map([...labels, ...apiLabels].map((label) => [label.id, label])).values()),
+    [apiLabels, labels],
+  );
   const selectedLabel = selectableLabels.find((label) => label.id === selectedLabelId);
 
   const trimmedInput = inputValue.trim();

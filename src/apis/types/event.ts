@@ -49,7 +49,7 @@ export type RecurrenceDayOfWeek = 'NONE' | 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI'
 export interface EventCreateRequest {
   eventTitle: string;
   /** 미선택 시 서버가 현재 사용자의 기본 라벨을 연결한다. */
-  labelId?: number | null;
+  labelId: number | null;
   description?: string | null;
   startDate?: string | null;
   startTime?: string | null;
