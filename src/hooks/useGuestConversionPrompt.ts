@@ -2,9 +2,7 @@ import { useCallback } from 'react';
 
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
-
-/** 전환 유도 시트를 이미 띄운 적이 있는지 (기기 단위로 1회만 노출) */
-const CONVERSION_PROMPT_SHOWN_KEY = 'tryna_conversion_prompt_shown';
+import { hasShownConversionPrompt, markConversionPromptShown } from '@/utils/conversionPrompt';
 
 /**
  * 비회원이 핵심 기능(일정 생성 + 추천)을 체험한 직후, 로그인 시트(4-1-1)를 띄운다.
@@ -30,11 +28,11 @@ export function useGuestConversionPrompt() {
       return;
     }
 
-    if (localStorage.getItem(CONVERSION_PROMPT_SHOWN_KEY)) {
+    if (hasShownConversionPrompt()) {
       return;
     }
 
-    localStorage.setItem(CONVERSION_PROMPT_SHOWN_KEY, 'true');
+    markConversionPromptShown();
     openBottomSheet('login');
   }, [userRole, openBottomSheet]);
 

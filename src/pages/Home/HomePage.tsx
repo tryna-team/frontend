@@ -212,6 +212,10 @@ function HomePage() {
           onOpenPrivacy={() => console.log('개인정보 처리 방침(연동 예정)')}
           onLogout={() => {
             if (!isMember || isAccountActionPending) return;
+            // TODO: 확인 창 디자인이 나오면 교체할 것 (회원탈퇴와 동일)
+            if (!window.confirm('로그아웃하시겠어요?')) {
+              return;
+            }
             void logout();
           }}
           onDeleteAccount={() => {
