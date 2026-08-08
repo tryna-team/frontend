@@ -135,6 +135,12 @@ type RecommendationEditDraft = {
   endDate: Date;
   startTime: string;
   endTime: string;
+  originalItemType: RecommendationCandidate['itemType'];
+  originalApiItemType: NonNullable<RecommendationCandidate['apiItemType']>;
+  originalDisplayDate: string | null;
+  originalDisplayEndDate: string | null;
+  originalDisplayTime: string | null;
+  hasTimeChanged: boolean;
 };
 
 // 실제 API 연결 시 내부만 파싱 요청으로 교체한다.
@@ -907,7 +913,7 @@ export default function CreateModal({
 
   const handleOpenRecommendationEdit = useCallback(
     (candidate: RecommendationCandidate) => {
-      if (isSaving) {
+      if (isSaving || !candidate.selected) {
         return;
       }
 
@@ -920,6 +926,9 @@ export default function CreateModal({
         : initialDate;
       const initialEndDate = isValid(parsedDisplayEndDate) ? parsedDisplayEndDate : initialDate;
       const initialTime = formatApiTimeForPicker(candidate.displayTime);
+      const originalApiItemType =
+        candidate.apiItemType ??
+        (candidate.itemType === 'TIMED_ACTION' ? 'TIMED_ACTION' : 'UNTIMED_PREP');
 
       setRecommendationEditDraft({
         candidateId: candidate.candidateId,
@@ -928,6 +937,14 @@ export default function CreateModal({
         endDate: initialEndDate,
         startTime: initialTime,
         endTime: initialTime,
+        originalItemType: candidate.itemType,
+        originalApiItemType,
+        originalDisplayDate: candidate.displayDate ?? null,
+        originalDisplayEndDate: candidate.displayEndDate ?? null,
+        originalDisplayTime: candidate.displayTime
+          ? normalizeTime(candidate.displayTime)
+          : null,
+        hasTimeChanged: false,
       });
     },
     [isSaving, startDate],
@@ -944,19 +961,38 @@ export default function CreateModal({
     );
     const isTimedAction = isDateRange || !isSameDay(recommendationEditDraft.startDate, startDate);
 
+    const nextItemType = isTimedAction ? 'TIMED_ACTION' : 'CHECKLIST';
+    const nextApiItemType = isTimedAction ? 'TIMED_ACTION' : 'UNTIMED_PREP';
+    const nextDisplayDate = isTimedAction
+      ? format(recommendationEditDraft.startDate, 'yyyy-MM-dd')
+      : null;
+    const nextDisplayEndDate =
+      isTimedAction && isDateRange
+        ? format(recommendationEditDraft.endDate, 'yyyy-MM-dd')
+        : null;
+    // 사용자가 시간을 직접 바꾸지 않았다면 기존 null 값을 유지한다.
+    const nextDisplayTime = isTimedAction
+      ? recommendationEditDraft.hasTimeChanged
+        ? normalizeTime(recommendationEditDraft.startTime)
+        : recommendationEditDraft.originalDisplayTime
+      : null;
+    const hasScheduleChanged =
+      nextItemType !== recommendationEditDraft.originalItemType ||
+      nextApiItemType !== recommendationEditDraft.originalApiItemType ||
+      nextDisplayDate !== recommendationEditDraft.originalDisplayDate ||
+      nextDisplayEndDate !== recommendationEditDraft.originalDisplayEndDate ||
+      nextDisplayTime !== recommendationEditDraft.originalDisplayTime;
+
     // 상위 일정과 다른 날짜 또는 날짜 범위는 시간형 항목으로 분류한다.
-    editCandidate(recommendationEditDraft.candidateId, {
-      itemType: isTimedAction ? 'TIMED_ACTION' : 'CHECKLIST',
-      apiItemType: isTimedAction ? 'TIMED_ACTION' : 'UNTIMED_PREP',
-      displayDate: isTimedAction
-        ? format(recommendationEditDraft.startDate, 'yyyy-MM-dd')
-        : null,
-      displayEndDate:
-        isTimedAction && isDateRange
-          ? format(recommendationEditDraft.endDate, 'yyyy-MM-dd')
-          : null,
-      displayTime: isTimedAction ? normalizeTime(recommendationEditDraft.startTime) : null,
-    });
+    if (hasScheduleChanged) {
+      editCandidate(recommendationEditDraft.candidateId, {
+        itemType: nextItemType,
+        apiItemType: nextApiItemType,
+        displayDate: nextDisplayDate,
+        displayEndDate: nextDisplayEndDate,
+        displayTime: nextDisplayTime,
+      });
+    }
     setRecommendationEditDraft(null);
   };
 
@@ -1008,7 +1044,10 @@ export default function CreateModal({
           ? {
               type: 'date' as const,
               text: trailingText,
-              onClick: candidate ? () => handleOpenRecommendationEdit(candidate) : undefined,
+              onClick:
+                candidate?.selected && !isSaving
+                  ? () => handleOpenRecommendationEdit(candidate)
+                  : undefined,
             }
           : {
               type: 'none' as const,
@@ -1254,6 +1293,10 @@ export default function CreateModal({
                     displayDate:
                       candidate.apiItemType === 'TIMED_ACTION'
                         ? (candidate.displayDate ?? null)
+                        : null,
+                    displayEndDate:
+                      candidate.apiItemType === 'TIMED_ACTION'
+                        ? (candidate.displayEndDate ?? null)
                         : null,
                     displayTime:
                       candidate.apiItemType === 'TIMED_ACTION'
@@ -1547,7 +1590,16 @@ export default function CreateModal({
           endTime={recommendationEditDraft.endTime}
           onChange={(value: ActionItemScheduleValue) =>
             setRecommendationEditDraft((current) =>
-              current ? { ...current, ...value } : current,
+              current
+                ? {
+                    ...current,
+                    ...value,
+                    hasTimeChanged:
+                      current.hasTimeChanged ||
+                      current.startTime !== value.startTime ||
+                      current.endTime !== value.endTime,
+                  }
+                : current,
             )
           }
           onClose={handleSaveRecommendationEdit}
