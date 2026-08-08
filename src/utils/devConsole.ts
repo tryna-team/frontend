@@ -5,11 +5,16 @@
  * 프로덕션 번들에는 포함되지 않는다 (import.meta.env.DEV 가드 + 조건부 등록).
  *
  * 사용법 — 개발 서버 실행 후 콘솔에서:
- *   await tryna.getProfile()              // G103 계정 정보 조회
+ *   await tryna.getProfile()                // G103 계정 정보 조회
  *   await tryna.setFeedbackCollected(false) // G105 피드백 데이터 사용 설정 변경
- *   tryna.getAuthState()                  // 현재 토큰·권한 상태
+ *   tryna.getAuthState()                    // 현재 토큰·권한 상태
+ *
+ *   await tryna.getExternalCalendar()       // G102 외부 캘린더 연동 상태
+ *   await tryna.syncExternalCalendar()      // B105 동기화 시작 (연도 생략 = 올해)
+ *   await tryna.disconnectExternalCalendar() // G102 연동 해제
  */
 
+import { externalCalendarService } from '@/apis/services/externalCalendarService';
 import { userService } from '@/apis/services/userService';
 import { getAuthState } from '@/stores/authStore';
 import { getDeviceId } from '@/utils/deviceId';
@@ -21,6 +26,12 @@ interface TrynaDevConsole {
   setFeedbackCollected: (isFeedbackDataCollected: boolean) => Promise<unknown>;
   /** 현재 로그인 상태 (토큰 값 자체는 노출하지 않고 보유 여부만) */
   getAuthState: () => Record<string, unknown>;
+  /** G102 외부 캘린더 연동 상태 */
+  getExternalCalendar: () => Promise<unknown>;
+  /** B105 외부 일정 동기화 시작. 서버가 비동기 처리하므로 완료는 상태 조회로 확인한다 */
+  syncExternalCalendar: (year?: number) => Promise<unknown>;
+  /** G102 외부 캘린더 연동 해제 */
+  disconnectExternalCalendar: (provider?: string) => Promise<unknown>;
 }
 
 declare global {
@@ -61,7 +72,27 @@ export function registerDevConsole(): void {
       console.log('[auth] 현재 상태', state);
       return state;
     },
+
+    getExternalCalendar: async () => {
+      const connection = await externalCalendarService.getConnection();
+      console.log('[G102] 외부 캘린더 연동 상태', connection);
+      return connection;
+    },
+
+    syncExternalCalendar: async (year?: number) => {
+      const result = await externalCalendarService.syncEvents(year);
+      console.log('[B105] 동기화 요청 완료 — syncStatus는 getExternalCalendar()로 확인', result);
+      return result;
+    },
+
+    disconnectExternalCalendar: async (provider = 'GOOGLE') => {
+      const result = await externalCalendarService.disconnect(provider);
+      console.log('[G102] 연동 해제', result);
+      return result;
+    },
   };
 
-  console.info('[dev] tryna 콘솔 헬퍼 사용 가능 — tryna.getProfile() / tryna.setFeedbackCollected(false) / tryna.getAuthState()');
+  console.info(
+    '[dev] tryna 콘솔 헬퍼 — getProfile() / setFeedbackCollected(false) / getAuthState() / getExternalCalendar() / syncExternalCalendar() / disconnectExternalCalendar()',
+  );
 }

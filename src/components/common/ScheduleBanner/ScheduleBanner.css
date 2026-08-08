@@ -2,7 +2,10 @@
   display: flex;
   box-sizing: border-box;
   width: 100%;
-  padding: 4px 24px;
+  /* 좌우 20px = 목록 좌우 여백(12px) + 카드 내부 padding(8px).
+     배너는 화면 끝까지 채우는 대신 안쪽 여백을 맞춰서, 색상 점과 우측 텍스트가
+     아래 일정 카드와 같은 세로선에 놓이도록 한다. */
+  padding: 4px 20px;
   justify-content: space-between;
   align-items: center;
   border: none;
