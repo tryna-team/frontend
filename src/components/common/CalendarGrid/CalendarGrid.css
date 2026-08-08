@@ -40,10 +40,12 @@
 .fc-scrollgrid table {
   width: 100% !important;
 }
+/* overflow를 자르지 않는다: FullCalendar는 여러 날에 걸친 일정을 시작 날짜 칸 안에
+   두고 옆 칸으로 삐져나오게 그리기 때문에, 여기서 hidden으로 자르면 기간 막대가
+   하루치만 보인다. 세로 넘침은 dayMaxEvents가 이미 제한한다. */
 .fc-daygrid-day-frame {
   height: var(--day-row-h, 116px);
   padding: 2px 0;
-  overflow: hidden;
   border-bottom: 1px solid #EDEDF2 !important;
 }
 .fc-theme-standard td,
