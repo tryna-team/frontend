@@ -14,18 +14,19 @@ import type {
 export const authService = {
   /**
    * A105 소셜 회원가입 및 로그인 — POST /api/v1/auth-sessions
-   * 소셜 로그인은 클라이언트 SDK 기반: 구글/카카오/애플 SDK로 먼저 로그인시킨 뒤
-   * 결과로 받은 oauthAccessToken을 이 함수에 넘기면 됨.
+   *
+   * 인가 코드 방식: 구글 SDK로 로그인시켜 받은 authorizationCode를 넘기면,
+   * 백엔드가 그 코드를 토큰으로 교환한다 (교환에 CLIENT_SECRET이 필요해 프론트에서는 불가).
+   * 코드는 일회용이라 요청이 실패해도 같은 값으로 재시도할 수 없다 — 팝업을 다시 띄워야 한다.
    * 현재 prod는 GOOGLE만 실동작 (KAKAO/APPLE은 400 발생).
    *
    * deviceId는 자동으로 채워지므로 호출부에서 신경 쓰지 않아도 됨.
    * fcmToken은 파이어베이스에서 발급받은 값을 그대로 넘길 것 (알림 매핑용).
    *
    * 주의(TERMS_400): 신규 유저인데 agreedTermTypes에 필수 약관(SERVICE, PRIVACY)이
-   * 빠져있으면 400(code: "TERMS_400")이 온다. 이 경우 로그인 실패가 아니라
-   * "약관 동의 화면을 띄워야 한다"는 신호이므로, 호출부에서
-   * `err.response?.data?.code === "TERMS_400"`으로 분기해서 약관 동의 UI를 띄우고
-   * 동의 완료 후 agreedTermTypes 채워서 이 함수를 다시 호출하면 됨.
+   * 빠져있으면 400(code: "TERMS_400")이 온다. 로그인 실패가 아니라 "약관 동의 화면을
+   * 띄워야 한다"는 신호다. 다만 코드가 일회용이라 동의를 받은 뒤 재호출하려면 새 코드가
+   * 필요하므로, 현재는 useSocialLogin이 첫 요청부터 약관을 담아 보내고 있다.
    */
   socialLogin: async (
     params: Omit<SocialLoginRequest, "deviceId">
