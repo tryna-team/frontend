@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { queryClient } from '@/apis/queryClient';
 import { getApiErrorCode } from '@/apis/errors';
 import { authService } from '@/apis/services/authService';
+import { userService } from '@/apis/services/userService';
 import type { TermType } from '@/apis/types/auth';
 import { getAuthState } from '@/stores/authStore';
 import { GOOGLE_REDIRECT_URI, requestGoogleAuthorizationCode } from '@/utils/googleAuth';
@@ -15,11 +16,13 @@ const REQUIRED_TERM_TYPES: TermType[] = ['SERVICE', 'PRIVACY'];
 /**
  * 구글 로그인 → 서비스 가입/로그인(A105) 또는 비회원 전환(A106).
  *
- * 현재 권한이 GUEST면 A106으로 보내 **기존 일정·준비 항목을 유지한 채** 정식 회원으로
- * 전환한다. 그냥 A105로 로그인시키면 새 계정이 생겨 비회원 때 만든 데이터가 남겨진다.
+ * **지킬 데이터가 있는 비회원만** A106 전환을 태운다. 그래야 비회원이 만든 일정·준비
+ * 항목이 새 계정으로 넘어간다.
  *
- * 구글 토큰은 첫 시도에서 받아 훅 내부에 보관한다. 약관 동의 후 재시도할 때 구글 팝업을
- * 다시 띄우지 않기 위함이다.
+ * 일정이 없는 비회원은 A105로 바로 보낸다. A106은 이미 가입된 소셜 계정이면 AUTH_409로
+ * 막히는데, 로그아웃 후 재로그인하거나 앱을 다시 깐 사용자는 매번 새 비회원 상태라
+ * 무조건 A106을 태우면 항상 409를 맞고 구글 팝업을 두 번 보게 된다.
+ * 지킬 데이터가 없으면 전환할 이유도 없으므로 처음부터 A105로 가는 게 맞다.
  */
 export function useSocialLogin() {
   const [isPending, setIsPending] = useState(false);
@@ -28,12 +31,23 @@ export function useSocialLogin() {
     setIsPending(true);
 
     try {
+      // 비회원이 만든 일정이 있는지 확인해서 전환(A106)/로그인(A105)을 가른다.
+      // 캐시된 앱 진입 상태는 일정을 만들기 전 값일 수 있어 그 시점에 새로 조회한다.
+      let hasGuestDataToKeep = false;
+
+      if (getAuthState().userRole === 'GUEST') {
+        try {
+          const status = await userService.getStatus();
+          hasGuestDataToKeep = status.hasEvents;
+        } catch {
+          // 조회에 실패하면 데이터를 잃지 않는 쪽(전환)으로 기운다
+          hasGuestDataToKeep = true;
+        }
+      }
+
       const authorizationCode = await requestGoogleAuthorizationCode();
 
-      /**
-       * asNewSession이 true면 GUEST여도 A105로 새 세션을 연다 (비회원 데이터는 넘어가지 않는다).
-       * 기본은 A106 전환이라 비회원이 만든 일정·준비 항목이 그대로 유지된다.
-       */
+      /** asNewSession이 true면 지킬 데이터가 있어도 A105로 새 세션을 연다 (409 대응 경로) */
       const call = (code: string, asNewSession = false) => {
         const params = {
           provider: 'GOOGLE' as const,
@@ -46,7 +60,7 @@ export function useSocialLogin() {
           //  인가 코드는 일회용이라 그 코드로는 재시도할 수 없다)
           agreedTermTypes: REQUIRED_TERM_TYPES,
         };
-        const shouldConvert = !asNewSession && getAuthState().userRole === 'GUEST';
+        const shouldConvert = !asNewSession && hasGuestDataToKeep;
 
         return shouldConvert
           ? authService.convertGuestToMember(params)
