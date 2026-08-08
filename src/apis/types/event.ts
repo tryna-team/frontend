@@ -1,4 +1,4 @@
-import type { ActionItemSaveRequest, SavedActionItem } from "./recommendation";
+import type { ActionItemSaveRequest, SavedActionItem } from './recommendation';
 
 /** C103 자연어 일정 파싱 요청 */
 export interface EventParseRequest {
@@ -7,10 +7,10 @@ export interface EventParseRequest {
 }
 
 export type EventDateSource =
-  | "EXPLICIT"
-  | "RELATIVE_EXPRESSION"
-  | "SELECTED_DATE"
-  | "DEFAULT_TODAY";
+  | 'EXPLICIT'
+  | 'RELATIVE_EXPRESSION'
+  | 'SELECTED_DATE'
+  | 'DEFAULT_TODAY';
 
 export interface EventParseWarning {
   code?: string;
@@ -33,39 +33,23 @@ export interface EventParseResponse {
   warnings?: EventParseWarning[];
 }
 
-export type EventRecurrenceType =
-  | "NONE"
-  | "DAILY"
-  | "WEEKLY"
-  | "MONTHLY"
-  | "YEARLY"
-  | "CUSTOM";
+export type EventRecurrenceType = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'CUSTOM';
 
 export type EventSourceType =
-  | "USER_NATURAL_LANGUAGE"
-  | "USER_MANUAL_EDIT"
-  | "EXTERNAL_CALENDAR"
-  | "EXTERNAL_BASED_INTERNAL";
+  | 'USER_NATURAL_LANGUAGE'
+  | 'USER_MANUAL_EDIT'
+  | 'EXTERNAL_CALENDAR'
+  | 'EXTERNAL_BASED_INTERNAL';
 
-export type CreatedEventStatus =
-  | "DRAFT"
-  | "CONFIRMED"
-  | "NEEDS_CONFIRMATION"
-  | "DELETED";
+export type CreatedEventStatus = 'DRAFT' | 'CONFIRMED' | 'NEEDS_CONFIRMATION' | 'DELETED';
 
-export type RecurrenceDayOfWeek =
-  | "NONE"
-  | "MON"
-  | "TUE"
-  | "WED"
-  | "THU"
-  | "FRI"
-  | "SAT"
-  | "SUN";
+export type RecurrenceDayOfWeek = 'NONE' | 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
 
 /** C104 일정과 선택 항목을 함께 저장한다. */
 export interface EventCreateRequest {
-  eventTitle?: string;
+  eventTitle: string;
+  /** 미선택 시 서버가 현재 사용자의 기본 라벨을 연결한다. */
+  labelId?: number | null;
   description?: string | null;
   startDate?: string | null;
   startTime?: string | null;
@@ -76,14 +60,16 @@ export interface EventCreateRequest {
   eventType?: string | null;
   isRecurring?: boolean;
   recurrenceType?: EventRecurrenceType;
-  recurrenceInterval?: number;
+  recurrenceInterval?: number | null;
   recurrenceEndDate?: string | null;
-  actionItems?: ActionItemSaveRequest;
+  actionItems?: ActionItemSaveRequest | null;
 }
 
 /** C104 일정 최종 저장 결과 */
 export interface EventCreateResponse {
   eventId?: number;
+  /** 서버가 최종 연결한 라벨 ID */
+  labelId?: number;
   status?: CreatedEventStatus;
   sourceType?: EventSourceType;
   isRecurring?: boolean;
@@ -101,7 +87,7 @@ export interface EventCreateResponse {
  * 일정 제목뿐 아니라 준비/실행 항목 제목에서도 검색되며, 항목이 걸린 경우
  * 부모 일정 정보와 함께 내려온다.
  */
-export type EventSearchResultType = "EVENT" | "ACTION_ITEM";
+export type EventSearchResultType = 'EVENT' | 'ACTION_ITEM';
 
 /**
  * B107 검색 결과 항목
@@ -137,4 +123,3 @@ export interface EventSearchResponse {
   /** 검색 결과가 없으면 빈 배열 (이 경우에도 200) */
   results: EventSearchResult[];
 }
-
