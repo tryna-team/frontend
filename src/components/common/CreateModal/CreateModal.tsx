@@ -1631,7 +1631,7 @@ export default function CreateModal({
           }}
           onEndTimeChange={(value) => {
             // 시작 시간이 없으면 바텀시트를 연 시점의 현재 시간으로 보완한다.
-            if (!hasConfiguredStartTime) {
+            if (!startTime) {
               setStartTime(scheduleOpenedAtTime);
               setHasStartTimeChanged(true);
             }
