@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -18,29 +19,52 @@ import { format, isValid, parseISO } from 'date-fns';
 import Header from '@/components/common/Header/Header';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import Button from '@/components/common/Buttons/Button';
+import type { LabelItemData } from '@/components/common/LabelModal/LabelModal';
 import DailyScheduleDetail from '@/features/event/components/DailyScheduleDetail';
 import DailyScheduleCard, {
   type DailyScheduleTodoItem,
 } from '@/features/event/components/DailyScheduleCard';
 import QuickModal from '@/features/event/components/QuickModal';
+import ToastPopup from '@/components/common/Popup/ToastPopup';
+import type { ActionItemEditItem } from '@/features/event/components/edit/ActionItemEditItem';
+import EventEditBottomSheet, {
+  type EventEditFormValue,
+} from '@/features/event/components/edit/EventEditBottomSheet';
+import type { RepeatOption } from '@/features/event/components/create/EventScheduleRow';
 import type { CategoryColor } from '@/features/calendar/types';
 import { PATH } from '@/routes/paths';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useCanGoBack } from '@/hooks/useCanGoBack';
+import { useCalendarStore } from '@/stores';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { eventDetailService } from '@/apis/services/eventDetailService';
 import { actionItemService } from '@/apis/services/actionItemService';
+import { labelService, toCalendarLabel } from '@/apis/services/labelService';
 import type {
   ActionItemCompletionStatus,
   EventActionItemResponse,
 } from '@/apis/types/actionItem';
-import type { EventDetailResponseData, RecurrenceDayOfWeek } from '@/apis/types/eventDetail';
+import type {
+  EventDetailResponseData,
+  RecurrenceDayOfWeek,
+  RecurrenceType,
+  DeleteScope,
+} from '@/apis/types/eventDetail';
 
 import './EventViewPage.css';
 
-// ⚠️ mock: EventDetailResponse(GET /events/{eventId})엔 색상/라벨 필드가 없음
-// (라벨 API 자체가 아직 미구현) — 실제 라벨 연동 전까지 모든 일정에 고정으로 사용.
-const MOCK_CATEGORY_COLOR: CategoryColor = 'green';
+// 라벨 목록에서 eventDetail.labelId와 일치하는 색상을 못 찾았을 때(라벨 목록 미로드,
+// 매칭 실패 등)의 폴백 색상.
+const DEFAULT_CATEGORY_COLOR: CategoryColor = 'green';
+
+// EventEditBottomSheet가 다루는 반복 옵션은 한글 4종(매일/매주/매월/매년)만 지원 —
+// NONE/CUSTOM은 매핑이 없어 매일로 기본 대체한다.
+const RECURRENCE_TYPE_TO_REPEAT_OPTION: Partial<Record<RecurrenceType, RepeatOption>> = {
+  DAILY: '매일',
+  WEEKLY: '매주',
+  MONTHLY: '매월',
+  YEARLY: '매년',
+};
 
 // 'YYYY-MM-DD' → '6월 4일' 형태로 변환
 // 시각 없이 new Date(dateStr)만 쓰면 UTC 자정으로 파싱되어, UTC보다 느린 타임존(여행 중 기기
@@ -91,6 +115,24 @@ function EventViewPage() {
   // URL에서 조회할 일정 ID를 읽음
   const { eventId } = useParams<{ eventId: string }>();
   const canGoBack = useCanGoBack();
+  const labels = useCalendarStore((s) => s.labels);
+  const setLabels = useCalendarStore((s) => s.setLabels);
+
+  // 라벨 목록은 지금까지 LabelListSheet를 연 적이 있어야만 채워져 있었다(B108-1을
+  // 그 화면에서만 호출) — 홈을 거치지 않고 이 페이지로 바로 들어오면 카테고리 색상과
+  // 수정 바텀시트의 라벨 선택기가 계속 비어있는 문제가 있어, 여기서도 직접 불러온다.
+  // 실패/빈 응답이어도 mock으로 대체하지 않고 그대로 둔다(LabelListSheet의 임시
+  // MOCK_LABELS 폴백은 의도적으로 따라하지 않음).
+  const { data: labelsData } = useQuery({
+    queryKey: queryKeys.labels.list(),
+    queryFn: labelService.getLabels,
+  });
+
+  useEffect(() => {
+    if (labelsData) {
+      setLabels(labelsData.labels.map(toCalendarLabel));
+    }
+  }, [labelsData, setLabels]);
 
   const {
     data: eventDetail,
@@ -136,6 +178,39 @@ function EventViewPage() {
   const todoItems = baseTodoItems;
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleteErrorOpen, setIsDeleteErrorOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
+  // C106 일정 삭제 — DELETE /api/v1/events/{eventId}
+  const deleteEventMutation = useMutation({
+    mutationFn: (deleteScope: DeleteScope) =>
+      eventDetailService.deleteEvent(eventId as string, {
+        deleteScope,
+        cascade: true,
+        // 반복 일정은 "지금 보고 있는 이 회차" 기준으로 SINGLE/THIS_AND_FUTURE를 판단해야
+        // 하므로 startDate를 occurrenceDate로 전달. 반복 일정이 아니면 null.
+        occurrenceDate: eventDetail?.isRecurring ? (eventDetail?.startDate ?? null) : null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+      navigate(PATH.HOME, { replace: true });
+    },
+    onError: () => {
+      setIsDeleteModalOpen(false);
+      setIsDeleteErrorOpen(true);
+    },
+  });
+
+  const handleDelete = (deleteScope: DeleteScope) => {
+    // 응답이 오기 전에 다시 누르면 DELETE가 중복으로 나간다 —
+    // cascade: true라 두 번째 요청은 이미 부분 삭제된 상태에 대고 실행돼 위험하다.
+    if (deleteEventMutation.isPending) {
+      return;
+    }
+
+    deleteEventMutation.mutate(deleteScope);
+  };
+
   const pendingActionItemIdsRef = useRef(new Set<number>());
   const [pendingActionItemIds, setPendingActionItemIds] = useState<Set<number>>(
     () => new Set(),
@@ -298,6 +373,44 @@ function EventViewPage() {
     return null;
   }
 
+  // labelId로 라벨 목록(useCalendarStore)에서 실제 색상을 조회. 라벨 목록이 아직
+  // 로드되지 않았거나(로드 지점은 아직 라벨 관련 화면 진입 시점뿐) 매칭되는 라벨이
+  // 없으면 DEFAULT_CATEGORY_COLOR로 대체한다.
+  const matchedLabel = labels.find((label) => label.labelId === eventDetail.labelId);
+  const categoryColor = matchedLabel?.color ?? DEFAULT_CATEGORY_COLOR;
+
+  // EventEditBottomSheet/ActionItemEditBottomSheet에 넘길 라벨 목록 — CalendarLabel과
+  // LabelItemData의 color 타입이 동일(LabelModal/LabelItem 기준)해 별도 변환 없이 매핑된다.
+  const labelItems: LabelItemData[] = labels.map((label) => ({
+    id: label.labelId,
+    label: label.name,
+    color: label.color,
+  }));
+
+  // todoItems.id는 이미 실제 actionItemId를 문자열로 담고 있어(String(item.actionItemId)),
+  // 숫자로 되돌리기만 하면 된다 — 별도 mock id가 필요 없다.
+  const actionItemEditItems: ActionItemEditItem[] = todoItems.map((item) => ({
+    id: Number(item.id),
+    label: item.text,
+    checked: item.checked,
+    dateText: item.dateText,
+  }));
+
+  const eventEditInitialValue: EventEditFormValue = {
+    title: eventDetail.eventTitle,
+    description: eventDetail.description,
+    isAllDay: eventDetail.isAllDay,
+    startDate: new Date(`${eventDetail.startDate}T00:00:00`),
+    // 종료 날짜/시간이 없는 일정(null)은 시작값으로 대체하지 않고 그대로 null 유지 —
+    // 대체하면 안 건드리고 "완료"만 눌러도 PATCH에 가짜 종료값이 실제 값처럼 나간다.
+    endDate: eventDetail.endDate ? new Date(`${eventDetail.endDate}T00:00:00`) : null,
+    startTime: eventDetail.startTime,
+    endTime: eventDetail.endTime,
+    repeat: RECURRENCE_TYPE_TO_REPEAT_OPTION[eventDetail.recurrenceType] ?? '매일',
+    location: eventDetail.location,
+    labelId: eventDetail.labelId,
+  };
+
   return (
     <div className="event-view-page">
       <Header
@@ -307,18 +420,18 @@ function EventViewPage() {
           text: formatDateLabel(eventDetail.startDate),
           onClick: handleBack,
         }}
-        trailing={{ type: 'text', text: '수정' }}
+        trailing={{ type: 'text', text: '수정', onClick: () => setIsEditOpen(true) }}
       />
 
       <div className="event-view-page-content">
         <ScheduleBanner
-          categoryColor={MOCK_CATEGORY_COLOR}
+          categoryColor={categoryColor}
           title={eventDetail.eventTitle}
           dateText=""
         />
 
         <DailyScheduleDetail
-          categoryColor={MOCK_CATEGORY_COLOR}
+          categoryColor={categoryColor}
           startTime={eventDetail.startTime}
           endTime={eventDetail.endTime}
           rotationText={formatRecurrenceText(eventDetail)}
@@ -339,6 +452,8 @@ function EventViewPage() {
               준비 항목이 없어요.
             </p>
           ) : (
+            // "직접 추가" 버튼(onAddClick)은 의도적으로 연결하지 않음 — 관련 기능인
+            // ActionItemEditBottomSheet를 제거하면서 함께 비활성화했다.
             <DailyScheduleCard
               items={todoItems}
               onToggleItem={handleToggleItem}
@@ -351,10 +466,38 @@ function EventViewPage() {
 
       {isDeleteModalOpen && (
         <QuickModal
-          // ⚠️ DELETE /events/{eventId} 엔드포인트가 API 스펙에 없어 실제 삭제 호출 없이
-          // 모달만 닫는다 — 백엔드에 삭제 API가 추가되면 실제 호출로 교체한다.
-          onConfirm={() => setIsDeleteModalOpen(false)}
+          message="이 이벤트를 삭제하시겠습니까?"
+          primaryAction={{
+            text: eventDetail.isRecurring ? '이 이벤트만 삭제' : '이벤트 삭제',
+            onClick: () => handleDelete('SINGLE'),
+          }}
+          // 반복 일정일 때만 "이후 모든 이벤트 삭제" 옵션을 추가로 보여준다.
+          secondaryAction={
+            eventDetail.isRecurring
+              ? { text: '이후 모든 이벤트 삭제', onClick: () => handleDelete('THIS_AND_FUTURE') }
+              : undefined
+          }
           onClose={() => setIsDeleteModalOpen(false)}
+        />
+      )}
+
+      {isDeleteErrorOpen && (
+        <ToastPopup
+          GuideText="일정을 삭제하지 못했어요."
+          DetailText="잠시 후 다시 시도해주세요."
+          onClose={() => setIsDeleteErrorOpen(false)}
+        />
+      )}
+
+      {isEditOpen && (
+        <EventEditBottomSheet
+          eventId={eventId}
+          isRecurring={eventDetail.isRecurring}
+          initialValue={eventEditInitialValue}
+          actionItems={actionItemEditItems}
+          labels={labelItems}
+          onClose={() => setIsEditOpen(false)}
+          onToggleActionItem={(id) => handleToggleItem(String(id))}
         />
       )}
     </div>

@@ -1,13 +1,23 @@
 import { apiClient } from "../client";
 import { ENDPOINTS } from "../endpoints";
 import type {
+  ActionItemSaveResponseData,
   ActionItemStatusUpdateRequest,
   ActionItemStatusUpdateResponse,
   EventActionItemResponse,
   TimedActionItemResponse,
 } from "../types/actionItem";
+import type { ActionItemSaveRequest } from "../types/recommendation";
 
 export const actionItemService = {
+  // 스카 추가
+  /** E105 준비/실행 항목을 저장한다. 기존 일정에 단건만 추가할 때도 그대로 쓸 수 있다. */
+  create: (eventId: number | string, request: ActionItemSaveRequest) =>
+    apiClient.post<ActionItemSaveResponseData>(
+      ENDPOINTS.ACTION_ITEMS.BY_EVENT(eventId),
+      request,
+    ),
+
   /** E106 저장된 준비/실행 항목의 완료 상태를 변경한다. */
   updateStatus: (
     actionItemId: number | string,
