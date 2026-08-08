@@ -69,7 +69,7 @@ export interface EventCreateRequest {
 export interface EventCreateResponse {
   eventId?: number;
   /** 서버가 최종 연결한 라벨 ID */
-  labelId?: number;
+  labelId: number;
   status?: CreatedEventStatus;
   sourceType?: EventSourceType;
   isRecurring?: boolean;
