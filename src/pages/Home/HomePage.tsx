@@ -48,8 +48,10 @@ function HomePage() {
   const { promptIfGuest } = useGuestConversionPrompt();
   const { getLabelColor } = useLabelColors();
   const { logout, deleteAccount, isPending: isAccountActionPending } = useAccountActions();
-  // 계정 관리는 정식 회원에게만 노출한다 (비회원은 로그아웃하면 데이터를 되찾을 수 없다)
-  const userRole = useAuthStore((s) => s.userRole);
+  // 비회원은 로그아웃·회원탈퇴 대상이 아니다. 비회원 계정은 기기에 저장된 deviceId로만
+  // 되찾을 수 있어서, 로그아웃하면 그동안 만든 일정에 다시 접근할 방법이 사라진다.
+  // 항목 자체를 숨길지는 논의 후 정하기로 해서, 지금은 눌러도 동작하지 않게만 막아둔다.
+  const isMember = useAuthStore((s) => s.userRole) === 'USER';
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
@@ -208,13 +210,12 @@ function HomePage() {
           onClose={() => setIsSettingOpen(false)}
           onOpenTerms={() => console.log('이용 약관(연동 예정)')}
           onOpenPrivacy={() => console.log('개인정보 처리 방침(연동 예정)')}
-          showAccountSection={userRole === 'USER'}
           onLogout={() => {
-            if (isAccountActionPending) return;
+            if (!isMember || isAccountActionPending) return;
             void logout();
           }}
           onDeleteAccount={() => {
-            if (isAccountActionPending) return;
+            if (!isMember || isAccountActionPending) return;
             // TODO: 확인 창 디자인이 나오면 교체할 것. 되돌릴 수 없는 동작이라
             // 확인 절차 없이 바로 실행되면 안 되어서 브라우저 기본 확인창으로 임시 처리한다.
             if (!window.confirm('회원탈퇴 시 모든 일정과 준비 항목이 삭제됩니다. 진행할까요?')) {
