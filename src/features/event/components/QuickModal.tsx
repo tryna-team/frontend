@@ -3,17 +3,24 @@ import { useEffect, useId } from 'react';
 
 import Button from '@/components/common/Buttons/Button';
 
+interface QuickModalAction {
+  text: string;
+  onClick: () => void;
+}
+
 interface QuickModalProps {
   message?: string;
-  confirmText?: string;
-  onConfirm: () => void;
+  // 반복 일정 삭제처럼 선택지가 두 개 필요한 경우 secondaryAction을 같이 전달한다
+  // (Figma "3-3. 이벤트 뷰/이벤트 삭제" 참고 — 두 버튼 모두 동일한 위험 액션 스타일).
+  primaryAction: QuickModalAction;
+  secondaryAction?: QuickModalAction;
   onClose: () => void;
 }
 
 export default function QuickModal({
   message = '이 이벤트를 삭제하시겠습니까?',
-  confirmText = '이벤트 삭제',
-  onConfirm,
+  primaryAction,
+  secondaryAction,
   onClose,
 }: QuickModalProps) {
   // 코드래빗 적용_aria-labelledby로 연결할 메시지 id
@@ -52,10 +59,15 @@ export default function QuickModal({
             {message}
           </p>
         </div>
-        <div className="flex flex-col items-start px-6 w-full">
-          <Button variant="LargeWarningRegular" className="w-full" onClick={onConfirm}>
-            {confirmText}
+        <div className="flex flex-col items-start gap-2 px-6 w-full">
+          <Button variant="LargeWarningRegular" className="w-full" onClick={primaryAction.onClick}>
+            {primaryAction.text}
           </Button>
+          {secondaryAction && (
+            <Button variant="LargeWarningRegular" className="w-full" onClick={secondaryAction.onClick}>
+              {secondaryAction.text}
+            </Button>
+          )}
         </div>
       </div>
     </>

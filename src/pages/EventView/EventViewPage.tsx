@@ -7,7 +7,7 @@ import {
   useNavigate,
   useParams,
 } from 'react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import Header from '@/components/common/Header/Header';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
@@ -17,20 +17,26 @@ import DailyScheduleCard, {
   type DailyScheduleTodoItem,
 } from '@/features/event/components/DailyScheduleCard';
 import QuickModal from '@/features/event/components/QuickModal';
+import ToastPopup from '@/components/common/Popup/ToastPopup';
 import type { CategoryColor } from '@/features/calendar/types';
 import { PATH } from '@/routes/paths';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useCanGoBack } from '@/hooks/useCanGoBack';
+import { useCalendarStore } from '@/stores';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { eventDetailService } from '@/apis/services/eventDetailService';
-import { actionItemsService } from '@/apis/services/actionItemsService';
-import type { EventDetailResponseData, RecurrenceDayOfWeek } from '@/apis/types/eventDetail';
+import { actionItemService } from '@/apis/services/actionItemService';
+import type {
+  EventDetailResponseData,
+  RecurrenceDayOfWeek,
+  DeleteScope,
+} from '@/apis/types/eventDetail';
 
 import './EventViewPage.css';
 
-// ⚠️ mock: EventDetailResponse(GET /events/{eventId})엔 색상/라벨 필드가 없음
-// (라벨 API 자체가 아직 미구현) — 실제 라벨 연동 전까지 모든 일정에 고정으로 사용.
-const MOCK_CATEGORY_COLOR: CategoryColor = 'green';
+// 라벨 목록에서 eventDetail.labelId와 일치하는 색상을 못 찾았을 때(라벨 목록 미로드,
+// 매칭 실패 등)의 폴백 색상.
+const DEFAULT_CATEGORY_COLOR: CategoryColor = 'green';
 
 // ⚠️ mock: action-items 목록 응답(GET /events/{eventId}/action-items)의 Item엔
 // 완료 여부(체크 상태) 필드가 없음 — 전부 미완료(false)로 시작하는 것으로 대체.
@@ -86,6 +92,8 @@ function EventViewPage() {
     eventId: string;
   }>();
   const canGoBack = useCanGoBack();
+  const queryClient = useQueryClient();
+  const labels = useCalendarStore((s) => s.labels);
 
   const {
     data: eventDetail,
@@ -99,7 +107,7 @@ function EventViewPage() {
 
   const { data: actionItemsData } = useQuery({
     queryKey: queryKeys.actionItems.byEvent(eventId ?? ''),
-    queryFn: () => actionItemsService.getByEvent(eventId as string),
+    queryFn: () => actionItemService.getByEvent(eventId as string),
     enabled: !!eventId,
   });
 
@@ -132,6 +140,31 @@ function EventViewPage() {
   );
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleteErrorOpen, setIsDeleteErrorOpen] = useState(false);
+
+  // C106 일정 삭제 — DELETE /api/v1/events/{eventId}
+  const deleteEventMutation = useMutation({
+    mutationFn: (deleteScope: DeleteScope) =>
+      eventDetailService.deleteEvent(eventId as string, {
+        deleteScope,
+        cascade: true,
+        // 반복 일정은 "지금 보고 있는 이 회차" 기준으로 SINGLE/THIS_AND_FUTURE를 판단해야
+        // 하므로 startDate를 occurrenceDate로 전달. 반복 일정이 아니면 null.
+        occurrenceDate: eventDetail?.isRecurring ? (eventDetail?.startDate ?? null) : null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+      navigate(PATH.HOME, { replace: true });
+    },
+    onError: () => {
+      setIsDeleteModalOpen(false);
+      setIsDeleteErrorOpen(true);
+    },
+  });
+
+  const handleDelete = (deleteScope: DeleteScope) => {
+    deleteEventMutation.mutate(deleteScope);
+  };
 
   const floatingButtonsContent = useMemo(
     () => (
@@ -183,6 +216,12 @@ function EventViewPage() {
     return null;
   }
 
+  // labelId로 라벨 목록(useCalendarStore)에서 실제 색상을 조회. 라벨 목록이 아직
+  // 로드되지 않았거나(로드 지점은 아직 라벨 관련 화면 진입 시점뿐) 매칭되는 라벨이
+  // 없으면 DEFAULT_CATEGORY_COLOR로 대체한다.
+  const matchedLabel = labels.find((label) => label.labelId === eventDetail.labelId);
+  const categoryColor = matchedLabel?.color ?? DEFAULT_CATEGORY_COLOR;
+
   return (
     <div className="event-view-page">
       <Header
@@ -197,13 +236,13 @@ function EventViewPage() {
 
       <div className="event-view-page-content">
         <ScheduleBanner
-          categoryColor={MOCK_CATEGORY_COLOR}
+          categoryColor={categoryColor}
           title={eventDetail.eventTitle}
           dateText=""
         />
 
         <DailyScheduleDetail
-          categoryColor={MOCK_CATEGORY_COLOR}
+          categoryColor={categoryColor}
           startTime={eventDetail.startTime}
           endTime={eventDetail.endTime}
           rotationText={formatRecurrenceText(eventDetail)}
@@ -221,10 +260,26 @@ function EventViewPage() {
 
       {isDeleteModalOpen && (
         <QuickModal
-          // ⚠️ DELETE /events/{eventId} 엔드포인트가 API 스펙에 없어 실제 삭제 호출 없이
-          // 모달만 닫는다 — 백엔드에 삭제 API가 추가되면 여기서 실제 호출로 교체 필요.
-          onConfirm={() => setIsDeleteModalOpen(false)}
+          message="이 이벤트를 삭제하시겠습니까?"
+          primaryAction={{
+            text: eventDetail.isRecurring ? '이 이벤트만 삭제' : '이벤트 삭제',
+            onClick: () => handleDelete('SINGLE'),
+          }}
+          // 반복 일정일 때만 "이후 모든 이벤트 삭제" 옵션을 추가로 보여준다.
+          secondaryAction={
+            eventDetail.isRecurring
+              ? { text: '이후 모든 이벤트 삭제', onClick: () => handleDelete('THIS_AND_FUTURE') }
+              : undefined
+          }
           onClose={() => setIsDeleteModalOpen(false)}
+        />
+      )}
+
+      {isDeleteErrorOpen && (
+        <ToastPopup
+          GuideText="일정을 삭제하지 못했어요."
+          DetailText="잠시 후 다시 시도해주세요."
+          onClose={() => setIsDeleteErrorOpen(false)}
         />
       )}
     </div>

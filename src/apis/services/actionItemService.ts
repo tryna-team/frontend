@@ -4,9 +4,9 @@ import type {
   EventActionItemResponseData,
   ActionItemStatusUpdateRequest,
   ActionItemStatusUpdateResponseData,
-} from "../types/actionItems";
+} from "../types/actionItem";
 
-export const actionItemsService = {
+export const actionItemService = {
   /** 일정에 연결된 준비/실행 항목 조회 — GET /api/v1/events/{eventId}/action-items */
   getByEvent: (eventId: number | string) =>
     apiClient.get<EventActionItemResponseData>(ENDPOINTS.ACTION_ITEMS.BY_EVENT(eventId)),
