@@ -183,6 +183,12 @@ function EventViewPage() {
   });
 
   const handleDelete = (deleteScope: DeleteScope) => {
+    // 응답이 오기 전에 다시 누르면 DELETE가 중복으로 나간다 —
+    // cascade: true라 두 번째 요청은 이미 부분 삭제된 상태에 대고 실행돼 위험하다.
+    if (deleteEventMutation.isPending) {
+      return;
+    }
+
     deleteEventMutation.mutate(deleteScope);
   };
 
@@ -376,9 +382,11 @@ function EventViewPage() {
     description: eventDetail.description,
     isAllDay: eventDetail.isAllDay,
     startDate: new Date(`${eventDetail.startDate}T00:00:00`),
-    endDate: new Date(`${eventDetail.endDate ?? eventDetail.startDate}T00:00:00`),
+    // 종료 날짜/시간이 없는 일정(null)은 시작값으로 대체하지 않고 그대로 null 유지 —
+    // 대체하면 안 건드리고 "완료"만 눌러도 PATCH에 가짜 종료값이 실제 값처럼 나간다.
+    endDate: eventDetail.endDate ? new Date(`${eventDetail.endDate}T00:00:00`) : null,
     startTime: eventDetail.startTime,
-    endTime: eventDetail.endTime ?? eventDetail.startTime,
+    endTime: eventDetail.endTime,
     repeat: RECURRENCE_TYPE_TO_REPEAT_OPTION[eventDetail.recurrenceType] ?? '매일',
     location: eventDetail.location,
     labelId: eventDetail.labelId,
@@ -470,6 +478,7 @@ function EventViewPage() {
           actionItems={actionItemEditItems}
           labels={labelItems}
           onClose={() => setIsEditOpen(false)}
+          onToggleActionItem={(id) => handleToggleItem(String(id))}
         />
       )}
     </div>

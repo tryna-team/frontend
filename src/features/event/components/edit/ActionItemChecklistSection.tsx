@@ -35,18 +35,29 @@ export function ActionItemChecklistSection({
   items,
   onToggleItem,
 }: ActionItemChecklistSectionProps) {
-  const [localItems, setLocalItems] = useState(items);
+  // 체크 상태 등 실제 데이터는 items(부모 prop)를 그대로 신뢰한다 — 예전엔
+  // useState(items)로 마운트 시점에 한 번만 복사해서, 바텀시트가 열려있는 동안
+  // 부모가 새 데이터를 내려줘도(다른 곳에서 완료 처리 후 리페치된 경우 등) 반영이
+  // 안 되는 문제가 있었다. 서버에 저장할 API가 아직 없는 "날짜 편집"만 이 컴포넌트
+  // 안에서 덧입혀서 보여준다.
+  const [dateTextOverrides, setDateTextOverrides] = useState<Record<number, string>>({});
   // ChipButton(날짜 뱃지)을 눌러 날짜를 편집 중인 항목의 id
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
+
+  const localItems = items.map((item) =>
+    dateTextOverrides[item.id] !== undefined
+      ? { ...item, dateText: dateTextOverrides[item.id] }
+      : item,
+  );
 
   const handleToggle = (id: number) => {
     if (id === ADD_ITEM_ROW_ID) {
       return;
     }
 
-    setLocalItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item)),
-    );
+    // 완료 토글은 로컬에서 직접 뒤집지 않고 부모(EventViewPage의 E106 mutation)에
+    // 맡긴다 — 그쪽이 이미 낙관적 업데이트로 캐시를 갱신해서, items prop이 곧바로
+    // 갱신된 값으로 다시 내려온다.
     onToggleItem?.(id);
   };
 
@@ -61,9 +72,7 @@ export function ActionItemChecklistSection({
       ? UNTIMED_DATE_TEXT
       : `${pickedDate.getMonth() + 1}월 ${pickedDate.getDate()}일`;
 
-    setLocalItems((prev) =>
-      prev.map((item) => (item.id === itemId ? { ...item, dateText } : item)),
-    );
+    setDateTextOverrides((prev) => ({ ...prev, [itemId]: dateText }));
     setEditingItemId(null);
   };
 

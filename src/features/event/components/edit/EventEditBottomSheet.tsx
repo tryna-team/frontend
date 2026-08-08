@@ -13,6 +13,7 @@ import type { LabelItemData } from '@/components/common/LabelModal/LabelModal';
 import ContentBox from '@/components/common/Popup/BottomSheet/Layout/ContentBox';
 import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
 import Overlay from '@/components/common/Popup/Overlay';
+import ToastPopup from '@/components/common/Popup/ToastPopup';
 import EventScheduleRow, {
   type RepeatOption,
 } from '@/features/event/components/create/EventScheduleRow';
@@ -34,9 +35,11 @@ export type EventEditFormValue = {
   description: string;
   isAllDay: boolean;
   startDate: Date;
-  endDate: Date;
+  // 종료 날짜/시간이 없는 일정도 있어(EventDetailResponseData.endDate/endTime이 nullable)
+  // null을 그대로 유지한다 — 시작값으로 대체하면 안 건드려도 PATCH에 가짜 종료값이 나간다.
+  endDate: Date | null;
   startTime: string;
-  endTime: string;
+  endTime: string | null;
   repeat: RepeatOption;
   location: string;
   labelId: number | null;
@@ -50,12 +53,20 @@ type EventEditBottomSheetProps = {
   actionItems: ActionItemEditItem[];
   labels: LabelItemData[];
   onClose: () => void;
+  // 체크리스트 항목 완료 토글 — EventViewPage의 E106 mutation을 그대로 전달받아 쓴다.
+  onToggleActionItem?: (id: number) => void;
 };
 
 const formatDate = (date: Date) => `${date.getMonth() + 1}월 ${date.getDate()}일`;
 
-const formatTimePickerValue = ({ meridiem, hour, minute }: TimePickerValue) =>
-  `${hour}:${String(minute).padStart(2, '0')} ${meridiem}`;
+// API(C107)는 24시간제 'HH:mm' 문자열을 받는다 — TimePickerValue를 바로 이 형식으로
+// 변환해서 상태에 저장한다(화면 표시도 이 값을 그대로 씀 — DailyScheduleDetail 등
+// 다른 화면도 서버가 내려준 24시간제 문자열을 그대로 보여주는 것과 동일한 방식).
+const toApiTime = ({ meridiem, hour, minute }: TimePickerValue) => {
+  const normalizedHour = hour % 12;
+  const hour24 = meridiem === 'PM' ? normalizedHour + 12 : normalizedHour;
+  return `${String(hour24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+};
 
 // 피그마 "이벤트 수정" 바텀시트(node 3303:37852 외 3개 상태 프레임) — 이벤트 뷰 헤더의
 // "수정" 버튼으로 열린다. PATCH /events/{eventId}(C107)로 실제 저장한다.
@@ -66,18 +77,20 @@ export default function EventEditBottomSheet({
   actionItems,
   labels,
   onClose,
+  onToggleActionItem,
 }: EventEditBottomSheetProps) {
   const [title, setTitle] = useState(initialValue.title);
   const [isAllDay, setIsAllDay] = useState(initialValue.isAllDay);
   const [startDate, setStartDate] = useState(initialValue.startDate);
-  const [endDate, setEndDate] = useState(initialValue.endDate);
+  const [endDate, setEndDate] = useState<Date | null>(initialValue.endDate);
   const [startTime, setStartTime] = useState(initialValue.startTime);
-  const [endTime, setEndTime] = useState(initialValue.endTime);
+  const [endTime, setEndTime] = useState<string | null>(initialValue.endTime);
   const [repeat, setRepeat] = useState<RepeatOption>(initialValue.repeat);
   const [labelId, setLabelId] = useState<number | null>(initialValue.labelId);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
   const [isScopeModalOpen, setIsScopeModalOpen] = useState(false);
+  const [isUpdateErrorOpen, setIsUpdateErrorOpen] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -90,7 +103,7 @@ export default function EventEditBottomSheet({
         description: initialValue.description,
         startDate: format(startDate, 'yyyy-MM-dd'),
         startTime: isAllDay ? null : startTime,
-        endDate: format(endDate, 'yyyy-MM-dd'),
+        endDate: endDate ? format(endDate, 'yyyy-MM-dd') : null,
         endTime: isAllDay ? null : endTime,
         isAllDay,
         location: initialValue.location,
@@ -98,8 +111,13 @@ export default function EventEditBottomSheet({
         updateScope,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.events.detail(String(eventId)) });
+      // 삭제 플로우와 동일하게 events.all을 무효화 — 홈/데일리 화면의 캘린더 목록
+      // 캐시도 같이 갱신돼야 제목/시간 변경이 바로 반영된다.
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
       onClose();
+    },
+    onError: () => {
+      setIsUpdateErrorOpen(true);
     },
   });
 
@@ -184,10 +202,12 @@ export default function EventEditBottomSheet({
               <div className="box-content flex h-[52px] w-full items-center justify-between bg-transparent pr-padding-xsmall pl-padding-medium">
                 <span className="shrink-0 text-text-default default-body-large">종료</span>
                 <div className="flex shrink-0 items-center gap-2">
+                  {/* endDate가 null(종료 없음)이면 시작 날짜를 표시용으로만 보여준다 —
+                      실제로 선택하기 전까진 state는 계속 null로 남는다. */}
                   <Button variant="MediumDefaultFit" onClick={openSchedule}>
-                    {formatDate(endDate)}
+                    {formatDate(endDate ?? startDate)}
                   </Button>
-                  {!isAllDay && (
+                  {!isAllDay && endTime && (
                     <Button variant="MediumDefaultFit" onClick={openSchedule}>
                       {endTime}
                     </Button>
@@ -197,8 +217,9 @@ export default function EventEditBottomSheet({
 
               {/* PATCH 요청(EventUpdateRequest)에 반복 관련 필드가 없음(라이브 스웨거로
                   확인) — 반복은 생성 시점(C104)에만 정할 수 있고 수정으로는 바꿀 수 없어
-                  onRepeatClick을 연결하지 않고 읽기 전용으로 표시만 한다. */}
-              <EventScheduleRow type="repeat" leading="반복" repeat={repeat} />
+                  onRepeatClick을 연결하지 않고 읽기 전용으로 표시만 한다. 반복이 아닌
+                  일정은 행 자체를 숨긴다(안 그러면 매핑 기본값 때문에 "매일"로 잘못 보임). */}
+              {isRecurring && <EventScheduleRow type="repeat" leading="반복" repeat={repeat} />}
             </div>
           </ContentBox>
 
@@ -264,8 +285,9 @@ export default function EventEditBottomSheet({
               ContentBox 쪽에 title을 선택값으로 바꿔서 없앨 수 있다. */}
           <ContentBox title="" variant="bottom">
             <ActionItemChecklistSection
-              eventDate={format(initialValue.startDate, 'yyyy-MM-dd')}
+              eventDate={format(startDate, 'yyyy-MM-dd')}
               items={actionItems}
+              onToggleItem={onToggleActionItem}
             />
           </ContentBox>
         </Frame>
@@ -274,17 +296,29 @@ export default function EventEditBottomSheet({
       {isScheduleOpen && (
         <RepeatScheduleBottomSheet
           startDate={startDate}
-          endDate={endDate}
+          // RepeatScheduleBottomSheet는 endDate/endTime을 필수(non-null)로 받아서,
+          // 아직 안 정한 상태(null)일 땐 시작값을 임시로 보여준다 — 사용자가 실제로
+          // 종료를 건드려야만 onEndDateChange/onEndTimeChange가 호출돼 state가 null에서
+          // 벗어난다.
+          endDate={endDate ?? startDate}
           startTime={startTime}
-          endTime={endTime}
+          endTime={endTime ?? startTime}
           repeat={repeat}
           onStartDateChange={setStartDate}
           onEndDateChange={setEndDate}
-          onStartTimeChange={(value) => setStartTime(formatTimePickerValue(value))}
-          onEndTimeChange={(value) => setEndTime(formatTimePickerValue(value))}
+          onStartTimeChange={(value) => setStartTime(toApiTime(value))}
+          onEndTimeChange={(value) => setEndTime(toApiTime(value))}
           onRepeatChange={setRepeat}
           onClose={() => setIsScheduleOpen(false)}
           showBackgroundVideo={false}
+        />
+      )}
+
+      {isUpdateErrorOpen && (
+        <ToastPopup
+          GuideText="일정을 수정하지 못했어요."
+          DetailText="잠시 후 다시 시도해주세요."
+          onClose={() => setIsUpdateErrorOpen(false)}
         />
       )}
 
