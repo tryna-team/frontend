@@ -2,7 +2,7 @@
  * TanStack Query key factory (tryna APISpec 기준)
  * 계층 구조를 둬서 invalidateQueries 범위를 세밀하게 제어한다.
  * 예: queryKeys.events.all → 이벤트 전체 무효화
- *     queryKeys.calendars.monthly(2026, 7) → 특정 월만 무효화
+ *     queryKeys.calendars.main(2026, 7, "2026-07-01") → 특정 월만 무효화
  */
 export const queryKeys = {
   users: {
@@ -15,8 +15,6 @@ export const queryKeys = {
     all: ["calendars"] as const,
     main: (year: number, month: number, selectedDate?: string) =>
       [...queryKeys.calendars.all, "main", year, month, selectedDate] as const,
-    monthly: (year: number, month: number) =>
-      [...queryKeys.calendars.all, "monthly", year, month] as const,
     dateEvents: (date: string) =>
       [...queryKeys.calendars.all, "dates", date, "events"] as const,
     externalUserList: () =>

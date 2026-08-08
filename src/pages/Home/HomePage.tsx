@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { useQueries, useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 
 import { useCalendarStore } from '@/stores';
 import type { CalendarLabel } from '@/stores/types';
@@ -65,65 +65,29 @@ function HomePage() {
     placeholderData: keepPreviousData,
   });
 
-  // ⚠️ B101의 selectedDateEvents는 선택한 날짜 하루의 일정만 준다.
-  // 그 달 전체 일정 제목까지 필요하면 별도 API(월간 조회 등)가 필요할 수 있음 — 추후 확인
-  //
-  // placeholderData(keepPreviousData)로 이전 날짜의 응답을 화면에 계속 보여주는 동안,
-  // 그 이벤트들에 "새로 선택된" selectedDate를 그대로 찍으면 실제로는 이전 날짜 일정인데
-  // 새 날짜 일정인 것처럼 잘못 표시될 수 있다 (CodeRabbit 리뷰 반영).
-  // 그래서 응답 자체에 서버가 echo해주는 data.selectedDate가 지금 선택된 날짜와
-  // 일치할 때만 렌더링하고, 아직 새 응답이 안 왔으면(= 이전 날짜 응답이면) 빈 배열로 둔다.
-  const isFreshForSelectedDate = data?.selectedDate === selectedDate;
-  const calendarEvents = isFreshForSelectedDate
-    ? (data?.selectedDateEvents ?? []).map((event) => ({
-        title: event.title,
-        date: selectedDate,
-        backgroundColor: CATEGORY_COLOR_MAP.yellow, // TODO: 카테고리 색상 필드 응답에 있는지 확인
-        textColor: '#1C1630',
-        borderColor: 'transparent',
-      }))
-    : [];
-
   const currentYear = useCalendarStore((s) => s.currentYear);
   const currentMonth = useCalendarStore((s) => s.currentMonth);
 
-  // B101은 유지하고, 현재 화면에 표시된 월의 일정 날짜를 추가로 조회한다.
-  const { data: monthlyData } = useQuery({
-    queryKey: queryKeys.calendars.monthly(currentYear, currentMonth),
-    queryFn: () => calendarService.getMonthly(currentYear, currentMonth),
-  });
-
-  const isFreshForCurrentMonth =
-    monthlyData?.year === currentYear && monthlyData.month === currentMonth;
-  const eventDates = isFreshForCurrentMonth
-    ? monthlyData.days
-        .filter((day) => day.date !== selectedDate && (day.hasEvent || day.eventCount > 0))
-        .map((day) => day.date)
+  // B101 하나로 그 달 전체의 날짜별 일정을 받는다.
+  // 예전에는 B102(월간)로 "일정 있는 날짜"를 받고 날짜마다 B103을 또 호출했는데,
+  // B102가 B101로 통합되면서 monthlyEventDays[].previewEvents에 제목까지 들어오게 됐다.
+  //
+  // 응답이 요청한 달과 일치할 때만 그린다. placeholderData(keepPreviousData)로 이전 달
+  // 응답을 잠깐 그대로 보여주는 동안, 그 일정들을 새 달의 것으로 잘못 표시하지 않기 위함이다.
+  const isFreshForCurrentMonth = data?.year === currentYear && data.month === currentMonth;
+  const visibleCalendarEvents = isFreshForCurrentMonth
+    ? data.monthlyEventDays.flatMap((day) =>
+        day.previewEvents.map((event) => ({
+          title: event.title,
+          date: day.date,
+          // TODO: labelId가 응답에 들어왔으므로 라벨 목록(B108)의 색상과 이어야 한다.
+          // 라벨 연동 전까지는 기존과 동일한 임시 색상을 쓴다.
+          backgroundColor: CATEGORY_COLOR_MAP.yellow,
+          textColor: '#1C1630',
+          borderColor: 'transparent',
+        })),
+      )
     : [];
-
-  // B101이 제공하지 않는 날짜의 일정 제목만 B103으로 보완한다.
-  const dateEventQueries = useQueries({
-    queries: eventDates.map((date) => ({
-      queryKey: queryKeys.calendars.dateEvents(date),
-      queryFn: () => calendarService.getDateEvents(date),
-    })),
-  });
-
-  const isSelectedDateInCurrentMonth = selectedDate.startsWith(
-    `${currentYear}-${String(currentMonth).padStart(2, '0')}`,
-  );
-  const visibleCalendarEvents = [
-    ...(isSelectedDateInCurrentMonth ? calendarEvents : []),
-    ...dateEventQueries.flatMap((query, index) =>
-      (query.data?.events ?? []).map((event) => ({
-        title: event.title,
-        date: eventDates[index],
-        backgroundColor: CATEGORY_COLOR_MAP.yellow,
-        textColor: '#1C1630',
-        borderColor: 'transparent',
-      })),
-    ),
-  ];
 
   const handleSelectDate = (date: string) => {
     selectDate(date);

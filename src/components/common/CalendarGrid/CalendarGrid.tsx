@@ -1,14 +1,11 @@
 import { useEffect, useRef } from 'react';
 import type { KeyboardEvent, MouseEvent, PointerEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import FullCalendar from '@fullcalendar/react';
 import type { MoreLinkContentArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { DateClickArg } from '@fullcalendar/interaction';
 
-import { calendarService } from '@/apis/services/calendarService';
-import { queryKeys } from '@/hooks/queries/queryKeys';
 import { useCalendarStore } from '@/stores';
 
 import './CalendarGrid.css';
@@ -166,12 +163,6 @@ function CalendarGrid({
   useEffect(() => {
     calendarRef.current?.getApi().gotoDate(new Date(currentYear, currentMonth - 1, 1));
   }, [currentYear, currentMonth]);
-
-  // 월간 일정 데이터는 제목·라벨 스펙 확정 전까지 캐시에만 저장한다.
-  useQuery({
-    queryKey: queryKeys.calendars.monthly(currentYear, currentMonth),
-    queryFn: () => calendarService.getMonthly(currentYear, currentMonth),
-  });
 
   // ── 패널(스와이프 뷰포트) 높이 ───────────────────────────────────
   // 실제 "화면에 남는 공간" 계산은 CSS(--panel-h: calc(100dvh - ...), CalendarGrid.css)가
