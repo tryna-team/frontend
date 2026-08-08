@@ -33,7 +33,7 @@ export interface EventParseResponse {
   warnings?: EventParseWarning[];
 }
 
-export type EventRecurrenceType = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'CUSTOM';
+export type EventRecurrenceType = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 
 export type EventSourceType =
   | 'USER_NATURAL_LANGUAGE'
@@ -74,9 +74,9 @@ export interface EventCreateResponse {
   sourceType?: EventSourceType;
   isRecurring?: boolean;
   recurrenceType?: EventRecurrenceType;
-  recurrenceInterval?: number;
+  recurrenceInterval?: number | null;
   recurrenceDayOfWeek?: RecurrenceDayOfWeek;
-  recurrenceDayOfMonth?: number;
+  recurrenceDayOfMonth?: number | null;
   recurrenceEndDate?: string | null;
   createdAt?: string;
   savedActionItems?: SavedActionItem[];

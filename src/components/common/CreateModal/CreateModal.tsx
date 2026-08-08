@@ -210,6 +210,25 @@ const RECURRENCE_TYPE: Record<RepeatOption, EventRecurrenceType> = {
   매년: 'YEARLY',
 };
 
+const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: RepeatOption) => {
+  if (!hasRepeatChanged) {
+    return {
+      isRecurring: false,
+      recurrenceType: 'NONE' as const,
+      recurrenceInterval: null,
+      recurrenceEndDate: null,
+    };
+  }
+
+  return {
+    isRecurring: true,
+    recurrenceType: RECURRENCE_TYPE[repeat],
+    recurrenceInterval: 1,
+    // 반복 종료일 설정 UI가 추가되기 전까지 무기한 반복으로 저장한다.
+    recurrenceEndDate: null,
+  };
+};
+
 const normalizeTime = (time: string) => {
   const apiTime = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(time);
 
@@ -1006,7 +1025,8 @@ export default function CreateModal({
       hasEndDateChanged ||
       Boolean(parsedCandidate?.endDateCandidate) ||
       !isSameDay(startDate, endDate);
-    const recurrenceType = hasRepeatChanged ? RECURRENCE_TYPE[repeat] : 'NONE';
+    // 주간 요일과 월간·연간 기준일은 서버가 시작 날짜에서 계산한다.
+    const recurrencePayload = buildRecurrencePayload(hasRepeatChanged, repeat);
 
     setIsSaving(true);
 
@@ -1024,10 +1044,7 @@ export default function CreateModal({
           isAllDay: !startTimeValue && !endTimeValue,
           location: parsedCandidate?.placeCandidate ?? null,
           eventType: parsedCandidate?.eventTypeCandidate ?? null,
-          isRecurring: recurrenceType !== 'NONE',
-          recurrenceType,
-          recurrenceInterval: recurrenceType === 'NONE' ? null : 1,
-          recurrenceEndDate: null,
+          ...recurrencePayload,
           actionItems:
             recommendationCandidates.length > 0
               ? {
