@@ -3,8 +3,10 @@ import type { FocusEvent, KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 
 import { format, isSameDay, isToday, isValid, parseISO } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
 
 import { eventService } from '@/apis/services/eventService';
+import { labelService } from '@/apis/services/labelService';
 import { recommendationService } from '@/apis/services/recommendationService';
 import type { EventParseResponse, EventRecurrenceType } from '@/apis/types/event';
 import type { RecommendationResponse, RecommendationSuggestion } from '@/apis/types/recommendation';
@@ -42,6 +44,7 @@ export type LabelStatus =
     }
   | {
       type: 'selected';
+      id: number;
       label: string;
       color: LabelColor;
     };
@@ -158,9 +161,7 @@ const mapRecommendationCandidate = (
 });
 
 // 추천 서버 없이 저장·상태 변경 흐름을 확인하는 개발용 항목이다.
-const createDevelopmentFallbackCandidates = (
-  displayDate: string,
-): RecommendationCandidate[] => [
+const createDevelopmentFallbackCandidates = (displayDate: string): RecommendationCandidate[] => [
   {
     candidateId: 'development-timed-1',
     title: '필요한 준비물 챙기기',
@@ -207,6 +208,25 @@ const RECURRENCE_TYPE: Record<RepeatOption, EventRecurrenceType> = {
   매주: 'WEEKLY',
   매월: 'MONTHLY',
   매년: 'YEARLY',
+};
+
+const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: RepeatOption) => {
+  if (!hasRepeatChanged) {
+    return {
+      isRecurring: false,
+      recurrenceType: 'NONE' as const,
+      recurrenceInterval: null,
+      recurrenceEndDate: null,
+    };
+  }
+
+  return {
+    isRecurring: true,
+    recurrenceType: RECURRENCE_TYPE[repeat],
+    recurrenceInterval: 1,
+    // 반복 종료일 설정 UI가 추가되기 전까지 무기한 반복으로 저장한다.
+    recurrenceEndDate: null,
+  };
 };
 
 const normalizeTime = (time: string) => {
@@ -283,6 +303,9 @@ export default function CreateModal({
   const isScheduleOpeningRef = useRef(false);
   const isKeyboardNavigationRef = useRef(false);
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
+  const [selectedLabelId, setSelectedLabelId] = useState<number | null>(
+    labelStatus.type === 'selected' ? labelStatus.id : null,
+  );
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [hasRecommended, setHasRecommended] = useState(false);
   const [recommendedTitle, setRecommendedTitle] = useState('');
@@ -329,6 +352,27 @@ export default function CreateModal({
   );
   const toggleCandidateSelected = useEventCreationStore((state) => state.toggleCandidateSelected);
   const resetCreation = useEventCreationStore((state) => state.reset);
+  const { data: labelData } = useQuery({
+    queryKey: queryKeys.labels.list(),
+    queryFn: labelService.getLabels,
+  });
+
+  const apiLabels = useMemo<LabelItemData[]>(
+    () =>
+      (labelData?.labels ?? [])
+        .filter((label) => label.isVisible)
+        .map((label) => ({
+          id: label.labelId,
+          label: label.name,
+          color: label.color.toLowerCase() as LabelColor,
+        })),
+    [labelData],
+  );
+  const selectableLabels = useMemo(
+    () => Array.from(new Map([...labels, ...apiLabels].map((label) => [label.id, label])).values()),
+    [apiLabels, labels],
+  );
+  const selectedLabel = selectableLabels.find((label) => label.id === selectedLabelId);
 
   const trimmedInput = inputValue.trim();
   const isRecommendMode = mode === 'recommend' || hasRecommended;
@@ -541,9 +585,7 @@ export default function CreateModal({
         const fallbackDate =
           latestParsedCandidate.dateCandidate ?? format(startDateRef.current, 'yyyy-MM-dd');
 
-        setRecommendationCandidates(
-          createDevelopmentFallbackCandidates(fallbackDate),
-        );
+        setRecommendationCandidates(createDevelopmentFallbackCandidates(fallbackDate));
         setRecommendedTitle(latestParsedCandidate.titleCandidate ?? request.input);
         hasRecommendedRef.current = true;
         setHasRecommended(true);
@@ -954,6 +996,7 @@ export default function CreateModal({
       return;
     }
 
+    setSelectedLabelId(id);
     setIsLabelModalOpen(false);
     onSelectLabel?.(id);
   };
@@ -984,9 +1027,9 @@ export default function CreateModal({
     const shouldSaveEndDate =
       hasEndDateChanged ||
       Boolean(parsedCandidate?.endDateCandidate) ||
-      Boolean(endTimeValue) ||
       !isSameDay(startDate, endDate);
-    const recurrenceType = hasRepeatChanged ? RECURRENCE_TYPE[repeat] : 'NONE';
+    // 주간 요일과 월간·연간 기준일은 서버가 시작 날짜에서 계산한다.
+    const recurrencePayload = buildRecurrencePayload(hasRepeatChanged, repeat);
 
     setIsSaving(true);
 
@@ -994,43 +1037,47 @@ export default function CreateModal({
       const createResponse = await eventService.create(
         {
           eventTitle: trimmedInput,
+          // null이면 서버가 현재 사용자의 기본 라벨을 연결한다.
+          labelId: selectedLabelId,
           description: null,
           startDate: format(startDate, 'yyyy-MM-dd'),
           startTime: startTimeValue,
           endDate: shouldSaveEndDate ? format(endDate, 'yyyy-MM-dd') : null,
           endTime: endTimeValue,
-          isAllDay: !startTimeValue,
+          isAllDay: !startTimeValue && !endTimeValue,
           location: parsedCandidate?.placeCandidate ?? null,
           eventType: parsedCandidate?.eventTypeCandidate ?? null,
-          isRecurring: recurrenceType !== 'NONE',
-          recurrenceType,
-          recurrenceInterval: 1,
-          recurrenceEndDate: null,
-          actionItems: {
-            // 생성 모달의 add 상태인 항목만 최종 저장한다.
-            items: selectedCandidates.map((candidate) => ({
-              title: candidate.title,
-              itemType: candidate.apiItemType ?? 'UNRESOLVED',
-              createdBy: candidate.edited ? 'USER_EDITED' : 'SYSTEM',
-              displayDate:
-                candidate.apiItemType === 'TIMED_ACTION' ? (candidate.displayDate ?? null) : null,
-              displayTime: null,
-              offsetDays: candidate.offsetDays ?? null,
-              sourceTemplateId: candidate.sourceTemplateId ?? null,
-            })),
-            // 제외·수정 여부도 추천 개선용 피드백으로 전달한다.
-            feedbackLogs: recommendationCandidates.map((candidate) => ({
-              actionType: candidate.selected
-                ? candidate.edited
-                  ? 'EDITED'
-                  : 'SELECTED'
-                : 'REJECTED',
-              sourceTemplateId: candidate.sourceTemplateId ?? null,
-              originalTitle: candidate.originalTitle ?? candidate.title,
-              editedTitle: candidate.edited ? candidate.title : null,
-              reason: null,
-            })),
-          },
+          ...recurrencePayload,
+          actionItems:
+            recommendationCandidates.length > 0
+              ? {
+                  // 생성 모달의 add 상태인 항목만 최종 저장한다.
+                  items: selectedCandidates.map((candidate) => ({
+                    title: candidate.title,
+                    itemType: candidate.apiItemType ?? 'UNRESOLVED',
+                    createdBy: candidate.edited ? 'USER_EDITED' : 'SYSTEM',
+                    displayDate:
+                      candidate.apiItemType === 'TIMED_ACTION'
+                        ? (candidate.displayDate ?? null)
+                        : null,
+                    displayTime: null,
+                    offsetDays: candidate.offsetDays ?? null,
+                    sourceTemplateId: candidate.sourceTemplateId ?? null,
+                  })),
+                  // 제외·수정 여부도 추천 개선용 피드백으로 전달한다.
+                  feedbackLogs: recommendationCandidates.map((candidate) => ({
+                    actionType: candidate.selected
+                      ? candidate.edited
+                        ? 'EDITED'
+                        : 'SELECTED'
+                      : 'REJECTED',
+                    sourceTemplateId: candidate.sourceTemplateId ?? null,
+                    originalTitle: candidate.originalTitle ?? candidate.title,
+                    editedTitle: candidate.edited ? candidate.title : null,
+                    reason: null,
+                  })),
+                }
+              : null,
         },
         controller.signal,
       );
@@ -1038,10 +1085,7 @@ export default function CreateModal({
       const timedActionDates = [
         ...new Set(
           (createResponse.savedActionItems ?? [])
-            .filter(
-              (item) =>
-                item.itemType === 'TIMED_ACTION' && Boolean(item.displayDate),
-            )
+            .filter((item) => item.itemType === 'TIMED_ACTION' && Boolean(item.displayDate))
             .map((item) => item.displayDate as string),
         ),
       ];
@@ -1053,9 +1097,7 @@ export default function CreateModal({
         ...(createResponse.eventId !== undefined
           ? [
               queryClient.invalidateQueries({
-                queryKey: queryKeys.actionItems.byEvent(
-                  createResponse.eventId,
-                ),
+                queryKey: queryKeys.actionItems.byEvent(createResponse.eventId),
               }),
             ]
           : []),
@@ -1216,14 +1258,22 @@ export default function CreateModal({
                     >
                       <img src="/icon/icons/label_small.svg" alt="" className="block shrink-0" />
 
-                      {labelStatus.type === 'default' ? (
+                      {!selectedLabel && labelStatus.type === 'default' ? (
                         <span className="whitespace-nowrap">레이블 없음</span>
                       ) : (
                         <div className="flex min-w-0 items-center gap-xsmall">
-                          <span className="max-w-[80px] truncate">{labelStatus.label}</span>
+                          <span className="max-w-[80px] truncate">
+                            {selectedLabel?.label ??
+                              (labelStatus.type === 'selected' ? labelStatus.label : '')}
+                          </span>
 
                           <img
-                            src={COLOR_ICON[labelStatus.color]}
+                            src={
+                              COLOR_ICON[
+                                selectedLabel?.color ??
+                                  (labelStatus.type === 'selected' ? labelStatus.color : 'green')
+                              ]
+                            }
                             alt=""
                             className="block shrink-0"
                           />
@@ -1234,7 +1284,7 @@ export default function CreateModal({
                     {isLabelModalOpen && (
                       <div className="absolute bottom-[calc(100%+8px)] left-0 z-30">
                         <LabelModal
-                          labels={labels}
+                          labels={selectableLabels}
                           onSelectLabel={handleSelectLabel}
                           onCreateLabel={handleCreateLabel}
                         />
