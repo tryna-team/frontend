@@ -6,12 +6,13 @@ interface ChecklistItemData {
   id: string;
   text: string;
   checked: boolean;
+  dateText?: string;
 }
 
 interface LinkedSchedule {
-  date: string;   // "오늘" 또는 "6월 30일" 등
-  time: string;   // "20:00"
-  title: string;  // "아빠 생신 식사"
+  date: string; // "오늘" 또는 "6월 30일" 등
+  time: string; // "20:00"
+  title: string; // "아빠 생신 식사"
 }
 
 interface ScheduleCardProps {
@@ -90,35 +91,22 @@ function ScheduleCard({
         </div>
       </button>
 
-      {linkedSchedule && (
-        onLinkedScheduleClick ? (
-          <button
-            type="button"
-            className="schedule-card-linked"
-            onClick={onLinkedScheduleClick}
-          >
-            <img
-              src="/icon/icons/linked_small.svg"
-              alt=""
-              className="schedule-card-linked-icon"
-            />
+      {linkedSchedule &&
+        (onLinkedScheduleClick ? (
+          <button type="button" className="schedule-card-linked" onClick={onLinkedScheduleClick}>
+            <img src="/icon/icons/linked_small.svg" alt="" className="schedule-card-linked-icon" />
             <span className="schedule-card-linked-text">
               {linkedSchedule.date} {linkedSchedule.time} {linkedSchedule.title}
             </span>
           </button>
         ) : (
           <div className="schedule-card-linked">
-            <img
-              src="/icon/icons/linked_small.svg"
-              alt=""
-              className="schedule-card-linked-icon"
-            />
+            <img src="/icon/icons/linked_small.svg" alt="" className="schedule-card-linked-icon" />
             <span className="schedule-card-linked-text">
               {linkedSchedule.date} {linkedSchedule.time} {linkedSchedule.title}
             </span>
           </div>
-        )
-      )}
+        ))}
 
       {checklist.length > 0 && (
         <Checklist
@@ -127,6 +115,9 @@ function ScheduleCard({
             label: item.text,
             status: item.checked ? 'done' : 'default',
             iconSize: 'small',
+            trailing: item.dateText
+              ? { type: 'date' as const, text: item.dateText }
+              : { type: 'none' as const },
           }))}
           onLeadingClick={(id) => onToggleItem?.(checklist[id].id)}
         />
