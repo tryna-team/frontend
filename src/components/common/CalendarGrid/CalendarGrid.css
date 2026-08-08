@@ -92,6 +92,13 @@
   display: flex !important;
   align-items: center !important;
 }
+/* 앞뒤 달 날짜 칸(격자 첫·마지막 줄)의 일정은 옅게 보여준다.
+   날짜 숫자가 흐린 것과 맞춰 "이번 달이 아니다"를 시각적으로 구분한다. */
+.fc-day-other .fc-event,
+.fc-day-other .fc-daygrid-more-link {
+  opacity: 0.4;
+}
+
 .fc-daygrid-more-link {
   font-family: var(--font-default);
   font-size: 11px !important;
