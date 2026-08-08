@@ -13,6 +13,7 @@ import LabelEditSheet from '@/components/common/Popup/BottomSheet/Label/LabelEdi
 import Setting from '@/components/common/Popup/BottomSheet/Setting';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useGuestConversionPrompt } from '@/hooks/useGuestConversionPrompt';
+import { useLabelColors } from '@/hooks/queries/useLabelColors';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
 import { generateDailyPath, PATH } from '@/routes/paths';
@@ -43,6 +44,7 @@ function HomePage() {
   const setMonth = useCalendarStore((s) => s.setMonth);
   const goToToday = useCalendarStore((s) => s.goToToday);
   const { promptIfGuest } = useGuestConversionPrompt();
+  const { getLabelColor } = useLabelColors();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
@@ -80,9 +82,7 @@ function HomePage() {
         day.previewEvents.map((event) => ({
           title: event.title,
           date: day.date,
-          // TODO: labelId가 응답에 들어왔으므로 라벨 목록(B108)의 색상과 이어야 한다.
-          // 라벨 연동 전까지는 기존과 동일한 임시 색상을 쓴다.
-          backgroundColor: CATEGORY_COLOR_MAP.yellow,
+          backgroundColor: CATEGORY_COLOR_MAP[getLabelColor(event.labelId)],
           textColor: '#1C1630',
           borderColor: 'transparent',
         })),

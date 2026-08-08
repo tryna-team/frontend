@@ -14,6 +14,7 @@ import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import type { CategoryColor } from '@/features/calendar/types';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useGuestConversionPrompt } from '@/hooks/useGuestConversionPrompt';
+import { useLabelColors } from '@/hooks/queries/useLabelColors';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
 import { actionItemService } from '@/apis/services/actionItemService';
@@ -87,25 +88,6 @@ interface BannerItem {
   date: string;
 }
 
-// B103 응답엔 라벨/카테고리 색상 필드가 아직 없어 임시로 고정 색상 사용
-// TODO: 백엔드에 카테고리 색상 필드(labelId) 추가되면 실제 값으로 교체
-const DEFAULT_CATEGORY_COLOR: CategoryColor = 'green';
-
-/**
- * 배너 색상 임시 팔레트.
- * 라벨 색상이 응답에 없어서 전부 같은 색이 되면 배너끼리 구분이 안 된다.
- * 피그마(00-2)의 배너가 초록 → 주황 순서라 그 순서대로 돌려 쓴다.
- * TODO: 응답에 labelId가 추가되면 라벨의 실제 색상으로 교체
- */
-const BANNER_COLOR_CYCLE: CategoryColor[] = [
-  'green',
-  'apricot',
-  'blue',
-  'pink',
-  'purple',
-  'yellow',
-];
-
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
@@ -143,6 +125,7 @@ function DailyPage() {
   const selectDate = useCalendarStore((s) => s.selectDate);
   const goToToday = useCalendarStore((s) => s.goToToday);
   const { promptIfGuest } = useGuestConversionPrompt();
+  const { getLabelColor } = useLabelColors();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createInputValue, setCreateInputValue] = useState('');
 
@@ -189,7 +172,7 @@ function DailyPage() {
   const schedules: ScheduleItem[] = (data?.events ?? []).map((event) => ({
     id: String(event.eventId),
     eventId: String(event.eventId),
-    categoryColor: DEFAULT_CATEGORY_COLOR,
+    categoryColor: getLabelColor(event.labelId),
     title: event.title,
     location: event.location ?? '',
     startTime: event.startTime ?? '',
@@ -244,7 +227,8 @@ function DailyPage() {
     return {
       id: `action-item-${item.actionItemId}`,
       eventId: String(item.parentEventId),
-      categoryColor: DEFAULT_CATEGORY_COLOR,
+      // 항목 자체에는 라벨이 없으므로 소속된 일정의 라벨 색을 따른다
+      categoryColor: getLabelColor(parentEvent?.labelId),
       title: item.title,
       location: '',
       startTime: formatTime(item.displayTime),
@@ -263,9 +247,9 @@ function DailyPage() {
   // date를 event.startDate가 아니라 selectedDate로 두는 이유: 여러 날 걸친 일정이
   // 중간 날짜 조회에도 내려오게 되면 startDate는 과거 날짜라 아래 필터에서 걸러진다.
   // B103은 날짜 단위 조회라 응답에 담긴 일정은 모두 그 날짜에 속한다고 봐도 된다.
-  const banners: BannerItem[] = allDayEvents.map((event, index) => ({
+  const banners: BannerItem[] = allDayEvents.map((event) => ({
     id: String(event.eventId),
-    categoryColor: BANNER_COLOR_CYCLE[index % BANNER_COLOR_CYCLE.length],
+    categoryColor: getLabelColor(event.labelId),
     title: event.title,
     dateText: formatBannerDateText(event.startDate, event.endDate, selectedDate),
     date: selectedDate,
