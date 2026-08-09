@@ -24,7 +24,7 @@ import DailyScheduleDetail from '@/features/event/components/DailyScheduleDetail
 import DailyScheduleCard, {
   type DailyScheduleTodoItem,
 } from '@/features/event/components/DailyScheduleCard';
-import QuickModal from '@/features/event/components/QuickModal';
+import QuickModal from '@/components/common/Popup/QuickModal';
 import ToastPopup from '@/components/common/Popup/ToastPopup';
 import type { ActionItemEditItem } from '@/features/event/components/edit/ActionItemEditItem';
 import EventEditBottomSheet, {

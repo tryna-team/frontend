@@ -74,6 +74,10 @@ export type CreateModalProps = {
   calendarStatus?: CalendarStatus;
   labelStatus?: LabelStatus;
   labels?: LabelItemData[];
+  // 라벨 생성 시트(LabelCreateSheet)에서 방금 새로 만든 라벨의 id. 값이 바뀔 때마다
+  // 그 라벨을 선택 상태로 반영한다(라벨 목록 관리 화면과 달리, 이벤트 생성 흐름에선
+  // 라벨을 새로 만들면 바로 그 라벨이 선택돼 있어야 자연스럽다).
+  pendingSelectedLabelId?: number | null;
   onInputChange?: (value: string) => void;
   onOpenCalendar?: () => void;
   onOpenLabel?: () => void;
@@ -340,6 +344,7 @@ export default function CreateModal({
   calendarStatus = { type: 'default' },
   labelStatus = { type: 'default' },
   labels = [],
+  pendingSelectedLabelId,
   onInputChange,
   onOpenCalendar,
   onOpenLabel,
@@ -371,6 +376,19 @@ export default function CreateModal({
   const [selectedLabelId, setSelectedLabelId] = useState<number | null>(
     labelStatus.type === 'selected' ? labelStatus.id : null,
   );
+
+  // pendingSelectedLabelId가 바뀔 때(라벨 생성 시트에서 방금 새 라벨을 만들었을 때)만
+  // 그 라벨을 선택 상태로 반영한다 — CreateModal은 그 사이 계속 마운트돼 있어
+  // selectedLabelId의 초기값(위 labelStatus)만으로는 갱신되지 않는다.
+  // (effect + setState 대신, "prop이 바뀌면 렌더 중에 state를 조정"하는 React 권장 패턴 —
+  // eslint react-hooks/set-state-in-effect가 지적하는 불필요한 추가 렌더링을 피한다)
+  const [appliedPendingLabelId, setAppliedPendingLabelId] = useState(pendingSelectedLabelId);
+  if (pendingSelectedLabelId !== appliedPendingLabelId) {
+    setAppliedPendingLabelId(pendingSelectedLabelId);
+    if (pendingSelectedLabelId != null) {
+      setSelectedLabelId(pendingSelectedLabelId);
+    }
+  }
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [hasRecommended, setHasRecommended] = useState(false);
   const [recommendedTitle, setRecommendedTitle] = useState('');

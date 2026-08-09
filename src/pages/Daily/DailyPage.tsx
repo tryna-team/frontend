@@ -7,6 +7,7 @@ import { useCanGoBack } from '@/hooks/useCanGoBack';
 import { useCalendarStore } from '@/stores';
 import Button from '@/components/common/Buttons/Button';
 import CreateModal from '@/components/common/CreateModal/CreateModal';
+import LabelCreateSheet from '@/components/common/Popup/BottomSheet/Label/LabelCreateSheet';
 import Header from '@/components/common/Header/Header';
 import WeekStrip from '@/features/calendar/components/WeekStrip';
 import ScheduleCard from '@/features/calendar/components/ScheduleCard';
@@ -127,6 +128,10 @@ function DailyPage() {
   const { promptIfGuest } = useGuestConversionPrompt();
   const { getLabelColor } = useLabelColors();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  // CreateModal(이벤트 생성 흐름)의 "새로운 레이블" → 라벨 생성 시트
+  const [isLabelCreateOpen, setIsLabelCreateOpen] = useState(false);
+  // 코드래빗 리뷰 반영: 라벨 생성 시트에서 방금 만든 라벨을 CreateModal에 선택 상태로 넘겨준다.
+  const [pendingSelectedLabelId, setPendingSelectedLabelId] = useState<number | null>(null);
   const [createInputValue, setCreateInputValue] = useState('');
 
   const isValidRouteDate = routeDate !== undefined && isValidDateParam(routeDate);
@@ -413,10 +418,24 @@ function DailyPage() {
         <CreateModal
           inputValue={createInputValue}
           initialScheduleDate={displayDate}
+          pendingSelectedLabelId={pendingSelectedLabelId}
           onInputChange={setCreateInputValue}
-          onCreateLabel={() => window.alert('새로운 라벨 추가 모달 연결 예정입니다.')}
+          onCreateLabel={() => setIsLabelCreateOpen(true)}
           onCreate={handleCreate}
-          onClose={() => setIsCreateModalOpen(false)}
+          onClose={() => {
+            setIsCreateModalOpen(false);
+            setPendingSelectedLabelId(null);
+          }}
+        />
+      )}
+
+      {isLabelCreateOpen && (
+        <LabelCreateSheet
+          onClose={() => setIsLabelCreateOpen(false)}
+          onComplete={(created) => {
+            setPendingSelectedLabelId(created.labelId);
+            setIsLabelCreateOpen(false);
+          }}
         />
       )}
     </div>
