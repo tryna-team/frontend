@@ -67,16 +67,6 @@ function YearCalendarPage() {
         <button type="button" className="year-nav-arrow" onClick={goToPrevYear} aria-label="이전 연도">
           ‹
         </button>
-        <button
-          type="button"
-          className="today-button"
-          onClick={() => {
-            setYear(new Date().getFullYear());
-            calendarRef.current?.getApi().today();
-          }}
-        >
-          오늘
-        </button>
         <button type="button" className="year-nav-arrow" onClick={goToNextYear} aria-label="다음 연도">
           ›
         </button>
