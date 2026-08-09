@@ -138,12 +138,10 @@ export default function EventEditBottomSheet({
       return;
     }
 
-    if (isRecurring) {
-      setIsScopeModalOpen(true);
-      return;
-    }
-
-    updateMutation.mutate({ updateScope: 'SINGLE', labelId });
+    // 반복이든 아니든 항상 QuickModal로 확인을 받는다 — 반복 일정이면 버튼 2개
+    // (SINGLE/THIS_AND_FUTURE 범위 선택), 반복이 아니면 버튼 1개("일정 수정")로
+    // 렌더링 시점에 갈린다.
+    setIsScopeModalOpen(true);
   };
 
   const openSchedule = () => {
@@ -334,19 +332,25 @@ export default function EventEditBottomSheet({
         <QuickModal
           message="일정을 수정하시겠습니까?"
           primaryAction={{
-            text: '이 일정만 수정',
+            text: isRecurring ? '이 일정만 수정' : '일정 수정',
             onClick: () => {
               setIsScopeModalOpen(false);
               updateMutation.mutate({ updateScope: 'SINGLE', labelId });
             },
           }}
-          secondaryAction={{
-            text: '이 일정과 이후 일정 모두 수정',
-            onClick: () => {
-              setIsScopeModalOpen(false);
-              updateMutation.mutate({ updateScope: 'THIS_AND_FUTURE', labelId });
-            },
-          }}
+          // 반복 일정일 때만 "이후 모든 일정도 수정" 옵션을 추가로 보여준다 —
+          // 반복이 아니면 버튼 1개("일정 수정")만 노출된다.
+          secondaryAction={
+            isRecurring
+              ? {
+                  text: '이 일정과 이후 일정 모두 수정',
+                  onClick: () => {
+                    setIsScopeModalOpen(false);
+                    updateMutation.mutate({ updateScope: 'THIS_AND_FUTURE', labelId });
+                  },
+                }
+              : undefined
+          }
           onClose={() => setIsScopeModalOpen(false)}
         />
       )}
