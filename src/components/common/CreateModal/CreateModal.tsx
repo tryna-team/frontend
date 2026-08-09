@@ -352,6 +352,7 @@ export default function CreateModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
   const [isRecommendationUnavailable, setIsRecommendationUnavailable] = useState(false);
+  const [hasRecommendationResponse, setHasRecommendationResponse] = useState(false);
   const [recommendationEditDraft, setRecommendationEditDraft] =
     useState<RecommendationEditDraft | null>(null);
   const [hasInputInteractionStarted, setHasInputInteractionStarted] = useState(false);
@@ -411,6 +412,11 @@ export default function CreateModal({
     recommendationCandidates.some((candidate) => candidate.selected && !candidate.title.trim());
   const recommendationKeyword = keyword || recommendedTitle || trimmedInput;
   const recommendationMessage = message || '에 필요한 체크리스트를 추천했어요.';
+  const showRecommendationHeader =
+    isRecommendMode &&
+    !isRecommendationUnavailable &&
+    hasRecommendationResponse &&
+    recommendationCandidates.length > 0;
 
   const propCalendarText =
     calendarStatus.type === 'default' ? '오늘 · 반복 없음' : `${calendarStatus.text}마다`;
@@ -619,6 +625,7 @@ export default function CreateModal({
         setRecommendationCandidates([]);
         setRecommendedTitle(latestParsedCandidate.titleCandidate ?? request.input);
         setIsRecommendationUnavailable(true);
+        setHasRecommendationResponse(false);
         hasRecommendedRef.current = true;
         setHasRecommended(true);
         setStep('recommendation');
@@ -672,6 +679,7 @@ export default function CreateModal({
 
         setRecommendationCandidates(candidates);
         setIsRecommendationUnavailable(false);
+        setHasRecommendationResponse(true);
         setRecommendedTitle(latestParsedCandidate.titleCandidate ?? request.input);
         hasRecommendedRef.current = true;
         setHasRecommended(true);
@@ -1377,7 +1385,7 @@ export default function CreateModal({
 
                   {isRecommendMode && (
                     <div className="flex w-full flex-col">
-                      {!isRecommendationUnavailable && (
+                      {showRecommendationHeader && (
                         <div className="flex w-full items-center justify-between px-1 py-2">
                           <p className="min-w-0 text-text-additional default-body-medium">
                             <span className="bg-gradient-to-l from-green-500 to-green-400 bg-clip-text text-transparent default-body-strong-medium">
@@ -1407,6 +1415,7 @@ export default function CreateModal({
                             <Checklist
                               items={renderedChecklistItems}
                               radioVariant="create"
+                              showDivider={false}
                               onLeadingClick={handleChecklistClick}
                             />
                           </div>
@@ -1415,6 +1424,7 @@ export default function CreateModal({
                             <Checklist
                               items={directAddChecklistItem}
                               radioVariant="create"
+                              showDivider={false}
                               onLeadingClick={handleChecklistClick}
                             />
                           </div>
