@@ -80,9 +80,13 @@ function ScheduleCard({
             />
             <span className="schedule-card-title-text default-body-large">{title}</span>
           </div>
-          <div className="schedule-card-location-wrap">
-            <span className="schedule-card-location">{location}</span>
-          </div>
+          {/* 장소가 없으면 아예 그리지 않는다. 빈 span도 line-height(20px)만큼 자리를
+              차지해서, 하위 항목 없는 카드에서 제목이 가운데로 밀려 보였다. */}
+          {location && (
+            <div className="schedule-card-location-wrap">
+              <span className="schedule-card-location">{location}</span>
+            </div>
+          )}
         </div>
         {/* 종일 일정은 시작·종료 시간이 없다. 값이 없으면 "~"만 남지 않도록 아예 렌더링하지 않는다 */}
         <div className="schedule-card-time">
@@ -109,18 +113,20 @@ function ScheduleCard({
         ))}
 
       {checklist.length > 0 && (
-        <Checklist
-          items={checklist.map((item, index) => ({
-            id: index,
-            label: item.text,
-            status: item.checked ? 'done' : 'default',
-            iconSize: 'small',
-            trailing: item.dateText
-              ? { type: 'date' as const, text: item.dateText }
-              : { type: 'none' as const },
-          }))}
-          onLeadingClick={(id) => onToggleItem?.(checklist[id].id)}
-        />
+        <div className="schedule-card-checklist-wrap">
+          <Checklist
+            items={checklist.map((item, index) => ({
+              id: index,
+              label: item.text,
+              status: item.checked ? 'done' : 'default',
+              iconSize: 'small',
+              trailing: item.dateText
+                ? { type: 'date' as const, text: item.dateText }
+                : { type: 'none' as const },
+            }))}
+            onLeadingClick={(id) => onToggleItem?.(checklist[id].id)}
+          />
+        </div>
       )}
     </div>
   );
