@@ -21,7 +21,7 @@ import { useAccountActions } from '@/hooks/useAccountActions';
 import { useAuthStore } from '@/stores/authStore';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
-import { generateDailyPath, PATH } from '@/routes/paths';
+import { generateDailyPath, generateEventPath, PATH } from '@/routes/paths';
 
 import './HomePage.css';
 
@@ -39,6 +39,11 @@ interface CalendarEvent {
   backgroundColor: string;
   textColor: string;
   borderColor: string;
+  /** 블록을 눌러 상세로 갈 때 쓰는 값. 반복 일정은 회차마다 occurrenceDate가 다르다 */
+  extendedProps: {
+    eventId: number;
+    occurrenceDate: string;
+  };
 }
 
 /** "yyyy-mm-dd"가 해당 연/월에 속하는지 (month는 1-based) */
@@ -196,6 +201,11 @@ function HomePage() {
           backgroundColor: CATEGORY_COLOR_MAP[getLabelColor(event.labelId)],
           textColor: '#1C1630',
           borderColor: 'transparent',
+          // occurrenceKey와 같은 기준(eventId + startDate)이라 반복 일정도 누른 회차로 열린다
+          extendedProps: {
+            eventId: event.eventId,
+            occurrenceDate: event.startDate,
+          },
         });
       }
     }
@@ -209,6 +219,13 @@ function HomePage() {
   const handleSelectDate = (date: string) => {
     selectDate(date);
     navigate(generateDailyPath(date));
+  };
+
+  // 날짜 빈 곳을 누르면 그 날의 데일리로, 일정 블록을 누르면 그 일정 상세로 간다.
+  // occurrenceDate를 함께 넘기는 건 데일리에서 넘어갈 때와 같은 규칙이다 —
+  // 반복 일정은 이게 없으면 어느 회차를 연 건지 상세 화면이 알 수 없다.
+  const handleSelectEvent = (eventId: number, occurrenceDate: string) => {
+    navigate(generateEventPath.view(String(eventId), occurrenceDate));
   };
 
   const handleCreate = (createdDate: string) => {
@@ -273,6 +290,7 @@ function HomePage() {
         events={visibleCalendarEvents}
         selectedDate={selectedDate}
         onSelectDate={handleSelectDate}
+        onSelectEvent={handleSelectEvent}
         onLongPressDate={handleLongPressDate}
         onSearchClick={() => setIsSearchOpen(true)}
         onViewToggleClick={() => setLabelSheetView('list')}
