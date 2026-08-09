@@ -17,8 +17,18 @@ export default function ToastPopup({
   onClose,
 }: ToastPopupProps) {
   return (
-    <Overlay className="flex items-center justify-center" onClick={onClose}>
-      {/* 카드 자체는 클릭을 막지 않는다 — 화면 어디를 눌러도(카드 포함) Overlay의
+    <Overlay
+      className="flex items-center justify-center"
+      onClick={(event) => {
+        // 코드래빗 리뷰 반영: 이 Overlay 자체가 ToastPopup을 다른 Overlay(예: LabelEditSheet)
+        // 안에 형제로 띄우는 화면에서는 DOM상 중첩된다. stopPropagation 없이 onClose만
+        // 부르면 이 클릭이 바깥 Overlay까지 버블링돼, 토스트만 닫으려던 탭이 그 바깥
+        // 시트까지 같이 닫아버리고(저장 안 한 입력을 날림) 만다.
+        event.stopPropagation();
+        onClose?.();
+      }}
+    >
+      {/* 카드 자체는 클릭을 막지 않는다 — 화면 어디를 눌러도(카드 포함) 위 Overlay의
           onClick(onClose)까지 그대로 버블링돼 토스트가 닫힌다. 확인 버튼만 자기
           onClick에서 전파를 막아, 누르면 onConfirm만 실행되고 곧바로 닫히지 않는다. */}
       <div
