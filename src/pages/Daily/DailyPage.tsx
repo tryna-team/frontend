@@ -130,6 +130,8 @@ function DailyPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   // CreateModal(이벤트 생성 흐름)의 "새로운 레이블" → 라벨 생성 시트
   const [isLabelCreateOpen, setIsLabelCreateOpen] = useState(false);
+  // 코드래빗 리뷰 반영: 라벨 생성 시트에서 방금 만든 라벨을 CreateModal에 선택 상태로 넘겨준다.
+  const [pendingSelectedLabelId, setPendingSelectedLabelId] = useState<number | null>(null);
   const [createInputValue, setCreateInputValue] = useState('');
 
   const isValidRouteDate = routeDate !== undefined && isValidDateParam(routeDate);
@@ -416,17 +418,24 @@ function DailyPage() {
         <CreateModal
           inputValue={createInputValue}
           initialScheduleDate={displayDate}
+          pendingSelectedLabelId={pendingSelectedLabelId}
           onInputChange={setCreateInputValue}
           onCreateLabel={() => setIsLabelCreateOpen(true)}
           onCreate={handleCreate}
-          onClose={() => setIsCreateModalOpen(false)}
+          onClose={() => {
+            setIsCreateModalOpen(false);
+            setPendingSelectedLabelId(null);
+          }}
         />
       )}
 
       {isLabelCreateOpen && (
         <LabelCreateSheet
           onClose={() => setIsLabelCreateOpen(false)}
-          onComplete={() => setIsLabelCreateOpen(false)}
+          onComplete={(created) => {
+            setPendingSelectedLabelId(created.labelId);
+            setIsLabelCreateOpen(false);
+          }}
         />
       )}
     </div>

@@ -9,6 +9,7 @@ import ColorPicker from '@/components/common/ColorPicker/ColorPicker';
 import Button from '@/components/common/Buttons/Button';
 import type { LabelColor } from '@/components/common/ActionRow/ActionRow.constant';
 import { useCalendarStore } from '@/stores';
+import type { CalendarLabel } from '@/stores/types';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import type { LabelListResponseData } from '@/apis/types/label';
 import {
@@ -22,7 +23,9 @@ const DEFAULT_COLOR: LabelColor = 'pink';
 
 type LabelCreateSheetProps = {
   onClose: () => void;
-  onComplete: () => void;
+  // 코드래빗 리뷰 반영: 생성된 라벨을 돌려줘야 이벤트 생성 흐름(CreateModal)에서
+  // 방금 만든 라벨을 바로 선택할 수 있다.
+  onComplete: (created: CalendarLabel) => void;
 };
 
 // 피그마 "1-10. 홈/일반 라벨 추가" — 이벤트 생성 흐름의 "새로운 레이블"(CreateModal)과
@@ -46,12 +49,13 @@ export default function LabelCreateSheet({ onClose, onComplete }: LabelCreateShe
     mutationFn: () =>
       labelService.createLabel({ name: trimmedName, color: toLabelColorCode(color) }),
     onSuccess: (created) => {
-      upsertLabel(toCalendarLabel(created));
+      const createdLabel = toCalendarLabel(created);
+      upsertLabel(createdLabel);
       queryClient.setQueryData<LabelListResponseData>(
         queryKeys.labels.list(),
         (old) => (old ? { labels: [...old.labels, created] } : { labels: [created] }),
       );
-      onComplete();
+      onComplete(createdLabel);
     },
   });
 

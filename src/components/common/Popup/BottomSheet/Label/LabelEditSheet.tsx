@@ -8,6 +8,7 @@ import Header from '@/components/common/Header/Header';
 import Input from '@/components/common/Input/Input';
 import ColorPicker from '@/components/common/ColorPicker/ColorPicker';
 import QuickModal from '@/components/common/Popup/QuickModal';
+import ToastPopup from '@/components/common/Popup/ToastPopup';
 import Button from '@/components/common/Buttons/Button';
 import type { LabelColor } from '@/components/common/ActionRow/ActionRow.constant';
 import { useCalendarStore } from '@/stores';
@@ -41,6 +42,7 @@ export default function LabelEditSheet({
   const [name, setName] = useState(label.name);
   const [color, setColor] = useState<LabelColor>(label.color as LabelColor);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeleteErrorOpen, setIsDeleteErrorOpen] = useState(false);
 
   const upsertLabel = useCalendarStore((s) => s.upsertLabel);
   const removeLabel = useCalendarStore((s) => s.removeLabel);
@@ -110,7 +112,23 @@ export default function LabelEditSheet({
       setIsDeleteConfirmOpen(false);
       onBack();
     },
+    // 코드래빗 리뷰 반영: 실패해도 QuickModal이 그대로 떠 있고 아무 안내가 없던 문제 —
+    // EventViewPage.tsx의 일정 삭제 실패와 동일하게 확인 모달을 닫고 토스트로 안내한다.
+    onError: () => {
+      setIsDeleteConfirmOpen(false);
+      setIsDeleteErrorOpen(true);
+    },
   });
+
+  // EventViewPage.tsx의 handleDelete와 동일한 방식: 응답이 오기 전에 다시 누르면
+  // DELETE가 중복으로 나간다 — 이미 삭제된 labelId에 대고 또 요청하게 돼 위험하다.
+  const handleDeleteLabel = () => {
+    if (deleteMutation.isPending) {
+      return;
+    }
+
+    deleteMutation.mutate();
+  };
 
   return (
     <Overlay className="flex items-end justify-center" onClick={onBack}>
@@ -175,9 +193,17 @@ export default function LabelEditSheet({
           message="이 라벨을 삭제하시겠습니까?"
           primaryAction={{
             text: '라벨 삭제',
-            onClick: () => deleteMutation.mutate(),
+            onClick: handleDeleteLabel,
           }}
           onClose={() => setIsDeleteConfirmOpen(false)}
+        />
+      )}
+
+      {isDeleteErrorOpen && (
+        <ToastPopup
+          GuideText="라벨을 삭제하지 못했어요."
+          DetailText="잠시 후 다시 시도해주세요."
+          onClose={() => setIsDeleteErrorOpen(false)}
         />
       )}
     </Overlay>

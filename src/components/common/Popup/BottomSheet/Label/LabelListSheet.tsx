@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus } from 'lucide-react';
 
 import Overlay from '@/components/common/Popup/Overlay';
 import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
@@ -13,15 +14,6 @@ import type { CalendarLabel } from '@/stores/types';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import type { LabelListResponseData } from '@/apis/types/label';
 import { labelService, toCalendarLabel } from '@/apis/services/labelService';
-
-// 테스트를 위한 임시 데이터 — B108-1 API 응답이 비어있거나 호출에 실패하면 이 목록으로 대체한다.
-// 실제 라벨 API가 안정적으로 연동되면 이 폴백은 제거해야 한다.
-const MOCK_LABELS: CalendarLabel[] = [
-  { labelId: 1, externalCalendarId: null, name: '트라이나', labelType: 'USER', color: 'yellow', isDefault: true, isVisible: true, sortOrder: 0 },
-  { labelId: 2, externalCalendarId: null, name: '동아리', labelType: 'USER', color: 'pink', isDefault: false, isVisible: true, sortOrder: 1 },
-  { labelId: 3, externalCalendarId: null, name: 'UMC', labelType: 'USER', color: 'apricot', isDefault: false, isVisible: true, sortOrder: 2 },
-  { labelId: 4, externalCalendarId: null, name: '학교', labelType: 'USER', color: 'purple', isDefault: false, isVisible: false, sortOrder: 3 },
-];
 
 // Long Press로 순서를 바꾸는 동안, 행 하나를 몇 px 눌러야 다음 순서로 넘어가는지
 // 판단하는 기준 — ActionRow 한 행의 높이(h-[52px])와 맞춘다.
@@ -55,21 +47,16 @@ export default function LabelListSheet({
   const upsertLabel = useCalendarStore((s) => s.upsertLabel);
   const queryClient = useQueryClient();
 
-  const { data, isError } = useQuery({
+  const { data } = useQuery({
     queryKey: queryKeys.labels.list(),
     queryFn: labelService.getLabels,
   });
 
   useEffect(() => {
     if (data) {
-      const mapped = data.labels.map(toCalendarLabel);
-      // 테스트를 위한 임시 데이터 — 응답이 비어있으면(로컬에 실 백엔드가 없는 경우 등) mock으로 대체
-      setLabels(mapped.length > 0 ? mapped : MOCK_LABELS);
-    } else if (isError) {
-      // 테스트를 위한 임시 데이터 — API 호출 자체가 실패하면 mock으로 대체
-      setLabels(MOCK_LABELS);
+      setLabels(data.labels.map(toCalendarLabel));
     }
-  }, [data, isError, setLabels]);
+  }, [data, setLabels]);
 
   // 피그마 "1-6" 두 variant(계정 연동 전/후) 대응: Gmail 섹션은 외부 캘린더 연동으로 생긴
   // 라벨(labelType==='EXTERNAL_CALENDAR')이 하나라도 있을 때만 표시한다.
@@ -149,6 +136,15 @@ export default function LabelListSheet({
     }
   };
 
+  // 코드래빗 리뷰 반영: 컴포넌트가 언마운트될 때도 살아있는 롱프레스 타이머를 정리한다.
+  useEffect(() => {
+    return () => {
+      if (pressTimerRef.current !== null) {
+        window.clearTimeout(pressTimerRef.current);
+      }
+    };
+  }, []);
+
   const endDrag = () => {
     isDraggingRef.current = false;
     dragRef.current = null;
@@ -179,7 +175,13 @@ export default function LabelListSheet({
       };
       setDraggingLabelId(label.labelId);
       suppressNextClickRef.current = true;
-      currentTarget.setPointerCapture(pointerId);
+      // 이 타이머가 발동하는 시점엔 이미 포인터가 떨어져 나갔을 수 있다(아래 cleanup
+      // 참고) — 그 경우 setPointerCapture는 존재하지 않는 포인터에 NotFoundError를 던진다.
+      try {
+        currentTarget.setPointerCapture(pointerId);
+      } catch {
+        // 포인터가 이미 사라진 경우 캡처는 포기한다
+      }
     }, LONG_PRESS_MS);
 
     // 타이머가 끝나기 전 스크롤성 이동이면 롱프레스 취소
@@ -193,7 +195,12 @@ export default function LabelListSheet({
       }
     };
     window.addEventListener('pointermove', cancelIfScrolled);
-    const cleanup = () => window.removeEventListener('pointermove', cancelIfScrolled);
+    const cleanup = () => {
+      window.removeEventListener('pointermove', cancelIfScrolled);
+      // 드래그가 시작되지 않은 채(=단순 탭) 포인터가 먼저 떨어지면, 아직 살아있는
+      // 롱프레스 타이머를 반드시 지운다 — 안 지우면 나중에 뒤늦게 발동해 상태를 오염시킨다.
+      if (!dragRef.current) clearPressTimer();
+    };
     window.addEventListener('pointerup', cleanup, { once: true });
     window.addEventListener('pointercancel', cleanup, { once: true });
   };
@@ -217,10 +224,23 @@ export default function LabelListSheet({
 
   const handleRowPointerUp = () => {
     clearPressTimer();
-    if (dragRef.current) {
-      commitReorder(userLabelOrder);
+    const drag = dragRef.current;
+    if (drag) {
+      // 실제로 순서가 바뀐 경우에만 API를 호출한다(눌렀다 그대로 뗀 경우 등, 변화가
+      // 없으면 굳이 요청을 보내지 않는다)
+      const changed = userLabelOrder.some((l, i) => l.labelId !== drag.snapshot[i]?.labelId);
+      if (changed) {
+        commitReorder(userLabelOrder);
+      }
       endDrag();
     }
+
+    // setPointerCapture 이후엔 click 이벤트가 항상 뒤따르지 않는다(모바일 터치에서 흔함).
+    // handleRowClick이 소비할 기회를 준 뒤, 다음 틱에는 스스로 풀어서 다음 탭이
+    // 영원히 무시되는 일이 없게 한다.
+    window.setTimeout(() => {
+      suppressNextClickRef.current = false;
+    }, 0);
   };
 
   const handleRowClick = (label: CalendarLabel) => {
@@ -270,9 +290,13 @@ export default function LabelListSheet({
               onPointerUp={handleRowPointerUp}
               onPointerCancel={endDrag}
               className={
+                // ContentBox 내부 wrapper가 items-start라 w-full 없이는 이 행이 내용
+                // 크기로 쪼그라들어 accessory(>)가 라벨명 바로 옆에 붙어버린다 — 항상 w-full.
+                // touch-none은 드래그 중인 행에만 건다(항상 걸려 있으면 드래그를 시작하지
+                // 않았을 때도 그 행 위에서 터치 스크롤이 막힌다).
                 draggingLabelId === label.labelId
-                  ? 'touch-none rounded-medium bg-background-white shadow-[0px_4px_8px_rgba(0,0,0,0.08)]'
-                  : 'touch-none'
+                  ? 'w-full touch-none rounded-medium bg-background-white shadow-[0px_4px_8px_rgba(0,0,0,0.08)]'
+                  : 'w-full'
               }
             >
               <ActionRow
@@ -296,15 +320,14 @@ export default function LabelListSheet({
             onClick={onCreateLabel}
             className="box-border flex h-[52px] w-full min-w-0 items-center gap-3 self-stretch px-1 text-left"
           >
-            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-text-default">
-              <span
-                aria-hidden="true"
-                className="size-3 bg-icon-white"
-                style={{
-                  WebkitMask: "url('/icon/icons/plus_medium.svg') center / contain no-repeat",
-                  mask: "url('/icon/icons/plus_medium.svg') center / contain no-repeat",
-                }}
-              />
+            {/* 피그마 "Icons/MainCTAButton"(4463:62573) 실측: 24px 영역 안에 원이 꽉 차지
+                않고 위아래 9.38%씩 여백이 있어 원 지름이 약 20px(size-5) — 다른 행의
+                라벨 색상 아이콘(medium, 20px)과도 크기가 맞음.
+                기존 plus_medium.svg는 stroke-opacity 30%짜리 다른 용도 아이콘이라 마스크로
+                덮어써도 흐릿하게 보여 부적합 — Button.tsx의 MainCTAButton variant가 이미
+                같은 "원+흰색 플러스"를 lucide Plus로 그리고 있어 그 방식을 그대로 재사용. */}
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-text-default">
+              <Plus className="size-3.5 text-icon-white" strokeWidth={2} />
             </span>
             <span className="min-w-0 truncate text-text-default default-body-large">라벨 추가</span>
           </button>

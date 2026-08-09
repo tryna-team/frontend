@@ -103,6 +103,8 @@ function HomePage() {
   // CreateModal(이벤트 생성 흐름)의 "새로운 레이블" → 라벨 생성 시트. labelSheetView와는
   // 별개 흐름(CreateModal이 뒤에 계속 열려 있는 채로 위에 뜬다)이라 상태를 분리한다.
   const [isLabelCreateForEventOpen, setIsLabelCreateForEventOpen] = useState(false);
+  // 코드래빗 리뷰 반영: 라벨 생성 시트에서 방금 만든 라벨을 CreateModal에 선택 상태로 넘겨준다.
+  const [pendingSelectedLabelId, setPendingSelectedLabelId] = useState<number | null>(null);
   // 계정 관리 확인 모달. 되돌릴 수 없거나 영향이 큰 동작이라 한 번 더 확인받는다.
   const [accountConfirm, setAccountConfirm] = useState<'logout' | 'delete' | null>(null);
 
@@ -232,6 +234,8 @@ function HomePage() {
   const handleCreateModalClose = () => {
     setIsCreateModalOpen(false);
     setInitialCreateDate(null);
+    // CreateModal이 언마운트되므로, 다음에 새로 열렸을 때 지난 선택이 새어 들어가지 않게 초기화
+    setPendingSelectedLabelId(null);
   };
 
   // "오늘" 버튼은 goToToday로 연/월/선택날짜를 한 번에 오늘로 되돌린다.
@@ -284,6 +288,7 @@ function HomePage() {
         <CreateModal
           inputValue={createInputValue}
           initialScheduleDate={initialCreateDate ?? undefined}
+          pendingSelectedLabelId={pendingSelectedLabelId}
           onInputChange={setCreateInputValue}
           onCreateLabel={() => setIsLabelCreateForEventOpen(true)}
           onCreate={handleCreate}
@@ -294,7 +299,10 @@ function HomePage() {
       {isLabelCreateForEventOpen && (
         <LabelCreateSheet
           onClose={() => setIsLabelCreateForEventOpen(false)}
-          onComplete={() => setIsLabelCreateForEventOpen(false)}
+          onComplete={(created) => {
+            setPendingSelectedLabelId(created.labelId);
+            setIsLabelCreateForEventOpen(false);
+          }}
         />
       )}
 
@@ -330,6 +338,7 @@ function HomePage() {
 
       {isSettingOpen && (
         <Setting
+          isMember={isMember}
           onClose={() => setIsSettingOpen(false)}
           onOpenTerms={() => console.log('이용 약관(연동 예정)')}
           onOpenPrivacy={() => console.log('개인정보 처리 방침(연동 예정)')}
