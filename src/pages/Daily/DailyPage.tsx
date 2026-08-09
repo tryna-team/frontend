@@ -197,8 +197,8 @@ function DailyPage() {
   // 부모 일정 날짜에는 시간형과 비시간형 하위 항목을 모두 표시한다.
   const eventActionItemQueries = useQueries({
     queries: schedules.map((schedule) => ({
-      queryKey: queryKeys.actionItems.byEvent(schedule.eventId),
-      queryFn: () => actionItemService.getByEvent(schedule.eventId),
+      queryKey: queryKeys.actionItems.byEvent(schedule.eventId, selectedDate),
+      queryFn: () => actionItemService.getByEvent(schedule.eventId, selectedDate),
     })),
   });
 
@@ -337,7 +337,7 @@ function DailyPage() {
 
   // 일정 카드 -> EventView 이동
   const handleScheduleClick = (eventId: string) => {
-    navigate(generateEventPath.view(eventId));
+    navigate(generateEventPath.view(eventId, selectedDate));
   };
 
   // Header: 선택된 날짜 표시

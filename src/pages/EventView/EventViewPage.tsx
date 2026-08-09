@@ -1,19 +1,6 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import {
-  Navigate,
-  useNavigate,
-  useParams,
-} from 'react-router';
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, isValid, parseISO } from 'date-fns';
 
 import Header from '@/components/common/Header/Header';
@@ -40,10 +27,7 @@ import { queryKeys } from '@/hooks/queries/queryKeys';
 import { eventDetailService } from '@/apis/services/eventDetailService';
 import { actionItemService } from '@/apis/services/actionItemService';
 import { labelService, toCalendarLabel } from '@/apis/services/labelService';
-import type {
-  ActionItemCompletionStatus,
-  EventActionItemResponse,
-} from '@/apis/types/actionItem';
+import type { ActionItemCompletionStatus, EventActionItemResponse } from '@/apis/types/actionItem';
 import type {
   EventDetailResponseData,
   RecurrenceDayOfWeek,
@@ -114,6 +98,8 @@ function EventViewPage() {
 
   // URL에서 조회할 일정 ID를 읽음
   const { eventId } = useParams<{ eventId: string }>();
+  const [searchParams] = useSearchParams();
+  const occurrenceDate = searchParams.get('occurrenceDate');
   const canGoBack = useCanGoBack();
   const labels = useCalendarStore((s) => s.labels);
   const setLabels = useCalendarStore((s) => s.setLabels);
@@ -149,8 +135,8 @@ function EventViewPage() {
     isPending: isActionItemsPending,
     isError: isActionItemsError,
   } = useQuery({
-    queryKey: queryKeys.actionItems.byEvent(eventId ?? ''),
-    queryFn: () => actionItemService.getByEvent(eventId as string),
+    queryKey: queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
+    queryFn: () => actionItemService.getByEvent(eventId as string, occurrenceDate ?? undefined),
     enabled: !!eventId,
   });
 
@@ -212,9 +198,7 @@ function EventViewPage() {
   };
 
   const pendingActionItemIdsRef = useRef(new Set<number>());
-  const [pendingActionItemIds, setPendingActionItemIds] = useState<Set<number>>(
-    () => new Set(),
-  );
+  const [pendingActionItemIds, setPendingActionItemIds] = useState<Set<number>>(() => new Set());
 
   const floatingButtonsContent = useMemo(
     () => (
@@ -250,7 +234,10 @@ function EventViewPage() {
         actionItemStatus: status,
       }),
     onMutate: async ({ actionItemId, status }) => {
-      const eventItemsQueryKey = queryKeys.actionItems.byEvent(eventId ?? '');
+      const eventItemsQueryKey = queryKeys.actionItems.byEvent(
+        eventId ?? '',
+        occurrenceDate ?? undefined,
+      );
 
       pendingActionItemIdsRef.current.add(actionItemId);
       setPendingActionItemIds(new Set(pendingActionItemIdsRef.current));
@@ -261,19 +248,15 @@ function EventViewPage() {
         ?.items.find((item) => item.actionItemId === actionItemId)?.actionItemStatus;
 
       // 응답 전에도 체크 상태를 즉시 반영한다.
-      queryClient.setQueryData<EventActionItemResponse>(
-        eventItemsQueryKey,
-        (current) =>
-          current
-            ? {
-                ...current,
-                items: current.items.map((item) =>
-                  item.actionItemId === actionItemId
-                    ? { ...item, actionItemStatus: status }
-                    : item,
-                ),
-              }
-            : current,
+      queryClient.setQueryData<EventActionItemResponse>(eventItemsQueryKey, (current) =>
+        current
+          ? {
+              ...current,
+              items: current.items.map((item) =>
+                item.actionItemId === actionItemId ? { ...item, actionItemStatus: status } : item,
+              ),
+            }
+          : current,
       );
 
       return { previousStatus };
@@ -307,7 +290,7 @@ function EventViewPage() {
 
       const invalidations = [
         queryClient.invalidateQueries({
-          queryKey: queryKeys.actionItems.byEvent(eventId ?? ''),
+          queryKey: queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
         }),
       ];
 
@@ -324,9 +307,7 @@ function EventViewPage() {
   });
 
   const handleToggleItem = (id: string) => {
-    const actionItem = actionItemsData?.items.find(
-      (item) => String(item.actionItemId) === id,
-    );
+    const actionItem = actionItemsData?.items.find((item) => String(item.actionItemId) === id);
 
     if (!actionItem || pendingActionItemIdsRef.current.has(actionItem.actionItemId)) {
       return;
@@ -334,14 +315,8 @@ function EventViewPage() {
 
     actionItemStatusMutation.mutate({
       actionItemId: actionItem.actionItemId,
-      status:
-        actionItem.actionItemStatus === 'COMPLETED'
-          ? 'PENDING'
-          : 'COMPLETED',
-      displayDate:
-        actionItem.itemType === 'TIMED_ACTION'
-          ? actionItem.displayDate
-          : null,
+      status: actionItem.actionItemStatus === 'COMPLETED' ? 'PENDING' : 'COMPLETED',
+      displayDate: actionItem.itemType === 'TIMED_ACTION' ? actionItem.displayDate : null,
     });
   };
 
@@ -357,8 +332,7 @@ function EventViewPage() {
         actionItemStatusMutation.mutate({
           actionItemId: item.actionItemId,
           status: 'COMPLETED',
-          displayDate:
-            item.itemType === 'TIMED_ACTION' ? item.displayDate : null,
+          displayDate: item.itemType === 'TIMED_ACTION' ? item.displayDate : null,
         });
       });
   };
@@ -424,11 +398,7 @@ function EventViewPage() {
       />
 
       <div className="event-view-page-content">
-        <ScheduleBanner
-          categoryColor={categoryColor}
-          title={eventDetail.eventTitle}
-          dateText=""
-        />
+        <ScheduleBanner categoryColor={categoryColor} title={eventDetail.eventTitle} dateText="" />
 
         <DailyScheduleDetail
           categoryColor={categoryColor}

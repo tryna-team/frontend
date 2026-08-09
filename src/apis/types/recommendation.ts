@@ -53,7 +53,6 @@ export interface ActionItemSaveItem {
   createdBy: ActionItemCreatedBy;
   occurrenceDate?: string | null;
   displayDate?: string | null;
-  displayEndDate?: string | null;
   displayTime?: string | null;
   offsetDays?: number | null;
   sourceTemplateId?: string | null;

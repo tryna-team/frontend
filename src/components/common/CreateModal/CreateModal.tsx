@@ -938,7 +938,8 @@ export default function CreateModal({
     const nextDisplayTime = isTimedAction
       ? recommendationEditDraft.hasTimeChanged
         ? normalizeTime(recommendationEditDraft.startTime)
-        : recommendationEditDraft.originalDisplayTime
+        : (recommendationEditDraft.originalDisplayTime ??
+          normalizeTime(recommendationEditDraft.startTime))
       : null;
     const hasScheduleChanged =
       nextItemType !== recommendationEditDraft.originalItemType ||
@@ -1246,31 +1247,34 @@ export default function CreateModal({
             recommendationCandidates.length > 0
               ? {
                   // 생성 모달의 add 상태인 항목만 최종 저장한다.
-                  items: selectedCandidates.map((candidate) => ({
-                    title: candidate.title,
-                    itemType: candidate.apiItemType ?? 'UNRESOLVED',
-                    createdBy:
-                      candidate.createdBy === 'USER'
-                        ? 'USER'
-                        : candidate.edited
-                          ? 'USER_EDITED'
-                          : 'SYSTEM',
-                    occurrenceDate: candidate.displayDate ?? format(startDate, 'yyyy-MM-dd'),
-                    displayDate:
-                      candidate.apiItemType === 'TIMED_ACTION'
-                        ? (candidate.displayDate ?? null)
-                        : null,
-                    displayEndDate:
-                      candidate.apiItemType === 'TIMED_ACTION'
-                        ? (candidate.displayEndDate ?? null)
-                        : null,
-                    displayTime:
-                      candidate.apiItemType === 'TIMED_ACTION'
-                        ? formatActionItemDisplayTime(candidate.displayDate, candidate.displayTime)
-                        : null,
-                    offsetDays: candidate.offsetDays ?? null,
-                    sourceTemplateId: candidate.sourceTemplateId ?? null,
-                  })),
+                  items: selectedCandidates.map((candidate) => {
+                    const apiItemType =
+                      candidate.apiItemType ??
+                      (candidate.itemType === 'TIMED_ACTION' ? 'TIMED_ACTION' : 'UNTIMED_PREP');
+
+                    return {
+                      title: candidate.title,
+                      itemType: apiItemType,
+                      createdBy:
+                        candidate.createdBy === 'USER'
+                          ? 'USER'
+                          : candidate.edited
+                            ? 'USER_EDITED'
+                            : 'SYSTEM',
+                      occurrenceDate: format(startDate, 'yyyy-MM-dd'),
+                      displayDate:
+                        apiItemType === 'TIMED_ACTION' ? (candidate.displayDate ?? null) : null,
+                      displayTime:
+                        apiItemType === 'TIMED_ACTION'
+                          ? formatActionItemDisplayTime(
+                              candidate.displayDate,
+                              candidate.displayTime,
+                            )
+                          : null,
+                      offsetDays: candidate.offsetDays ?? null,
+                      sourceTemplateId: candidate.sourceTemplateId ?? null,
+                    };
+                  }),
                   // 제외·수정 여부도 추천 개선용 피드백으로 전달한다.
                   feedbackLogs: recommendationCandidates
                     .filter((candidate) => candidate.createdBy !== 'USER')
