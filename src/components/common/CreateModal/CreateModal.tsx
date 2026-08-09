@@ -197,46 +197,6 @@ const mapRecommendationCandidate = (
   edited: false,
 });
 
-// 추천 서버 없이 저장·상태 변경 흐름을 확인하는 개발용 항목이다.
-const createDevelopmentFallbackCandidates = (displayDate: string): RecommendationCandidate[] => [
-  {
-    candidateId: 'development-timed-1',
-    title: '필요한 준비물 챙기기',
-    itemType: 'TIMED_ACTION',
-    apiItemType: 'TIMED_ACTION',
-    sourceTemplateId: null,
-    offsetDays: 0,
-    originalTitle: '필요한 준비물 챙기기',
-    displayDate,
-    selected: true,
-    edited: false,
-  },
-  {
-    candidateId: 'development-timed-2',
-    title: '참석자에게 일정 공유하기',
-    itemType: 'TIMED_ACTION',
-    apiItemType: 'TIMED_ACTION',
-    sourceTemplateId: null,
-    offsetDays: 0,
-    originalTitle: '참석자에게 일정 공유하기',
-    displayDate,
-    selected: true,
-    edited: false,
-  },
-  {
-    candidateId: 'development-untimed-1',
-    title: '일정 세부 내용 확인하기',
-    itemType: 'CHECKLIST',
-    apiItemType: 'UNTIMED_PREP',
-    sourceTemplateId: null,
-    offsetDays: null,
-    originalTitle: '일정 세부 내용 확인하기',
-    displayDate: null,
-    selected: true,
-    edited: false,
-  },
-];
-
 const hasRecommendationFailed = (response: RecommendationResponse) =>
   response.suggestionStatus === 'ERROR' || response.suggestionStatus === 'EMPTY';
 
@@ -391,6 +351,7 @@ export default function CreateModal({
   const [hasEndTimeChanged, setHasEndTimeChanged] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
+  const [isRecommendationUnavailable, setIsRecommendationUnavailable] = useState(false);
   const [recommendationEditDraft, setRecommendationEditDraft] =
     useState<RecommendationEditDraft | null>(null);
   const [hasInputInteractionStarted, setHasInputInteractionStarted] = useState(false);
@@ -654,13 +615,12 @@ export default function CreateModal({
       const draftRevision = draftRevisionRef.current;
       draftRevisionRef.current += 1;
       setLoadingRecommendations(true);
+      setIsRecommendationUnavailable(false);
 
-      const applyDevelopmentFallback = () => {
-        const fallbackDate =
-          latestParsedCandidate.dateCandidate ?? format(startDateRef.current, 'yyyy-MM-dd');
-
-        setRecommendationCandidates(createDevelopmentFallbackCandidates(fallbackDate));
+      const showRecommendationUnavailable = () => {
+        setRecommendationCandidates([]);
         setRecommendedTitle(latestParsedCandidate.titleCandidate ?? request.input);
+        setIsRecommendationUnavailable(true);
         hasRecommendedRef.current = true;
         setHasRecommended(true);
         setStep('recommendation');
@@ -699,14 +659,7 @@ export default function CreateModal({
         }
 
         if (hasRecommendationFailed(response) || !response.suggestions?.length) {
-          if (import.meta.env.DEV) {
-            applyDevelopmentFallback();
-            return;
-          }
-
-          // TODO: 공통 추천 오류 UI가 준비되면 alert을 교체한다.
-          window.alert('체크리스트 추천에 실패했습니다. 잠시 후 다시 시도해주세요.');
-          setStep('input');
+          showRecommendationUnavailable();
           return;
         }
 
@@ -715,26 +668,19 @@ export default function CreateModal({
           .filter((candidate) => candidate.title.length > 0);
 
         if (candidates.length === 0) {
-          window.alert('추천할 체크리스트를 찾지 못했습니다.');
-          setStep('input');
+          showRecommendationUnavailable();
           return;
         }
 
         setRecommendationCandidates(candidates);
+        setIsRecommendationUnavailable(false);
         setRecommendedTitle(latestParsedCandidate.titleCandidate ?? request.input);
         hasRecommendedRef.current = true;
         setHasRecommended(true);
         setStep('recommendation');
       } catch {
         if (!controller.signal.aborted && request.revision === revisionRef.current) {
-          if (import.meta.env.DEV) {
-            applyDevelopmentFallback();
-            return;
-          }
-
-          // TODO: 공통 추천 오류 UI가 준비되면 alert을 교체한다.
-          window.alert('체크리스트 추천 중 오류가 발생했습니다.');
-          setStep('input');
+          showRecommendationUnavailable();
         }
       } finally {
         if (request.revision === revisionRef.current) {
@@ -1091,6 +1037,8 @@ export default function CreateModal({
     }
 
     if (id === ADD_CHECKLIST_ITEM_ID) {
+      // 직접 추가 항목이 생기면 모달 확장 공간을 위해 오류 안내를 닫는다.
+      setIsRecommendationUnavailable(false);
       addManualCandidate({
         candidateId: createManualCandidateId(),
         title: '',
@@ -1425,10 +1373,18 @@ export default function CreateModal({
                 height: visualViewportRect.height,
               }}
             >
-              <Frame
-                className="!items-start !overflow-visible max-w-[385px] gap-0.5 p-3"
-                aria-labelledby={titleId}
-              >
+              <div className="flex w-full max-w-[385px] flex-col gap-2">
+                {isRecommendationUnavailable && (
+                  <ToastPopup
+                    inline
+                    GuideText="제안을 불러오지 못했습니다. 다시 시도해주세요."
+                  />
+                )}
+
+                <Frame
+                  className="w-full !max-w-none !items-start !overflow-visible gap-0.5 p-3"
+                  aria-labelledby={titleId}
+                >
                 <h2 id={titleId} className="sr-only">
                   일정 생성
                 </h2>
@@ -1437,15 +1393,17 @@ export default function CreateModal({
 
                 {isRecommendMode && (
                   <div className="flex w-full flex-col">
-                    <div className="flex w-full items-center justify-between px-1 py-2">
-                      <p className="min-w-0 text-text-additional default-body-medium">
-                        <span className="bg-gradient-to-l from-green-500 to-green-400 bg-clip-text text-transparent default-body-strong-medium">
-                          {recommendationKeyword}
-                        </span>
+                    {!isRecommendationUnavailable && (
+                      <div className="flex w-full items-center justify-between px-1 py-2">
+                        <p className="min-w-0 text-text-additional default-body-medium">
+                          <span className="bg-gradient-to-l from-green-500 to-green-400 bg-clip-text text-transparent default-body-strong-medium">
+                            {recommendationKeyword}
+                          </span>
 
-                        {recommendationMessage}
-                      </p>
-                    </div>
+                          {recommendationMessage}
+                        </p>
+                      </div>
+                    )}
 
                     <div
                       aria-disabled={isSaving}
@@ -1564,8 +1522,8 @@ export default function CreateModal({
                   </div>
                 </div>
               </Frame>
-
             </div>
+          </div>
           </Overlay>,
           document.body,
         )}
