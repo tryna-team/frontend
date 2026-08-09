@@ -100,6 +100,7 @@ function EventViewPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const [searchParams] = useSearchParams();
   const occurrenceDate = searchParams.get('occurrenceDate');
+  const viewDate = occurrenceDate ?? null;
   const canGoBack = useCanGoBack();
   const labels = useCalendarStore((s) => s.labels);
   const setLabels = useCalendarStore((s) => s.setLabels);
@@ -135,8 +136,8 @@ function EventViewPage() {
     isPending: isActionItemsPending,
     isError: isActionItemsError,
   } = useQuery({
-    queryKey: queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
-    queryFn: () => actionItemService.getByEvent(eventId as string, occurrenceDate ?? undefined),
+    queryKey: queryKeys.actionItems.byEvent(eventId ?? '', viewDate ?? undefined),
+    queryFn: () => actionItemService.getByEvent(eventId as string, viewDate ?? undefined),
     enabled: !!eventId,
   });
 
@@ -177,7 +178,7 @@ function EventViewPage() {
         // 하므로 현재 보고 있는 occurrenceDate를 우선 전달하도록 한다. occurrenceDate가
         // 없으면 eventDetail.startDate를 폴백으로 사용한다. 반복 일정이 아니면 null.
         occurrenceDate: eventDetail?.isRecurring
-          ? (occurrenceDate ?? eventDetail.startDate ?? null)
+          ? (viewDate ?? eventDetail.startDate ?? null)
           : null,
       }),
     onSuccess: () => {
@@ -239,7 +240,7 @@ function EventViewPage() {
     onMutate: async ({ actionItemId, status }) => {
       const eventItemsQueryKey = queryKeys.actionItems.byEvent(
         eventId ?? '',
-        occurrenceDate ?? undefined,
+        viewDate ?? undefined,
       );
 
       pendingActionItemIdsRef.current.add(actionItemId);
@@ -269,7 +270,7 @@ function EventViewPage() {
 
       if (previousStatus) {
         queryClient.setQueryData<EventActionItemResponse>(
-          queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
+          queryKeys.actionItems.byEvent(eventId ?? '', viewDate ?? undefined),
           (current) =>
             current
               ? {
@@ -293,7 +294,7 @@ function EventViewPage() {
 
       const invalidations = [
         queryClient.invalidateQueries({
-          queryKey: queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
+          queryKey: queryKeys.actionItems.byEvent(eventId ?? '', viewDate ?? undefined),
         }),
       ];
 
@@ -377,7 +378,7 @@ function EventViewPage() {
     title: eventDetail.eventTitle,
     description: eventDetail.description,
     isAllDay: eventDetail.isAllDay,
-    startDate: new Date(`${eventDetail.startDate}T00:00:00`),
+    startDate: new Date(`${(viewDate ?? eventDetail.startDate)}T00:00:00`),
     // 종료 날짜/시간이 없는 일정(null)은 시작값으로 대체하지 않고 그대로 null 유지 —
     // 대체하면 안 건드리고 "완료"만 눌러도 PATCH에 가짜 종료값이 실제 값처럼 나간다.
     endDate: eventDetail.endDate ? new Date(`${eventDetail.endDate}T00:00:00`) : null,
@@ -394,7 +395,7 @@ function EventViewPage() {
         variant="daily"
         leading={{
           type: 'icon-text',
-          text: formatDateLabel(eventDetail.startDate),
+          text: formatDateLabel(viewDate ?? eventDetail.startDate),
           onClick: handleBack,
         }}
         trailing={{ type: 'text', text: '수정', onClick: () => setIsEditOpen(true) }}
