@@ -408,9 +408,7 @@ export default function CreateModal({
   const isRecommendMode = mode === 'recommend' || hasRecommended;
   const hasEmptySelectedRecommendationTitle =
     isRecommendMode &&
-    recommendationCandidates.some(
-      (candidate) => candidate.selected && !candidate.title.trim(),
-    );
+    recommendationCandidates.some((candidate) => candidate.selected && !candidate.title.trim());
   const recommendationKeyword = keyword || recommendedTitle || trimmedInput;
   const recommendationMessage = message || '에 필요한 체크리스트를 추천했어요.';
 
@@ -863,9 +861,7 @@ export default function CreateModal({
         return;
       }
 
-      const parsedDisplayDate = candidate.displayDate
-        ? parseISO(candidate.displayDate)
-        : startDate;
+      const parsedDisplayDate = candidate.displayDate ? parseISO(candidate.displayDate) : startDate;
       const initialDate = isValid(parsedDisplayDate) ? parsedDisplayDate : startDate;
       const parsedDisplayEndDate = candidate.displayEndDate
         ? parseISO(candidate.displayEndDate)
@@ -887,9 +883,7 @@ export default function CreateModal({
         originalApiItemType,
         originalDisplayDate: candidate.displayDate ?? null,
         originalDisplayEndDate: candidate.displayEndDate ?? null,
-        originalDisplayTime: candidate.displayTime
-          ? normalizeTime(candidate.displayTime)
-          : null,
+        originalDisplayTime: candidate.displayTime ? normalizeTime(candidate.displayTime) : null,
         hasTimeChanged: false,
       });
     },
@@ -913,9 +907,7 @@ export default function CreateModal({
       ? format(recommendationEditDraft.startDate, 'yyyy-MM-dd')
       : null;
     const nextDisplayEndDate =
-      isTimedAction && isDateRange
-        ? format(recommendationEditDraft.endDate, 'yyyy-MM-dd')
-        : null;
+      isTimedAction && isDateRange ? format(recommendationEditDraft.endDate, 'yyyy-MM-dd') : null;
     // 사용자가 시간을 직접 바꾸지 않았다면 기존 null 값을 유지한다.
     const nextDisplayTime = isTimedAction
       ? recommendationEditDraft.hasTimeChanged
@@ -947,12 +939,12 @@ export default function CreateModal({
     const hasRecommendationCandidates = recommendationCandidates.length > 0;
     const effectiveChecklistItems = hasRecommendationCandidates
       ? recommendationCandidates.map((candidate, index) => ({
-            id: index + 1,
-            label: candidate.title,
-            status: candidate.selected ? ('add' as const) : ('done' as const),
-            itemType: candidate.itemType,
-            date: candidate.displayDate ?? undefined,
-          }))
+          id: index + 1,
+          label: candidate.title,
+          status: candidate.selected ? ('add' as const) : ('done' as const),
+          itemType: candidate.itemType,
+          date: candidate.displayDate ?? undefined,
+        }))
       : checklistItems;
 
     const recommendedItems = effectiveChecklistItems.map((item, index) => {
@@ -1026,10 +1018,7 @@ export default function CreateModal({
   );
 
   // 항목이 늘어나면 모달이 위로 확장되고, 남은 공간부터 목록만 스크롤한다.
-  const checklistScrollMaxHeight = Math.max(
-    52,
-    Math.min(312, visualViewportRect.height - 188),
-  );
+  const checklistScrollMaxHeight = Math.max(52, Math.min(312, visualViewportRect.height - 188));
 
   const handleChecklistClick = (id: number) => {
     if (isSaving) {
@@ -1240,6 +1229,7 @@ export default function CreateModal({
                         : candidate.edited
                           ? 'USER_EDITED'
                           : 'SYSTEM',
+                    occurrenceDate: candidate.displayDate ?? format(startDate, 'yyyy-MM-dd'),
                     displayDate:
                       candidate.apiItemType === 'TIMED_ACTION'
                         ? (candidate.displayDate ?? null)
@@ -1250,10 +1240,7 @@ export default function CreateModal({
                         : null,
                     displayTime:
                       candidate.apiItemType === 'TIMED_ACTION'
-                        ? formatActionItemDisplayTime(
-                            candidate.displayDate,
-                            candidate.displayTime,
-                          )
+                        ? formatActionItemDisplayTime(candidate.displayDate, candidate.displayTime)
                         : null,
                     offsetDays: candidate.offsetDays ?? null,
                     sourceTemplateId: candidate.sourceTemplateId ?? null,
@@ -1375,155 +1362,150 @@ export default function CreateModal({
             >
               <div className="flex w-full max-w-[385px] flex-col gap-2">
                 {isRecommendationUnavailable && (
-                  <ToastPopup
-                    inline
-                    GuideText="제안을 불러오지 못했습니다. 다시 시도해주세요."
-                  />
+                  <ToastPopup inline GuideText="제안을 불러오지 못했습니다. 다시 시도해주세요." />
                 )}
 
                 <Frame
                   className="w-full !max-w-none !items-start !overflow-visible gap-0.5 p-3"
                   aria-labelledby={titleId}
                 >
-                <h2 id={titleId} className="sr-only">
-                  일정 생성
-                </h2>
+                  <h2 id={titleId} className="sr-only">
+                    일정 생성
+                  </h2>
 
-                {isRecommendationLoading && <CreateModalSkeleton />}
+                  {isRecommendationLoading && <CreateModalSkeleton />}
 
-                {isRecommendMode && (
-                  <div className="flex w-full flex-col">
-                    {!isRecommendationUnavailable && (
-                      <div className="flex w-full items-center justify-between px-1 py-2">
-                        <p className="min-w-0 text-text-additional default-body-medium">
-                          <span className="bg-gradient-to-l from-green-500 to-green-400 bg-clip-text text-transparent default-body-strong-medium">
-                            {recommendationKeyword}
-                          </span>
+                  {isRecommendMode && (
+                    <div className="flex w-full flex-col">
+                      {!isRecommendationUnavailable && (
+                        <div className="flex w-full items-center justify-between px-1 py-2">
+                          <p className="min-w-0 text-text-additional default-body-medium">
+                            <span className="bg-gradient-to-l from-green-500 to-green-400 bg-clip-text text-transparent default-body-strong-medium">
+                              {recommendationKeyword}
+                            </span>
 
-                          {recommendationMessage}
-                        </p>
-                      </div>
-                    )}
-
-                    <div
-                      aria-disabled={isSaving}
-                      className={isSaving ? 'pointer-events-none' : undefined}
-                      onPointerDown={(event) => {
-                        // 추천 제목 입력은 포커스를 유지하고, 나머지 터치는 키보드를 유지한다.
-                        if (!(event.target instanceof HTMLInputElement)) {
-                          event.preventDefault();
-                        }
-                      }}
-                    >
-                      <div className="flex min-h-0 w-full flex-col">
-                        <div
-                          className="min-h-0 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                          style={{ maxHeight: checklistScrollMaxHeight }}
-                        >
-                          <Checklist
-                            items={renderedChecklistItems}
-                            radioVariant="create"
-                            onLeadingClick={handleChecklistClick}
-                          />
+                            {recommendationMessage}
+                          </p>
                         </div>
+                      )}
 
-                        <div className="shrink-0">
-                          <Checklist
-                            items={directAddChecklistItem}
-                            radioVariant="create"
-                            onLeadingClick={handleChecklistClick}
-                          />
+                      <div
+                        aria-disabled={isSaving}
+                        className={isSaving ? 'pointer-events-none' : undefined}
+                        onPointerDown={(event) => {
+                          // 추천 제목 입력은 포커스를 유지하고, 나머지 터치는 키보드를 유지한다.
+                          if (!(event.target instanceof HTMLInputElement)) {
+                            event.preventDefault();
+                          }
+                        }}
+                      >
+                        <div className="flex min-h-0 w-full flex-col">
+                          <div
+                            className="min-h-0 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                            style={{ maxHeight: checklistScrollMaxHeight }}
+                          >
+                            <Checklist
+                              items={renderedChecklistItems}
+                              radioVariant="create"
+                              onLeadingClick={handleChecklistClick}
+                            />
+                          </div>
+
+                          <div className="shrink-0">
+                            <Checklist
+                              items={directAddChecklistItem}
+                              radioVariant="create"
+                              onLeadingClick={handleChecklistClick}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
+                  )}
+
+                  <div className="flex w-full items-center justify-between self-stretch pl-2">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      autoFocus
+                      disabled={isSaving}
+                      value={inputValue}
+                      onPointerDown={() => setHasInputInteractionStarted(true)}
+                      onChange={(event) => handleInputChange(event.target.value)}
+                      onBlur={handleInputBlur}
+                      onKeyDown={handleInputKeyDown}
+                      placeholder="어떤 일 인가요?"
+                      className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
+                    />
+
+                    <Button
+                      variant="CheckCTAButton"
+                      className="size-9"
+                      disabled={!trimmedInput || isSaving || hasEmptySelectedRecommendationTitle}
+                      onClick={handleCreate}
+                    />
                   </div>
-                )}
 
-                <div className="flex w-full items-center justify-between self-stretch pl-2">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    autoFocus
-                    disabled={isSaving}
-                    value={inputValue}
-                    onPointerDown={() => setHasInputInteractionStarted(true)}
-                    onChange={(event) => handleInputChange(event.target.value)}
-                    onBlur={handleInputBlur}
-                    onKeyDown={handleInputKeyDown}
-                    placeholder="어떤 일 인가요?"
-                    className="h-9 min-w-0 flex-1 bg-transparent text-text-default outline-none placeholder:text-text-disable default-body-medium"
-                  />
-
-                  <Button
-                    variant="CheckCTAButton"
-                    className="size-9"
-                    disabled={
-                      !trimmedInput || isSaving || hasEmptySelectedRecommendationTitle
-                    }
-                    onClick={handleCreate}
-                  />
-                </div>
-
-                <div className="flex w-full items-center gap-4 px-1 py-1">
-                  <button
-                    type="button"
-                    disabled={isSaving}
-                    onPointerDown={handleCalendarPointerDown}
-                    onClick={handleCalendarClick}
-                    className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
-                  >
-                    <img src="/icon/icons/calendar_small.svg" alt="" className="block shrink-0" />
-
-                    <span className="whitespace-nowrap">{calendarText}</span>
-                  </button>
-
-                  <div className="relative flex min-w-0">
+                  <div className="flex w-full items-center gap-4 px-1 py-1">
                     <button
-                      ref={labelButtonRef}
                       type="button"
                       disabled={isSaving}
-                      onClick={handleLabelClick}
-                      className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+                      onPointerDown={handleCalendarPointerDown}
+                      onClick={handleCalendarClick}
+                      className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
                     >
-                      <img src="/icon/icons/label_small.svg" alt="" className="block shrink-0" />
+                      <img src="/icon/icons/calendar_small.svg" alt="" className="block shrink-0" />
 
-                      {!selectedLabel && labelStatus.type === 'default' ? (
-                        <span className="whitespace-nowrap">레이블 없음</span>
-                      ) : (
-                        <div className="flex min-w-0 items-center gap-xsmall">
-                          <span className="max-w-[80px] truncate">
-                            {selectedLabel?.label ??
-                              (labelStatus.type === 'selected' ? labelStatus.label : '')}
-                          </span>
+                      <span className="whitespace-nowrap">{calendarText}</span>
+                    </button>
 
-                          <img
-                            src={
-                              COLOR_ICON[
-                                selectedLabel?.color ??
-                                  (labelStatus.type === 'selected' ? labelStatus.color : 'green')
-                              ]
-                            }
-                            alt=""
-                            className="block shrink-0"
+                    <div className="relative flex min-w-0">
+                      <button
+                        ref={labelButtonRef}
+                        type="button"
+                        disabled={isSaving}
+                        onClick={handleLabelClick}
+                        className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+                      >
+                        <img src="/icon/icons/label_small.svg" alt="" className="block shrink-0" />
+
+                        {!selectedLabel && labelStatus.type === 'default' ? (
+                          <span className="whitespace-nowrap">레이블 없음</span>
+                        ) : (
+                          <div className="flex min-w-0 items-center gap-xsmall">
+                            <span className="max-w-[80px] truncate">
+                              {selectedLabel?.label ??
+                                (labelStatus.type === 'selected' ? labelStatus.label : '')}
+                            </span>
+
+                            <img
+                              src={
+                                COLOR_ICON[
+                                  selectedLabel?.color ??
+                                    (labelStatus.type === 'selected' ? labelStatus.color : 'green')
+                                ]
+                              }
+                              alt=""
+                              className="block shrink-0"
+                            />
+                          </div>
+                        )}
+                      </button>
+
+                      {isLabelModalOpen && (
+                        <div className="absolute bottom-[calc(100%+8px)] left-0 z-30">
+                          <LabelModal
+                            labels={selectableLabels}
+                            onSelectLabel={handleSelectLabel}
+                            onCreateLabel={handleCreateLabel}
                           />
                         </div>
                       )}
-                    </button>
-
-                    {isLabelModalOpen && (
-                      <div className="absolute bottom-[calc(100%+8px)] left-0 z-30">
-                        <LabelModal
-                          labels={selectableLabels}
-                          onSelectLabel={handleSelectLabel}
-                          onCreateLabel={handleCreateLabel}
-                        />
-                      </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-              </Frame>
+                </Frame>
+              </div>
             </div>
-          </div>
           </Overlay>,
           document.body,
         )}
