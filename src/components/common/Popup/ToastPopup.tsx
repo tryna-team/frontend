@@ -24,11 +24,11 @@ export default function ToastPopup({
     <div
       role={inline ? 'status' : 'alertdialog'}
       aria-label={GuideText}
-      className={`flex ${inline ? 'w-[353px] h-[93px] flex-col items-start gap-8 px-0 py-4' : 'w-[252px] flex-col gap-2 px-5 py-4'} rounded-[24px] bg-white/40 drop-shadow-[0px_0px_10px_rgba(0,0,0,0.08)] ${className}`}
+      className={`flex ${inline ? 'w-[353px] h-[93px] flex-col items-start gap-8 px-0 py-4 bg-white/40' : 'w-[252px] flex-col gap-2 px-5 py-4 bg-white'} rounded-[24px] drop-shadow-[0px_0px_10px_rgba(0,0,0,0.08)] ${className}`}
       onClick={(event) => event.stopPropagation()}
     >
       <p
-        className={`w-full ${inline ? '' : ''} text-text-additional default-body-medium`}
+        className="w-full text-text-additional default-body-medium"
         style={
           inline ? { paddingLeft: 'var(--Spacing-Semantic-Page-Padding-Large, 20px)' } : undefined
         }

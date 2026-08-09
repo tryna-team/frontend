@@ -89,6 +89,10 @@ export interface EventUpdateRequest {
   isAllDay: boolean;
   location?: string | null;
   labelId: number;
+  // 반복 일정 중 지금 수정 중인 회차의 날짜. SINGLE/THIS_AND_FUTURE로 "어느 회차"를
+  // 적용할지 서버가 판단하는 데 필요(라이브 스웨거 설명문 기준) — 삭제(C106)의
+  // EventDeleteRequestBody.occurrenceDate와 동일한 역할.
+  occurrenceDate: string | null;
   updateScope: UpdateScope;
 }
 

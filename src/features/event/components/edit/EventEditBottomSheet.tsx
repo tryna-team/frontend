@@ -19,7 +19,7 @@ import EventScheduleRow, {
 } from '@/features/event/components/create/EventScheduleRow';
 import RepeatScheduleBottomSheet from '@/features/event/components/create/RepeatScheduleBottomSheet';
 import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial.types';
-import QuickModal from '@/features/event/components/QuickModal';
+import QuickModal from '@/components/common/Popup/QuickModal';
 import { eventDetailService } from '@/apis/services/eventDetailService';
 import type { UpdateScope } from '@/apis/types/eventDetail';
 import { queryKeys } from '@/hooks/queries/queryKeys';
@@ -108,12 +108,19 @@ export default function EventEditBottomSheet({
         isAllDay,
         location: initialValue.location,
         labelId: labelIdToSave,
+        // 반복 일정 중 "지금 보고 있던 이 회차"를 서버에 알려주는 값 — 삭제(C106)와
+        // 동일한 패턴. 사용자가 시작일을 편집했더라도 어느 회차를 수정하는지 식별하는
+        // 용도라 편집 전 원래 날짜(initialValue.startDate)를 보낸다.
+        occurrenceDate: isRecurring ? format(initialValue.startDate, 'yyyy-MM-dd') : null,
         updateScope,
       }),
     onSuccess: () => {
       // 삭제 플로우와 동일하게 events.all을 무효화 — 홈/데일리 화면의 캘린더 목록
       // 캐시도 같이 갱신돼야 제목/시간 변경이 바로 반영된다.
       queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+      // TODO: 응답의 requiresActionItemReview(체크리스트 항목 날짜를 서버가 자동으로
+      // 못 맞춰서 사용자 확인이 필요한 경우 true)를 아직 처리하지 않는다. UX가 정해지면
+      // 여기서 안내를 띄워야 한다 — memory: project_eventedit_requires_action_item_review.md
       onClose();
     },
     onError: () => {
@@ -124,8 +131,9 @@ export default function EventEditBottomSheet({
   const selectedLabel = labels.find((label) => label.id === labelId) ?? null;
 
   const handleComplete = () => {
-    // 라벨은 PATCH 요청 필수 필드 — EventDetailResponseData.labelId가 항상 값을 가지고
-    // 있어 실제로 null이 될 일은 없지만, 타입 좁히기를 위해 방어적으로 확인한다.
+    // 라벨은 PATCH 요청에서 선택 필드(null/생략 시 기존 라벨 유지)라 서버가 필수로
+    // 요구하진 않지만, 이 폼엔 라벨을 완전히 비우는 UI가 없어 null이 될 일이 실질적으로
+    // 없다 — 타입 좁히기를 위해 방어적으로 확인한다.
     if (labelId === null) {
       return;
     }
