@@ -174,8 +174,11 @@ function EventViewPage() {
         deleteScope,
         cascade: true,
         // 반복 일정은 "지금 보고 있는 이 회차" 기준으로 SINGLE/THIS_AND_FUTURE를 판단해야
-        // 하므로 startDate를 occurrenceDate로 전달. 반복 일정이 아니면 null.
-        occurrenceDate: eventDetail?.isRecurring ? (eventDetail?.startDate ?? null) : null,
+        // 하므로 현재 보고 있는 occurrenceDate를 우선 전달하도록 한다. occurrenceDate가
+        // 없으면 eventDetail.startDate를 폴백으로 사용한다. 반복 일정이 아니면 null.
+        occurrenceDate: eventDetail?.isRecurring
+          ? (occurrenceDate ?? eventDetail.startDate ?? null)
+          : null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
@@ -266,7 +269,7 @@ function EventViewPage() {
 
       if (previousStatus) {
         queryClient.setQueryData<EventActionItemResponse>(
-          queryKeys.actionItems.byEvent(eventId ?? ''),
+          queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
           (current) =>
             current
               ? {
