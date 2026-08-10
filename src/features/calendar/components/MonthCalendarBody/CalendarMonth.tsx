@@ -6,7 +6,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { DateClickArg } from '@fullcalendar/interaction';
 
-import './CalendarBody.css';
+import './MonthCalendarBody.css';
 
 export interface CalendarMonthEvent {
   title: string;
