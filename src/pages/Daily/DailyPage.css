@@ -1,7 +1,55 @@
 .daily-page {
   /* App.tsx가 프레임 크기/배경을 담당 */
   box-sizing: border-box;
+  display: flex;
+  min-height: calc(100dvh - 82px);
+  flex-direction: column;
 }
+
+.daily-page-pager {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
+}
+
+.daily-page-track {
+  position: relative;
+  flex: 1 0 auto;
+  width: 100%;
+  transform: translate3d(-100%, 0, 0);
+  will-change: transform;
+}
+
+.daily-page-panel {
+  width: 100%;
+  min-height: 100%;
+  min-width: 0;
+}
+
+/* 가운데 패널만 트랙 높이를 결정하고 양옆 패널은 미리 렌더링한 채 겹쳐 둔다. */
+.daily-page-panel[data-position='previous'],
+.daily-page-panel[data-position='next'] {
+  position: absolute;
+  top: 0;
+}
+
+.daily-page-panel[data-position='previous'] {
+  left: 0;
+}
+
+.daily-page-panel[data-position='current'] {
+  position: relative;
+  left: 100%;
+}
+
+.daily-page-panel[data-position='next'] {
+  left: 200%;
+}
+
 .daily-page-banners {
   display: flex;
   flex-direction: column;
