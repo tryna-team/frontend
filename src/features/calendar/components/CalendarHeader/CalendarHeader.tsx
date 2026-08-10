@@ -25,7 +25,17 @@ interface DailyCalendarHeaderProps {
   onSelectDate: (date: string) => void;
 }
 
-type CalendarHeaderProps = MonthlyCalendarHeaderProps | DailyCalendarHeaderProps;
+interface YearlyCalendarHeaderProps {
+  variant: 'yearly';
+  onSearchClick?: () => void;
+  onViewToggleClick?: () => void;
+  onSettingsClick?: () => void;
+}
+
+type CalendarHeaderProps =
+  | MonthlyCalendarHeaderProps
+  | DailyCalendarHeaderProps
+  | YearlyCalendarHeaderProps;
 
 const CalendarHeader = forwardRef<HTMLDivElement, CalendarHeaderProps>((props, ref) => {
   if (props.variant === 'daily') {
@@ -41,6 +51,19 @@ const CalendarHeader = forwardRef<HTMLDivElement, CalendarHeaderProps>((props, r
           variant="daily"
           selectedDate={props.selectedDate}
           onSelectDate={props.onSelectDate}
+        />
+      </div>
+    );
+  }
+
+  if (props.variant === 'yearly') {
+    return (
+      <div className="calendar-header" ref={ref}>
+        <ButtonSection
+          variant="yearly"
+          onSearchClick={props.onSearchClick}
+          onViewToggleClick={props.onViewToggleClick}
+          onSettingsClick={props.onSettingsClick}
         />
       </div>
     );
