@@ -112,6 +112,8 @@ const createManualCandidateId = () =>
 const PARSING_THROTTLE_DELAY = 300;
 const RECOMMENDATION_DEBOUNCE_DELAY = 1000;
 
+const createFallbackTempEventId = (revision: number) => `fallback-${revision}`;
+
 const formatChecklistDate = (
   date: string | null | undefined,
   endDate: string | null | undefined,
@@ -625,8 +627,7 @@ export default function CreateModal({
       // 최신 입력의 파싱 결과가 준비된 뒤에만 추천을 요청한다.
       if (
         request.revision !== revisionRef.current ||
-        latestParsedCandidate?.sourceText !== request.input ||
-        !latestParsedCandidate.tempEventId
+        latestParsedCandidate?.sourceText !== request.input
       ) {
         return;
       }
@@ -636,6 +637,8 @@ export default function CreateModal({
       recommendationAbortControllerRef.current = controller;
       const draftRevision = draftRevisionRef.current;
       draftRevisionRef.current += 1;
+      const tempEventId =
+        latestParsedCandidate.tempEventId ?? createFallbackTempEventId(request.revision);
       setLoadingRecommendations(true);
       setIsRecommendationUnavailable(false);
 
@@ -652,7 +655,7 @@ export default function CreateModal({
       try {
         const response = await recommendationService.getRecommendations(
           {
-            tempEventId: latestParsedCandidate.tempEventId,
+            tempEventId,
             draftRevision,
             eventTitle: latestParsedCandidate.titleCandidate ?? request.input,
             sourceType: 'USER_NATURAL_LANGUAGE',
@@ -675,8 +678,7 @@ export default function CreateModal({
           controller.signal.aborted ||
           request.revision !== revisionRef.current ||
           (response.draftRevision !== undefined && response.draftRevision !== draftRevision) ||
-          (response.tempEventId !== undefined &&
-            response.tempEventId !== latestParsedCandidate.tempEventId)
+          (response.tempEventId !== undefined && response.tempEventId !== tempEventId)
         ) {
           return;
         }
