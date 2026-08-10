@@ -1,0 +1,174 @@
+/* SearchOverlay 전용 스타일 */
+.search-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  background: var(--color-grey-opacity-200);
+}
+
+.search-overlay-stack {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.search-overlay-input-box {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--spacing-padding-xsmall);
+  border: 1px solid var(--color-divider-default);
+  border-radius: var(--radius-medium);
+  background: var(--color-background-white);
+}
+
+.search-overlay-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-default);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  letter-spacing: -0.15px;
+  color: var(--color-text-default);
+}
+
+.search-overlay-input::placeholder {
+  color: var(--color-text-disable);
+}
+
+.search-overlay-clear {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4.5px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-overlay-clear img {
+  width: 15px;
+  height: 24px;
+}
+
+.search-overlay-close-wrap {
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.search-overlay-results-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+
+.search-overlay-results-panel {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: var(--spacing-padding-small);
+  border-radius: var(--radius-medium);
+  background: var(--color-background-white);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+/* 검색 결과 없음 / 검색 실패 안내. 결과 목록과 같은 패널 안에 표시된다 */
+.search-overlay-message {
+  margin: 0;
+  padding: 24px 0;
+  text-align: center;
+  font-family: var(--font-default);
+  font-size: 14px;
+  color: var(--color-text-disable);
+}
+
+.search-overlay-group {
+  margin-bottom: 0;
+}
+
+/* 날짜 구분 헤더 — 회색 텍스트 아래에 구분선을 둬서 날짜 그룹을 나눈다 */
+.search-overlay-date-header {
+  font-family: var(--font-default);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-additional);
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-divider-default);
+}
+
+.search-overlay-result-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.search-overlay-result-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  /* 클릭 가능한 UI라는 걸 시각적으로 알리고, 상하로 터치 영역을 좀 더 확보 */
+  cursor: pointer;
+  padding: 4px 0;
+  margin: -4px 0; /* 위 padding으로 늘어난 만큼 형제 간 gap이 커지지 않도록 상쇄 */
+  border-radius: var(--radius-medium);
+}
+
+.search-overlay-result-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+}
+
+.search-overlay-result-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.search-overlay-result-title {
+  font-family: var(--font-default);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-default);
+}
+
+.search-overlay-result-location {
+  font-family: var(--font-default);
+  font-size: 13px;
+  color: var(--color-text-disable);
+}
+
+.search-overlay-result-time {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-family: var(--font-default);
+  font-size: 13px;
+  color: var(--color-text-default);
+}
+
+.search-overlay-result-time-end {
+  color: var(--color-text-disable);
+}
