@@ -50,7 +50,7 @@ interface CalendarState {
 // 실제 오늘이 아니라 앱 로드 시점 날짜로 돌아가는 stale closure 버그) —
 // 액션 내부에서는 항상 new Date()를 새로 생성해서 씀.
 const today = new Date();
-// Date → 'YYYY-MM-DD' 문자열 변환 헬퍼. WeekSection.tsx/CalendarGrid.tsx가 이미 쓰는
+// Date → 'YYYY-MM-DD' 문자열 변환 헬퍼. 캘린더 컴포넌트에서 사용하는
 // toLocaleDateString('sv-SE') 패턴과 동일 — 로컬 타임존 기준이라 toISOString()(UTC)의
 // 자정 근처 하루 밀림 문제가 없음.
 const toISODate = (d: Date) => d.toLocaleDateString('sv-SE');
