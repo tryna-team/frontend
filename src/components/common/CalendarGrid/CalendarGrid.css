@@ -79,12 +79,18 @@
   margin-left: 1px !important;
   margin-right: 1px !important;
 }
+/* 글자는 피그마 Default/Caption/Large — 아래 +N 링크(.fc-daygrid-more-link)와 같은
+   토큰이라 값을 맞춰 둔다. 토큰 CSS 변수가 없어 원시값으로 쓰는 것도 그쪽과 동일하다. */
 .fc-event {
-  font-size: 10px !important;
+  font-family: var(--font-default);
+  font-size: 11px !important;
+  font-weight: 400;
   padding: 0 1px !important;
   height: 15px !important;
   line-height: 15px !important;
+  letter-spacing: -0.11px;
   margin: 0 !important;
+  gap: 1px;
   border-radius: 4px !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;

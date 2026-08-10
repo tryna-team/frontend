@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { KeyboardEvent, MouseEvent, PointerEvent } from 'react';
 import FullCalendar from '@fullcalendar/react';
-import type { MoreLinkContentArg } from '@fullcalendar/core';
+import type { EventClickArg, MoreLinkContentArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { DateClickArg } from '@fullcalendar/interaction';
@@ -23,12 +23,24 @@ interface CalendarEvent {
   backgroundColor?: string;
   textColor?: string;
   borderColor?: string;
+  /**
+   * 일정 블록을 눌렀을 때 상세로 보내는 데 필요한 값.
+   * FullCalendar의 id는 쓰지 않는다 — 반복 일정은 회차마다 별개 블록인데 eventId가 같아서
+   * 같은 id가 여러 개 생기고, FullCalendar가 그걸 한 일정으로 취급한다.
+   */
+  extendedProps?: {
+    eventId: number;
+    /** 이 블록이 가리키는 회차의 시작일 "yyyy-mm-dd" */
+    occurrenceDate: string;
+  };
 }
 
 interface CalendarGridProps {
   events: CalendarEvent[];
   selectedDate: string | null;
   onSelectDate: (date: string) => void;
+  /** 일정 블록 클릭 — 날짜 클릭(onSelectDate)과 달리 해당 일정 상세로 보낸다 */
+  onSelectEvent?: (eventId: number, occurrenceDate: string) => void;
   onLongPressDate?: (date: string) => void;
   onSearchClick?: () => void;
   onViewToggleClick?: () => void; // TODO: 실제로는 라벨(label_small.svg) 버튼 클릭 핸들러라 이름이 실제 동작과 안 맞음 — 추후 onLabelClick 등으로 정리 필요
@@ -114,6 +126,7 @@ function CalendarGrid({
   events,
   selectedDate,
   onSelectDate,
+  onSelectEvent,
   onLongPressDate,
   onSearchClick,
   onViewToggleClick,
@@ -399,6 +412,26 @@ function CalendarGrid({
     onSelectDate(arg.dateStr);
   };
 
+  const handleEventClick = (arg: EventClickArg) => {
+    // 일정 블록을 길게 눌러 라벨 시트를 띄우고 손을 뗀 경우까지 상세로 넘어가지 않도록,
+    // 날짜 클릭과 같은 기준으로 롱프레스 직후 한 번은 무시한다.
+    if (longPressedDateRef.current !== null) {
+      longPressedDateRef.current = null;
+      return;
+    }
+
+    const { eventId, occurrenceDate } = arg.event.extendedProps as {
+      eventId?: number;
+      occurrenceDate?: string;
+    };
+
+    if (eventId === undefined || occurrenceDate === undefined) {
+      return;
+    }
+
+    onSelectEvent?.(eventId, occurrenceDate);
+  };
+
   const clearLongPressTimer = () => {
     if (longPressTimerRef.current !== null) {
       window.clearTimeout(longPressTimerRef.current);
@@ -659,6 +692,7 @@ function CalendarGrid({
                 locale="ko"
                 events={events}
                 dateClick={handleDateClick}
+                eventClick={handleEventClick}
                 dayCellClassNames={dayCellClassNames}
                 dayCellContent={(arg) => arg.dayNumberText.replace('일', '')}
                 height="auto"
