@@ -7,6 +7,7 @@ import { eventService } from '@/apis/services/eventService';
 import type { EventSearchResult } from '@/apis/types/event';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { generateEventPath } from '@/routes/paths';
+
 import './SearchOverlay.css';
 
 // 타이핑 한 글자마다 요청이 나가지 않도록 대기하는 시간

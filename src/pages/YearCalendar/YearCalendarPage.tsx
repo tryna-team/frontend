@@ -1,14 +1,21 @@
 import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import multiMonthPlugin from '@fullcalendar/multimonth';
+import type { YearCalendarNavigationState } from '@/routes/navigationState';
 import './YearCalendarPage.css';
 
 function YearCalendarPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const calendarRef = useRef<FullCalendar>(null);
-  const [year, setYear] = useState(() => new Date().getFullYear());
+  const navigationState = location.state as YearCalendarNavigationState | null;
+  const [year, setYear] = useState(() =>
+    typeof navigationState?.year === 'number' && Number.isInteger(navigationState.year)
+      ? navigationState.year
+      : new Date().getFullYear(),
+  );
 
   const goToPrevYear = () => {
     setYear((y) => y - 1);
