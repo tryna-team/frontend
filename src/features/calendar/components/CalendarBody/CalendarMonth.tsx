@@ -127,6 +127,10 @@ const CalendarMonth = forwardRef<HTMLDivElement, CalendarMonthProps>(function Ca
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!event.isPrimary) {
+      return;
+    }
+
     if ((event.pointerType === 'mouse' && event.button !== 0) || !onLongPressDate) {
       return;
     }
@@ -154,6 +158,10 @@ const CalendarMonth = forwardRef<HTMLDivElement, CalendarMonthProps>(function Ca
   };
 
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!event.isPrimary) {
+      return;
+    }
+
     const start = pointerStartRef.current;
 
     if (
@@ -166,7 +174,11 @@ const CalendarMonth = forwardRef<HTMLDivElement, CalendarMonthProps>(function Ca
     }
   };
 
-  const handlePointerEnd = () => {
+  const handlePointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+    if (!event.isPrimary) {
+      return;
+    }
+
     clearLongPressTimer();
     pointerStartRef.current = null;
 
