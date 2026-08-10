@@ -1,93 +1,129 @@
-import { useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import multiMonthPlugin from '@fullcalendar/multimonth';
+
+import Button from '@/components/common/Buttons/Button';
+import CreateModal from '@/components/common/CreateModal/CreateModal';
+import LabelCreateSheet from '@/components/common/Popup/BottomSheet/Label/LabelCreateSheet';
+import CalendarHeader from '@/features/calendar/components/CalendarHeader';
+import YearCalendarBody from '@/features/calendar/components/YearCalendarBody/YearCalendarBody';
+import type { CalendarYearScrollRequest } from '@/features/calendar/components/YearCalendarBody/YearCalendarBody';
+import { isSupportedCalendarYear } from '@/features/calendar/components/YearCalendarBody/hooks/useYearWindow';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
+import { useGuestConversionPrompt } from '@/hooks/useGuestConversionPrompt';
 import type { YearCalendarNavigationState } from '@/routes/navigationState';
+import { PATH } from '@/routes/paths';
+import { useCalendarStore } from '@/stores';
+
 import './YearCalendarPage.css';
 
 function YearCalendarPage() {
-  const navigate = useNavigate();
   const location = useLocation();
-  const calendarRef = useRef<FullCalendar>(null);
+  const navigate = useNavigate();
   const navigationState = location.state as YearCalendarNavigationState | null;
-  const [year, setYear] = useState(() =>
-    typeof navigationState?.year === 'number' && Number.isInteger(navigationState.year)
+  const selectDate = useCalendarStore((state) => state.selectDate);
+  const setMonth = useCalendarStore((state) => state.setMonth);
+  const { promptIfGuest } = useGuestConversionPrompt();
+  const [initialYear] = useState(() =>
+    isSupportedCalendarYear(navigationState?.year)
       ? navigationState.year
       : new Date().getFullYear(),
   );
+  const [visibleYear, setVisibleYear] = useState(initialYear);
+  const [calendarScrollRequest, setCalendarScrollRequest] =
+    useState<CalendarYearScrollRequest | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isLabelCreateOpen, setIsLabelCreateOpen] = useState(false);
+  const [pendingSelectedLabelId, setPendingSelectedLabelId] = useState<number | null>(null);
+  const [createInputValue, setCreateInputValue] = useState('');
+  const calendarScrollRequestIdRef = useRef(0);
 
-  const goToPrevYear = () => {
-    setYear((y) => y - 1);
-    calendarRef.current?.getApi().gotoDate(`${year - 1}-01-01`);
+  const handleGoToToday = useCallback(() => {
+    const today = new Date();
+
+    calendarScrollRequestIdRef.current += 1;
+    setCalendarScrollRequest({
+      year: today.getFullYear(),
+      date: today.toLocaleDateString('sv-SE'),
+      requestId: calendarScrollRequestIdRef.current,
+    });
+  }, []);
+
+  const handleSelectMonth = useCallback(
+    (year: number, month: number) => {
+      setMonth(year, month);
+      navigate(PATH.HOME);
+    },
+    [navigate, setMonth],
+  );
+
+  const handleCreate = (createdDate: string) => {
+    const [createdYear, createdMonth] = createdDate.split('-').map(Number);
+
+    selectDate(createdDate);
+    setMonth(createdYear, createdMonth);
+    setCreateInputValue('');
+    setPendingSelectedLabelId(null);
+    setIsCreateModalOpen(false);
+    promptIfGuest();
   };
 
-  const goToNextYear = () => {
-    setYear((y) => y + 1);
-    calendarRef.current?.getApi().gotoDate(`${year + 1}-01-01`);
+  const handleCreateModalClose = () => {
+    setIsCreateModalOpen(false);
+    setPendingSelectedLabelId(null);
   };
+
+  const handleCalendarScrollComplete = useCallback((requestId: number) => {
+    setCalendarScrollRequest((currentRequest) =>
+      currentRequest?.requestId === requestId ? null : currentRequest,
+    );
+  }, []);
+
+  const floatingButtonsContent = useMemo(
+    () => (
+      <div className="flex w-full items-center justify-between">
+        <Button variant="LargeStrongFit" onClick={handleGoToToday}>
+          오늘
+        </Button>
+        <Button variant="MainCTAButton" onClick={() => setIsCreateModalOpen(true)} />
+      </div>
+    ),
+    [handleGoToToday],
+  );
+  useFloatingButtons(floatingButtonsContent);
 
   return (
     <div className="year-calendar-page">
-      <div className="year-calendar-header">
-        <button
-          type="button"
-          className="icon-button"
-          onClick={() => navigate(-1)}
-          aria-label="뒤로가기"
-        >
-          <img src="/icon/chevron/left_small.svg" alt="" />
-        </button>
-        <div className="year-calendar-header-right">
-          <button type="button" className="icon-button" aria-label="검색">
-            <img src="/icon/search.svg" alt="" />
-          </button>
-          <button type="button" className="icon-button" aria-label="추가">
-            <img src="/icon/icons/label_small.svg" alt="" />
-          </button>
-        </div>
-      </div>
+      <CalendarHeader variant="yearly" />
 
-      <div className="year-calendar-title-row">
-        <span className="year-calendar-title">{year}년</span>
-      </div>
+      <YearCalendarBody
+        initialYear={initialYear}
+        visibleYear={visibleYear}
+        scrollToYearRequest={calendarScrollRequest}
+        onVisibleYearChange={setVisibleYear}
+        onSelectMonth={handleSelectMonth}
+        onScrollToYearComplete={handleCalendarScrollComplete}
+      />
 
-      <div className="year-calendar-scroll-wrapper">
-        <FullCalendar
-  ref={calendarRef}
-  plugins={[dayGridPlugin, multiMonthPlugin]}
-  initialView="multiMonthYear"
-  initialDate={`${year}-01-01`}
-  multiMonthMaxColumns={3}
-  multiMonthMinWidth={70}
-  dayHeaders={false}
-  locale="ko"
-  headerToolbar={false}
-  height="auto"
-  dayCellContent={(arg) => arg.dayNumberText.replace('일', '')}
-  fixedWeekCount={false}
-  showNonCurrentDates={false}
-/>
-      </div>
+      {isCreateModalOpen && (
+        <CreateModal
+          inputValue={createInputValue}
+          pendingSelectedLabelId={pendingSelectedLabelId}
+          onInputChange={setCreateInputValue}
+          onCreateLabel={() => setIsLabelCreateOpen(true)}
+          onCreate={handleCreate}
+          onClose={handleCreateModalClose}
+        />
+      )}
 
-      <div className="year-calendar-footer">
-        <button type="button" className="year-nav-arrow" onClick={goToPrevYear} aria-label="이전 연도">
-          ‹
-        </button>
-        <button
-          type="button"
-          className="today-button"
-          onClick={() => {
-            setYear(new Date().getFullYear());
-            calendarRef.current?.getApi().today();
+      {isLabelCreateOpen && (
+        <LabelCreateSheet
+          onClose={() => setIsLabelCreateOpen(false)}
+          onComplete={(created) => {
+            setPendingSelectedLabelId(created.labelId);
+            setIsLabelCreateOpen(false);
           }}
-        >
-          오늘
-        </button>
-        <button type="button" className="year-nav-arrow" onClick={goToNextYear} aria-label="다음 연도">
-          ›
-        </button>
-      </div>
+        />
+      )}
     </div>
   );
 }
