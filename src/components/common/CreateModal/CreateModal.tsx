@@ -1285,7 +1285,6 @@ export default function CreateModal({
                           : candidate.edited
                             ? 'USER_EDITED'
                             : 'SYSTEM',
-                      occurrenceDate: format(startDate, 'yyyy-MM-dd'),
                       displayDate:
                         apiItemType === 'TIMED_ACTION' ? (candidate.displayDate ?? null) : null,
                       displayTime:
