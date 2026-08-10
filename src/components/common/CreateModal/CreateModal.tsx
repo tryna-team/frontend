@@ -129,11 +129,6 @@ const formatChecklistDate = (
     : startText;
 };
 
-type RevisionRequest = {
-  input: string;
-  revision: number;
-};
-
 type RecommendationEditDraft = {
   candidateId: string;
   title: string;
@@ -150,14 +145,18 @@ type RecommendationEditDraft = {
 };
 
 // 실제 API 연결 시 내부만 파싱 요청으로 교체한다.
-const mapParseResponse = (input: string, response: EventParseResponse): ParsedEventCandidate => ({
+const mapParseResponse = (
+  input: string,
+  response: EventParseResponse,
+  tempEventId: string | null,
+): ParsedEventCandidate => ({
   sourceText: input,
   titleCandidate: response.eventTitle ?? input,
   dateCandidate: response.startDate ?? null,
   timeCandidate: response.startTime ?? null,
   placeCandidate: response.placeCandidate ?? null,
   eventTypeCandidate: null,
-  tempEventId: response.tempEventId ?? null,
+  tempEventId,
   dateSource: response.dateSource ?? null,
   endDateCandidate: response.endDate ?? null,
   endTimeCandidate: response.endTime ?? null,
@@ -167,14 +166,14 @@ const mapParseResponse = (input: string, response: EventParseResponse): ParsedEv
   warnings: response.warnings ?? [],
 });
 
-const createParseFallback = (input: string): ParsedEventCandidate => ({
+const createParseFallback = (input: string, tempEventId: string | null): ParsedEventCandidate => ({
   sourceText: input,
   titleCandidate: input,
   dateCandidate: null,
   timeCandidate: null,
   placeCandidate: null,
   eventTypeCandidate: null,
-  tempEventId: null,
+  tempEventId,
   dateSource: null,
   endDateCandidate: null,
   endTimeCandidate: null,
@@ -321,9 +320,9 @@ export default function CreateModal({
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const labelButtonRef = useRef<HTMLButtonElement>(null);
-  // 추천 초안 revision은 실제 추천 요청 횟수만 센다.
-  const draftRevisionRef = useRef(0);
-  const revisionRef = useRef(0);
+  const inputRevisionRef = useRef(0);
+  const parseDraftRevisionRef = useRef(0);
+  const recommendationDraftRevisionRef = useRef(0);
   const lastParseRequestedAtRef = useRef(0);
   const parseAbortControllerRef = useRef<AbortController | null>(null);
   const recommendationAbortControllerRef = useRef<AbortController | null>(null);
@@ -391,6 +390,7 @@ export default function CreateModal({
   const recommendationCandidates = useEventCreationStore((state) => state.recommendationCandidates);
   const parsedCandidate = useEventCreationStore((state) => state.parsedCandidate);
   const setRawInput = useEventCreationStore((state) => state.setRawInput);
+  const setTempEventId = useEventCreationStore((state) => state.setTempEventId);
   const setStep = useEventCreationStore((state) => state.setStep);
   const setParsedCandidate = useEventCreationStore((state) => state.setParsedCandidate);
   const setLoadingRecommendations = useEventCreationStore(
@@ -482,8 +482,9 @@ export default function CreateModal({
       return;
     }
 
+    resetCreation();
     onClose?.();
-  }, [isSaving, onClose, trimmedInput]);
+  }, [isSaving, onClose, resetCreation, trimmedInput]);
 
   const handleExitConfirmClose = useCallback(() => {
     setIsExitConfirmOpen(false);
@@ -524,8 +525,9 @@ export default function CreateModal({
     return () => {
       isMountedRef.current = false;
       createAbortControllerRef.current?.abort();
+      resetCreation();
     };
-  }, []);
+  }, [resetCreation]);
 
   // 입력 중 최신 원문을 최대 0.3초 간격으로 파싱한다.
   useEffect(() => {
@@ -536,7 +538,8 @@ export default function CreateModal({
 
     const request = {
       input: inputValue,
-      revision: revisionRef.current,
+      inputRevision: inputRevisionRef.current,
+      tempEventId: useEventCreationStore.getState().tempEventId,
     };
     const elapsed = Date.now() - lastParseRequestedAtRef.current;
     const delay = Math.max(0, PARSING_THROTTLE_DELAY - elapsed);
@@ -546,22 +549,31 @@ export default function CreateModal({
       parseAbortControllerRef.current?.abort();
       const controller = new AbortController();
       parseAbortControllerRef.current = controller;
+      const draftRevision = parseDraftRevisionRef.current;
+      parseDraftRevisionRef.current += 1;
       setStep('parsing');
       try {
         const response = await eventService.parse(
           {
             eventTitle: request.input,
+            draftRevision,
             selectedDate: parseSelectedDate,
+            ...(request.tempEventId ? { tempEventId: request.tempEventId } : {}),
           },
           controller.signal,
         );
-        const parsedCandidate = mapParseResponse(request.input, response);
+        const nextTempEventId = response.tempEventId ?? request.tempEventId ?? null;
+        const parsedCandidate = mapParseResponse(request.input, response, nextTempEventId);
 
         // TODO: 파싱 API가 revision을 지원하면 로컬 revision 비교를 서버 값으로 교체한다.
-        if (request.revision !== revisionRef.current) {
+        if (
+          request.inputRevision !== inputRevisionRef.current ||
+          (response.draftRevision !== undefined && response.draftRevision !== draftRevision)
+        ) {
           return;
         }
 
+        setTempEventId(nextTempEventId);
         setParsedCandidate(parsedCandidate);
 
         // 파싱 결과를 사용자가 직접 고른 일정값보다 우선한다.
@@ -589,18 +601,21 @@ export default function CreateModal({
 
         setStep(hasRecommendedRef.current ? 'recommendation' : 'input');
       } catch {
-        if (controller.signal.aborted || request.revision !== revisionRef.current) {
+        if (controller.signal.aborted || request.inputRevision !== inputRevisionRef.current) {
           return;
         }
 
         // 파싱 실패가 일정 생성 흐름을 중단하지 않게 원문을 유지한다.
-        setParsedCandidate(createParseFallback(request.input));
+        const fallbackTempEventId =
+          request.tempEventId ?? createFallbackTempEventId(draftRevision);
+        setTempEventId(fallbackTempEventId);
+        setParsedCandidate(createParseFallback(request.input, fallbackTempEventId));
         setStep(hasRecommendedRef.current ? 'recommendation' : 'input');
       }
     }, delay);
 
     return () => window.clearTimeout(timerId);
-  }, [inputValue, parseSelectedDate, setParsedCandidate, setStep, trimmedInput]);
+  }, [inputValue, parseSelectedDate, setParsedCandidate, setStep, setTempEventId, trimmedInput]);
 
   useEffect(
     () => () => {
@@ -616,7 +631,10 @@ export default function CreateModal({
     }
 
     // 공백과 Backspace를 포함한 실제 마지막 입력을 기준으로 대기 시간을 계산한다.
-    const request: RevisionRequest = { input: inputValue, revision: revisionRef.current };
+    const request = {
+      input: inputValue,
+      inputRevision: inputRevisionRef.current,
+    };
     const remainingDelay = lastInputChangedAtRef.current
       ? Math.max(0, RECOMMENDATION_DEBOUNCE_DELAY - (Date.now() - lastInputChangedAtRef.current))
       : RECOMMENDATION_DEBOUNCE_DELAY;
@@ -626,7 +644,7 @@ export default function CreateModal({
 
       // 최신 입력의 파싱 결과가 준비된 뒤에만 추천을 요청한다.
       if (
-        request.revision !== revisionRef.current ||
+        request.inputRevision !== inputRevisionRef.current ||
         latestParsedCandidate?.sourceText !== request.input
       ) {
         return;
@@ -635,10 +653,13 @@ export default function CreateModal({
       recommendationAbortControllerRef.current?.abort();
       const controller = new AbortController();
       recommendationAbortControllerRef.current = controller;
-      const draftRevision = draftRevisionRef.current;
-      draftRevisionRef.current += 1;
-      const tempEventId =
-        latestParsedCandidate.tempEventId ?? createFallbackTempEventId(request.revision);
+      const draftRevision = recommendationDraftRevisionRef.current;
+      recommendationDraftRevisionRef.current += 1;
+      const recommendationTempEventId =
+        latestParsedCandidate.tempEventId ??
+        useEventCreationStore.getState().tempEventId ??
+        createFallbackTempEventId(draftRevision);
+      setTempEventId(recommendationTempEventId);
       setLoadingRecommendations(true);
       setIsRecommendationUnavailable(false);
 
@@ -655,7 +676,7 @@ export default function CreateModal({
       try {
         const response = await recommendationService.getRecommendations(
           {
-            tempEventId,
+            tempEventId: recommendationTempEventId,
             draftRevision,
             eventTitle: latestParsedCandidate.titleCandidate ?? request.input,
             sourceType: 'USER_NATURAL_LANGUAGE',
@@ -676,9 +697,9 @@ export default function CreateModal({
 
         if (
           controller.signal.aborted ||
-          request.revision !== revisionRef.current ||
+          request.inputRevision !== inputRevisionRef.current ||
           (response.draftRevision !== undefined && response.draftRevision !== draftRevision) ||
-          (response.tempEventId !== undefined && response.tempEventId !== tempEventId)
+          (response.tempEventId !== undefined && response.tempEventId !== recommendationTempEventId)
         ) {
           return;
         }
@@ -705,11 +726,11 @@ export default function CreateModal({
         setHasRecommended(true);
         setStep('recommendation');
       } catch {
-        if (!controller.signal.aborted && request.revision === revisionRef.current) {
+        if (!controller.signal.aborted && request.inputRevision === inputRevisionRef.current) {
           showRecommendationUnavailable();
         }
       } finally {
-        if (request.revision === revisionRef.current) {
+        if (request.inputRevision === inputRevisionRef.current) {
           setLoadingRecommendations(false);
         }
       }
@@ -724,6 +745,7 @@ export default function CreateModal({
     parsedCandidate,
     setLoadingRecommendations,
     setRecommendationCandidates,
+    setTempEventId,
     setStep,
     inputValue,
     trimmedInput,
@@ -1157,7 +1179,7 @@ export default function CreateModal({
     }
 
     // revision을 올려 이전 파싱·추천 응답을 무효화한다.
-    revisionRef.current += 1;
+    inputRevisionRef.current += 1;
     lastInputChangedAtRef.current = Date.now();
     recommendationAbortControllerRef.current?.abort();
     setRawInput(value);
@@ -1206,7 +1228,7 @@ export default function CreateModal({
       return;
     }
 
-    const createRevision = revisionRef.current;
+    const createRevision = inputRevisionRef.current;
     const selectedCandidates = recommendationCandidates.filter((candidate) => candidate.selected);
     if (selectedCandidates.some((candidate) => !candidate.title.trim())) {
       window.alert('추천 항목의 제목을 입력해주세요.');
@@ -1324,7 +1346,7 @@ export default function CreateModal({
       ]);
 
       // 이전 초안의 완료 응답은 현재 생성 세션을 변경하지 않는다.
-      if (!isMountedRef.current || createRevision !== revisionRef.current) {
+      if (!isMountedRef.current || createRevision !== inputRevisionRef.current) {
         return;
       }
 
@@ -1334,7 +1356,7 @@ export default function CreateModal({
       if (
         controller.signal.aborted ||
         !isMountedRef.current ||
-        createRevision !== revisionRef.current
+        createRevision !== inputRevisionRef.current
       ) {
         return;
       }
