@@ -3,7 +3,9 @@ import type { ActionItemSaveRequest, SavedActionItem } from './recommendation';
 /** C103 자연어 일정 파싱 요청 */
 export interface EventParseRequest {
   eventTitle: string;
+  draftRevision: number;
   selectedDate: string;
+  tempEventId?: string | null;
 }
 
 export type EventDateSource =
@@ -20,6 +22,7 @@ export interface EventParseWarning {
 /** C103 일정 생성 미리보기 후보 */
 export interface EventParseResponse {
   tempEventId?: string;
+  draftRevision?: number;
   eventTitle?: string;
   startDate?: string | null;
   dateSource?: EventDateSource;
