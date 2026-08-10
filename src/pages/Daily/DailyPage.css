@@ -26,11 +26,10 @@
 
 .daily-page-panel {
   width: 100%;
-  min-height: 100%;
   min-width: 0;
+  min-height: 100%;
 }
 
-/* 가운데 패널만 트랙 높이를 결정하고 양옆 패널은 미리 렌더링한 채 겹쳐 둔다. */
 .daily-page-panel[data-position='previous'],
 .daily-page-panel[data-position='next'] {
   position: absolute;
@@ -49,18 +48,17 @@
 .daily-page-panel[data-position='next'] {
   left: 200%;
 }
-
 .daily-page-banners {
   display: flex;
   flex-direction: column;
   gap: 0;
 }
-/* 좌우 12px — 피그마 00-2에서 카드가 프레임 양옆으로부터 12px 떨어져 있다 */
+/* 피그마 00-2 박스 모델 기준: 카드가 프레임 양옆에서 12px, 카드끼리도 12px 간격 */
 .daily-page-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 12px;
+  padding: 12px;
 }
 
 .daily-page-empty {

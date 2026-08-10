@@ -3,7 +3,8 @@ import type { CategoryColor } from '@/features/calendar/types';
 interface DailyScheduleDetailProps {
   categoryColor?: CategoryColor;
   startTime: string;
-  endTime: string;
+  // 종료 시각이 없는 일정(단일 시점 등)은 API가 null을 내려줌 — 이 경우 종료 시각 표시를 생략한다.
+  endTime?: string | null;
   rotationText?: string;
   location: string;
 }
@@ -33,8 +34,12 @@ export default function DailyScheduleDetail({
       >
         <div className="flex items-center">
           <span>{startTime}</span>
-          <span>-</span>
-          <span>{endTime}</span>
+          {endTime && (
+            <>
+              <span>-</span>
+              <span>{endTime}</span>
+            </>
+          )}
         </div>
         {rotationText && <span>{rotationText}</span>}
         <span>{location}</span>

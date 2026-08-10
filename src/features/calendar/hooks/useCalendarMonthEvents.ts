@@ -1,10 +1,11 @@
-import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
-import type { UseQueryResult } from '@tanstack/react-query';
+import { keepPreviousData, useQueries } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { calendarService } from '@/apis/services/calendarService';
-import type { DateEventsResponseData, MonthlyCalendarResponseData } from '@/apis/types/calendar';
+import type { CalendarMainResponseData } from '@/apis/types/calendar';
+import { LABEL_COLOR_HEX_50 } from '@/colors/labelColor';
 import { queryKeys } from '@/hooks/queries/queryKeys';
+import { useLabelColors } from '@/hooks/queries/useLabelColors';
 
 interface UseCalendarMonthEventsOptions {
   centerYear: number;
@@ -15,10 +16,18 @@ interface UseCalendarMonthEventsOptions {
 
 export interface CalendarMonthEventItem {
   title: string;
-  date: string;
+  /** FullCalendar 일정 시작일(yyyy-mm-dd) */
+  start: string;
+  /** FullCalendar 규칙에 맞춘 배타적 종료일 */
+  end?: string;
+  allDay: boolean;
   backgroundColor?: string;
   textColor?: string;
   borderColor?: string;
+  extendedProps: {
+    eventId: number;
+    occurrenceDate: string;
+  };
 }
 
 export type CalendarMonthEventsByMonth = Partial<Record<string, CalendarMonthEventItem[]>>;
@@ -28,19 +37,6 @@ interface MonthItem {
   month: number;
   key: string;
 }
-
-interface CombinedQueryState<T> {
-  data: Array<T | undefined>;
-  isPending: boolean;
-  isFetching: boolean;
-  isError: boolean;
-}
-
-const EVENT_COLORS = {
-  backgroundColor: '#FDFEE4',
-  textColor: '#1C1630',
-  borderColor: 'transparent',
-} as const;
 
 function getMonthItem(year: number, month: number, offset: number): MonthItem {
   const monthIndex = year * 12 + (month - 1) + offset;
@@ -54,13 +50,12 @@ function getMonthItem(year: number, month: number, offset: number): MonthItem {
   };
 }
 
-function combineQueryResults<T>(results: readonly UseQueryResult<T>[]): CombinedQueryState<T> {
-  return {
-    data: results.map((result) => result.data),
-    isPending: results.some((result) => result.isPending),
-    isFetching: results.some((result) => result.isFetching),
-    isError: results.some((result) => result.isError),
-  };
+/** FullCalendar의 종료일은 배타적이라 실제 마지막 날의 다음 날을 넘긴다. */
+function addExclusiveEnd(endDate: string) {
+  const date = new Date(`${endDate}T00:00:00`);
+  date.setDate(date.getDate() + 1);
+
+  return date.toLocaleDateString('sv-SE');
 }
 
 /** 현재 월을 기준으로 이전·현재·다음 달의 캘린더 이벤트를 조회한다. */
@@ -69,119 +64,92 @@ function useCalendarMonthEvents({
   centerMonth,
   selectedDate,
 }: UseCalendarMonthEventsOptions) {
+  const { getLabelColor } = useLabelColors();
   const months = useMemo(
     () => [-1, 0, 1].map((offset) => getMonthItem(centerYear, centerMonth, offset)),
     [centerMonth, centerYear],
   );
-  const [selectedYear, selectedMonth] = selectedDate.split('-').map(Number);
 
-  const selectedDateQuery = useQuery({
-    queryKey: queryKeys.calendars.main(selectedYear, selectedMonth, selectedDate),
-    queryFn: () => calendarService.getMain(selectedYear, selectedMonth, selectedDate),
-    placeholderData: keepPreviousData,
-  });
-
-  const monthlyQueryOptions = useMemo(
+  const monthQueryOptions = useMemo(
     () =>
-      months.map(({ year, month }) => ({
-        queryKey: queryKeys.calendars.monthly(year, month),
-        queryFn: () => calendarService.getMonthly(year, month),
-      })),
-    [months],
+      months.map(({ year, month, key }) => {
+        // B101은 selectedDate가 조회 연월 안에 있어야 하므로, 다른 달은 1일을 사용한다.
+        const requestDate = selectedDate.startsWith(`${key}-`) ? selectedDate : `${key}-01`;
+
+        return {
+          queryKey: queryKeys.calendars.main(year, month, requestDate),
+          queryFn: () => calendarService.getMain(year, month, requestDate),
+          placeholderData: keepPreviousData,
+        };
+      }),
+    [months, selectedDate],
   );
-  const monthlyQueries = useQueries({
-    queries: monthlyQueryOptions,
-    combine: combineQueryResults<MonthlyCalendarResponseData>,
-  });
-
-  const eventDates = useMemo(() => {
-    const dates = new Set<string>();
-
-    monthlyQueries.data.forEach((monthlyData, index) => {
-      const expectedMonth = months[index];
-
-      if (
-        !monthlyData ||
-        !expectedMonth ||
-        monthlyData.year !== expectedMonth.year ||
-        monthlyData.month !== expectedMonth.month
-      ) {
-        return;
-      }
-
-      monthlyData.days.forEach((day) => {
-        if (day.date !== selectedDate && (day.hasEvent || day.eventCount > 0)) {
-          dates.add(day.date);
-        }
-      });
-    });
-
-    return [...dates].sort();
-  }, [monthlyQueries.data, months, selectedDate]);
-
-  const dateEventQueryOptions = useMemo(
-    () =>
-      eventDates.map((date) => ({
-        queryKey: queryKeys.calendars.dateEvents(date),
-        queryFn: () => calendarService.getDateEvents(date),
-      })),
-    [eventDates],
-  );
-  const dateEventQueries = useQueries({
-    queries: dateEventQueryOptions,
-    combine: combineQueryResults<DateEventsResponseData>,
+  const monthQueries = useQueries({
+    queries: monthQueryOptions,
+    combine: (results) => ({
+      data: results.map((result) => result.data as CalendarMainResponseData | undefined),
+      isPending: results.some((result) => result.isPending),
+      isFetching: results.some((result) => result.isFetching),
+      isError: results.some((result) => result.isError),
+    }),
   });
 
   const eventsByMonth = useMemo<CalendarMonthEventsByMonth>(() => {
     const nextEventsByMonth: CalendarMonthEventsByMonth = Object.fromEntries(
       months.map(({ key }) => [key, []]),
     );
-    const renderedMonthKeys = new Set(months.map(({ key }) => key));
-    const selectedDateData = selectedDateQuery.data;
-    const selectedMonthKey = selectedDate.slice(0, 7);
+    monthQueries.data.forEach((monthData, index) => {
+      const expectedMonth = months[index];
 
-    if (
-      renderedMonthKeys.has(selectedMonthKey) &&
-      selectedDateData?.selectedDate === selectedDate
-    ) {
-      nextEventsByMonth[selectedMonthKey] = selectedDateData.selectedDateEvents.map((event) => ({
-        title: event.title,
-        date: selectedDate,
-        ...EVENT_COLORS,
-      }));
-    }
-
-    dateEventQueries.data.forEach((dateData) => {
-      if (!dateData) {
+      // keepPreviousData가 잠시 이전 응답을 줄 수 있으므로 연월이 맞을 때만 그린다.
+      if (
+        !monthData ||
+        !expectedMonth ||
+        monthData.year !== expectedMonth.year ||
+        monthData.month !== expectedMonth.month
+      ) {
         return;
       }
 
-      const monthKey = dateData.date.slice(0, 7);
-      const monthEvents = nextEventsByMonth[monthKey];
+      // 서버는 장기 일정을 걸친 날짜마다 반복해서 주므로 회차 단위로 한 번만 만든다.
+      // eventId만 쓰면 반복 일정의 서로 다른 회차가 합쳐지므로 startDate도 함께 묶는다.
+      const eventsByOccurrence = new Map<string, CalendarMonthEventItem>();
 
-      if (!renderedMonthKeys.has(monthKey) || !monthEvents) {
-        return;
+      for (const day of monthData.monthlyEventDays) {
+        for (const event of day.previewEvents) {
+          const occurrenceKey = `${event.eventId}-${event.startDate}`;
+
+          if (eventsByOccurrence.has(occurrenceKey)) {
+            continue;
+          }
+
+          eventsByOccurrence.set(occurrenceKey, {
+            title: event.title,
+            start: event.startDate,
+            end: event.endDate ? addExclusiveEnd(event.endDate) : undefined,
+            allDay: true,
+            backgroundColor: LABEL_COLOR_HEX_50[getLabelColor(event.labelId)],
+            textColor: '#1C1630',
+            borderColor: 'transparent',
+            extendedProps: {
+              eventId: event.eventId,
+              occurrenceDate: event.startDate,
+            },
+          });
+        }
       }
 
-      monthEvents.push(
-        ...dateData.events.map((event) => ({
-          title: event.title,
-          date: dateData.date,
-          ...EVENT_COLORS,
-        })),
-      );
+      nextEventsByMonth[expectedMonth.key] = [...eventsByOccurrence.values()];
     });
 
     return nextEventsByMonth;
-  }, [dateEventQueries.data, months, selectedDate, selectedDateQuery.data]);
+  }, [getLabelColor, monthQueries.data, months]);
 
   return {
     eventsByMonth,
-    isPending:
-      selectedDateQuery.isPending || monthlyQueries.isPending || dateEventQueries.isPending,
-    isFetching:
-      selectedDateQuery.isFetching || monthlyQueries.isFetching || dateEventQueries.isFetching,
-    isError: selectedDateQuery.isError || monthlyQueries.isError || dateEventQueries.isError,
+    isPending: monthQueries.isPending,
+    isFetching: monthQueries.isFetching,
+    isError: monthQueries.isError,
   };
 }
 

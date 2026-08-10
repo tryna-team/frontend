@@ -268,6 +268,50 @@
   );
 }
 
+/* 원래 일정 날짜는 선택 날짜보다 옅게 구분한다. */
+.create-date-picker
+  .create-calendar-reference-day:not(.create-calendar-selected-day)
+  .rdp-day_button {
+  color: var(--Base-Green-Green-400, #32e089);
+  background: color-mix(in srgb, var(--Base-Green-Green-400, #32e089) 12%, transparent);
+  border-radius: 999px;
+}
+
+/* 상위 일정의 시작일부터 종료일까지 같은 배경으로 연결한다. */
+.create-date-picker .create-calendar-reference-range-day::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0 -12px;
+  background: var(--color-green-50);
+  content: '';
+}
+
+.create-date-picker .create-calendar-reference-range-start::before {
+  left: 0;
+  border-radius: 999px 0 0 999px;
+}
+
+.create-date-picker .create-calendar-reference-range-end::before {
+  right: 0;
+  border-radius: 0 999px 999px 0;
+}
+
+/* 범위 배경은 각 주의 좌우 16px 여백 안에서만 표시한다. */
+.create-date-picker .rdp-day:first-child.create-calendar-reference-range-day::before {
+  left: 0;
+}
+
+.create-date-picker .rdp-day:last-child.create-calendar-reference-range-day::before {
+  right: 0;
+}
+
+.create-date-picker
+  .create-calendar-reference-range-day
+  .rdp-day_button {
+  background: transparent;
+  color: var(--Base-Green-Green-400, #32e089);
+}
+
 /* Single Selection */
 
 /* 선택된 날짜에 Green 500 원형 배경 표시 */

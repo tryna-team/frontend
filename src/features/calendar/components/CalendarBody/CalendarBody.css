@@ -67,7 +67,8 @@
   height: var(--calendar-day-row-height);
   max-height: var(--calendar-day-row-height);
   padding: 2px 0;
-  overflow: hidden;
+  /* 여러 날 일정은 시작 셀에서 옆 셀까지 이어지므로 프레임에서 자르지 않는다. */
+  overflow: visible;
   border-bottom: 1px solid #ededf2 !important;
 }
 
@@ -112,8 +113,12 @@
   padding: 0 1px !important;
   margin: 0 !important;
   overflow: hidden !important;
-  font-size: 10px !important;
+  gap: 1px;
+  font-family: var(--font-default);
+  font-size: 11px !important;
+  font-weight: 400;
   line-height: 15px !important;
+  letter-spacing: -0.11px;
   white-space: nowrap !important;
   text-overflow: ellipsis !important;
   border-radius: 4px !important;

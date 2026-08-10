@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useRef } from 'react';
 import type { PointerEvent } from 'react';
 import FullCalendar from '@fullcalendar/react';
-import type { MoreLinkContentArg } from '@fullcalendar/core';
+import type { EventClickArg, MoreLinkContentArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { DateClickArg } from '@fullcalendar/interaction';
@@ -10,10 +10,16 @@ import './CalendarBody.css';
 
 export interface CalendarMonthEvent {
   title: string;
-  date: string;
+  start: string;
+  end?: string;
+  allDay: boolean;
   backgroundColor?: string;
   textColor?: string;
   borderColor?: string;
+  extendedProps: {
+    eventId: number;
+    occurrenceDate: string;
+  };
 }
 
 interface CalendarMonthProps {
@@ -23,6 +29,7 @@ interface CalendarMonthProps {
   events?: CalendarMonthEvent[];
   selectedDate?: string | null;
   onSelectDate: (date: string) => void;
+  onSelectEvent?: (eventId: number, occurrenceDate: string) => void;
   onLongPressDate?: (date: string) => void;
 }
 
@@ -38,7 +45,15 @@ const formatDate = (date: Date) => {
 };
 
 const CalendarMonth = forwardRef<HTMLDivElement, CalendarMonthProps>(function CalendarMonth(
-  { year, month, events = [], selectedDate = null, onSelectDate, onLongPressDate },
+  {
+    year,
+    month,
+    events = [],
+    selectedDate = null,
+    onSelectDate,
+    onSelectEvent,
+    onLongPressDate,
+  },
   ref,
 ) {
   const calendarRef = useRef<FullCalendar>(null);
@@ -88,6 +103,27 @@ const CalendarMonth = forwardRef<HTMLDivElement, CalendarMonthProps>(function Ca
     }
 
     onSelectDate(arg.dateStr);
+  };
+
+  const handleEventClick = (arg: EventClickArg) => {
+    arg.jsEvent.preventDefault();
+
+    const eventDate = arg.event.startStr.slice(0, 10);
+
+    // 일정 위에서 롱프레스를 끝낼 때 이어서 발생하는 클릭으로 상세 화면까지 열리지 않게 한다.
+    if (longPressedDateRef.current === eventDate) {
+      longPressedDateRef.current = null;
+      return;
+    }
+
+    const eventId = Number(arg.event.extendedProps.eventId);
+    const occurrenceDate = arg.event.extendedProps.occurrenceDate;
+
+    if (!Number.isInteger(eventId) || typeof occurrenceDate !== 'string') {
+      return;
+    }
+
+    onSelectEvent?.(eventId, occurrenceDate);
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -177,6 +213,7 @@ const CalendarMonth = forwardRef<HTMLDivElement, CalendarMonthProps>(function Ca
         height="auto"
         dayMaxEvents={3}
         dateClick={handleDateClick}
+        eventClick={handleEventClick}
         dayCellClassNames={(arg) =>
           formatDate(arg.date) === selectedDate ? ['calendar-month__selected-date'] : []
         }

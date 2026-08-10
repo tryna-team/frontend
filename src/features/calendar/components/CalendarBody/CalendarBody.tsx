@@ -27,6 +27,7 @@ interface CalendarBodyProps {
   selectedDate?: string | null;
   scrollToDateRequest?: CalendarDateScrollRequest | null;
   onSelectDate: (date: string) => void;
+  onSelectEvent?: (eventId: number, occurrenceDate: string) => void;
   onLongPressDate?: (date: string) => void;
   onVisibleMonthChange: (year: number, month: number) => void;
   onScrollToDateComplete?: (requestId: number) => void;
@@ -43,6 +44,7 @@ function CalendarBody({
   selectedDate = null,
   scrollToDateRequest = null,
   onSelectDate,
+  onSelectEvent,
   onLongPressDate,
   onVisibleMonthChange,
   onScrollToDateComplete,
@@ -212,6 +214,7 @@ function CalendarBody({
             events={eventsByMonth?.[key] ?? []}
             selectedDate={selectedDate}
             onSelectDate={onSelectDate}
+            onSelectEvent={onSelectEvent}
             onLongPressDate={onLongPressDate}
           />
         ))}
