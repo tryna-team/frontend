@@ -4,6 +4,7 @@ import {
 } from 'react';
 import {
   Navigate,
+  useLocation,
   useNavigate,
   useParams,
 } from 'react-router';
@@ -18,13 +19,13 @@ import DailyScheduleCard, {
 } from '@/features/event/components/DailyScheduleCard';
 import QuickModal from '@/features/event/components/QuickModal';
 import type { CategoryColor } from '@/features/calendar/types';
-import { PATH } from '@/routes/paths';
+import { generateDailyPath, PATH } from '@/routes/paths';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
-import { useCanGoBack } from '@/hooks/useCanGoBack';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { eventDetailService } from '@/apis/services/eventDetailService';
 import { actionItemsService } from '@/apis/services/actionItemsService';
 import type { EventDetailResponseData, RecurrenceDayOfWeek } from '@/apis/types/eventDetail';
+import type { EventViewNavigationState } from '@/routes/navigationState';
 
 import './EventViewPage.css';
 
@@ -80,12 +81,13 @@ function formatRecurrenceText(eventDetail: EventDetailResponseData): string | un
 
 function EventViewPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // URL에서 조회할 일정 ID를 읽음
   const { eventId } = useParams<{
     eventId: string;
   }>();
-  const canGoBack = useCanGoBack();
+  const navigationState = location.state as EventViewNavigationState | null;
 
   const {
     data: eventDetail,
@@ -143,14 +145,19 @@ function EventViewPage() {
   );
   useFloatingButtons(floatingButtonsContent);
 
-  // Header: chevron -> 직전 화면 이동
+  const fromDate = /^\d{4}-\d{2}-\d{2}$/.test(navigationState?.fromDate ?? '')
+    ? navigationState?.fromDate
+    : undefined;
+  const parentDate = fromDate ?? eventDetail?.startDate;
+
+  // 캘린더 계층의 상위 화면인 데일리 뷰로 이동
   const handleBack = () => {
-    if (canGoBack) {
-      navigate(-1);
-    } else {
-      // 방문 기록이 없으면 Home으로 이동한다.
+    if (!parentDate) {
       navigate(PATH.HOME, { replace: true });
+      return;
     }
+
+    navigate(generateDailyPath(parentDate), { replace: true });
   };
 
   // ⚠️ 실제 PATCH(/action-items/{actionItemId}/status) 연동 불가 — 목록 응답에
@@ -189,7 +196,7 @@ function EventViewPage() {
         variant="daily"
         leading={{
           type: 'icon-text',
-          text: formatDateLabel(eventDetail.startDate),
+          text: formatDateLabel(parentDate ?? eventDetail.startDate),
           onClick: handleBack,
         }}
         trailing={{ type: 'text', text: '수정' }}

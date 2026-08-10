@@ -5,7 +5,7 @@ import { useQueries, useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useCalendarStore } from '@/stores';
 import type { CalendarLabel } from '@/stores/types';
 import Button from '@/components/common/Buttons/Button';
-import CalendarGrid from '@/components/common/CalendarGrid/CalendarGrid';
+import CalendarGrid from '@/features/calendar/components/CalendarGrid';
 import CreateModal from '@/components/common/CreateModal/CreateModal';
 import SearchOverlay from '@/features/calendar/components/SearchOverlay';
 import LabelListSheet from '@/components/common/Popup/BottomSheet/Label/LabelListSheet';
@@ -16,6 +16,7 @@ import { useGuestConversionPrompt } from '@/hooks/useGuestConversionPrompt';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { calendarService } from '@/apis/services/calendarService';
 import { generateDailyPath, PATH } from '@/routes/paths';
+import type { YearCalendarNavigationState } from '@/routes/navigationState';
 
 import './HomePage.css';
 
@@ -194,7 +195,11 @@ function HomePage() {
         onSearchClick={() => setIsSearchOpen(true)}
         onViewToggleClick={() => setLabelSheetView('list')}
         onSettingsClick={() => setIsSettingOpen(true)}
-        onYearViewClick={() => navigate(PATH.YEAR_CALENDAR)}
+        onYearViewClick={() =>
+          navigate(PATH.YEAR_CALENDAR, {
+            state: { year: currentYear } satisfies YearCalendarNavigationState,
+          })
+        }
       />
 
       {isSearchOpen && (
