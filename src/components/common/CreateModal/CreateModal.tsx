@@ -26,68 +26,10 @@ import {
 import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { useEventCreationStore } from '@/stores';
-import type { ActionItemType, ParsedEventCandidate, RecommendationCandidate } from '@/stores/types';
-
-import type { ChecklistStatus } from '@/components/common/Checklist/ChecklistItem';
+import type { ParsedEventCandidate, RecommendationCandidate } from '@/stores/types';
 
 import CreateModalSkeleton from './CreateModalSkeleton';
-
-export type LabelColor = 'apricot' | 'blue' | 'green' | 'pink' | 'purple' | 'yellow';
-
-export type CalendarStatus =
-  | {
-      type: 'default';
-    }
-  | {
-      type: 'repeat';
-      text: string;
-    };
-
-export type LabelStatus =
-  | {
-      type: 'default';
-    }
-  | {
-      type: 'selected';
-      id: number;
-      label: string;
-      color: LabelColor;
-    };
-
-// 기존 CreateModal에서 사용하던 체크리스트 데이터 타입을 유지
-type CreateModalChecklistItem = {
-  id: number;
-  label: string;
-  status?: ChecklistStatus;
-  itemType?: ActionItemType;
-  // status=add, done일 때 사용. 없으면 '당일'로 표시
-  date?: string;
-};
-
-export type CreateModalProps = {
-  mode?: 'default' | 'recommend';
-  inputValue?: string;
-  keyword?: string;
-  message?: string;
-  checklistItems?: CreateModalChecklistItem[];
-  initialScheduleDate?: Date;
-  calendarStatus?: CalendarStatus;
-  labelStatus?: LabelStatus;
-  labels?: LabelItemData[];
-  // 라벨 생성 시트(LabelCreateSheet)에서 방금 새로 만든 라벨의 id. 값이 바뀔 때마다
-  // 그 라벨을 선택 상태로 반영한다(라벨 목록 관리 화면과 달리, 이벤트 생성 흐름에선
-  // 라벨을 새로 만들면 바로 그 라벨이 선택돼 있어야 자연스럽다).
-  pendingSelectedLabelId?: number | null;
-  onInputChange?: (value: string) => void;
-  onOpenCalendar?: () => void;
-  onOpenLabel?: () => void;
-  onSelectLabel?: (id: number) => void;
-  onCreateLabel?: () => void;
-  onAddChecklist?: () => void;
-  onToggleChecklist?: (id: number) => void;
-  onCreate?: (createdDate: string) => void;
-  onClose?: () => void;
-};
+import type { CreateModalProps, LabelColor, RecommendationEditDraft } from './CreateModal.types';
 
 const COLOR_ICON = {
   apricot: '/icon/color_picker/apricot_small.svg',
@@ -132,21 +74,6 @@ const formatChecklistDate = (
   return parsedEndDate && isValid(parsedEndDate) && !isSameDay(validStartDate, parsedEndDate)
     ? `${startText} - ${format(parsedEndDate, 'MM. dd.')}`
     : startText;
-};
-
-type RecommendationEditDraft = {
-  candidateId: string;
-  title: string;
-  startDate: Date;
-  endDate: Date;
-  startTime: string;
-  endTime: string;
-  originalItemType: RecommendationCandidate['itemType'];
-  originalApiItemType: NonNullable<RecommendationCandidate['apiItemType']>;
-  originalDisplayDate: string | null;
-  originalDisplayEndDate: string | null;
-  originalDisplayTime: string | null;
-  hasTimeChanged: boolean;
 };
 
 // 실제 API 연결 시 내부만 파싱 요청으로 교체한다.
