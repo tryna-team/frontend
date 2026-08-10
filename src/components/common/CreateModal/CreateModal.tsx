@@ -112,7 +112,12 @@ const createManualCandidateId = () =>
 const PARSING_THROTTLE_DELAY = 300;
 const RECOMMENDATION_DEBOUNCE_DELAY = 1000;
 
-const createFallbackTempEventId = (revision: number) => `fallback-${revision}`;
+const createFallbackTempEventId = () =>
+  `fallback-${
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random()}`
+  }`;
 
 const formatChecklistDate = (
   date: string | null | undefined,
@@ -567,6 +572,7 @@ export default function CreateModal({
 
         // TODO: 파싱 API가 revision을 지원하면 로컬 revision 비교를 서버 값으로 교체한다.
         if (
+          controller.signal.aborted ||
           request.inputRevision !== inputRevisionRef.current ||
           (response.draftRevision !== undefined && response.draftRevision !== draftRevision)
         ) {
@@ -606,8 +612,7 @@ export default function CreateModal({
         }
 
         // 파싱 실패가 일정 생성 흐름을 중단하지 않게 원문을 유지한다.
-        const fallbackTempEventId =
-          request.tempEventId ?? createFallbackTempEventId(draftRevision);
+        const fallbackTempEventId = request.tempEventId ?? createFallbackTempEventId();
         setTempEventId(fallbackTempEventId);
         setParsedCandidate(createParseFallback(request.input, fallbackTempEventId));
         setStep(hasRecommendedRef.current ? 'recommendation' : 'input');
@@ -655,10 +660,9 @@ export default function CreateModal({
       recommendationAbortControllerRef.current = controller;
       const draftRevision = recommendationDraftRevisionRef.current;
       recommendationDraftRevisionRef.current += 1;
+      const currentTempEventId = useEventCreationStore.getState().tempEventId;
       const recommendationTempEventId =
-        latestParsedCandidate.tempEventId ??
-        useEventCreationStore.getState().tempEventId ??
-        createFallbackTempEventId(draftRevision);
+        latestParsedCandidate.tempEventId ?? currentTempEventId ?? createFallbackTempEventId();
       setTempEventId(recommendationTempEventId);
       setLoadingRecommendations(true);
       setIsRecommendationUnavailable(false);
