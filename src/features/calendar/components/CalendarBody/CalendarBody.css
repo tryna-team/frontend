@@ -99,6 +99,9 @@
 .calendar-month .fc-day-sat .fc-daygrid-day-number {
   color: var(--color-grey-opacity-300);
 }
+.calendar-month .fc-day-sun .fc-daygrid-day-number {
+  color: var(--color-grey-opacity-300);
+}
 
 .calendar-month .fc-daygrid-event-harness {
   margin-right: 1px !important;
