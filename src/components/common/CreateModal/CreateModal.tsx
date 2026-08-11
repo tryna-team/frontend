@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { FocusEvent, KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 
 import { format, isSameDay, isValid, parseISO } from 'date-fns';
@@ -26,7 +25,6 @@ import type { RecommendationCandidate } from '@/stores/types';
 import {
   ADD_CHECKLIST_ITEM_ID,
   COLOR_ICON,
-  FOCUSABLE_SELECTOR,
   PARSING_THROTTLE_DELAY,
   RECOMMENDATION_DEBOUNCE_DELAY,
 } from './CreateModal.constants';
@@ -46,6 +44,7 @@ import {
 import CreateModalSkeleton from './CreateModalSkeleton';
 import { buildCreateEventRequest, getTimedActionDates } from './CreateModal.submit';
 import type { CreateModalProps, RecommendationEditDraft } from './CreateModal.types';
+import { useCreateModalFocus } from './useCreateModalFocus';
 import { useCreateModalLabels } from './useCreateModalLabels';
 import { useCreateModalScheduleText } from './useCreateModalScheduleText';
 import { useCreateModalViewport } from './useCreateModalViewport';
@@ -102,9 +101,6 @@ export default function CreateModal({
   const isMountedRef = useRef(true);
   const lastInputChangedAtRef = useRef<number | null>(null);
   const hasRecommendedRef = useRef(mode === 'recommend');
-  const keepKeyboardOpenRef = useRef(true);
-  const isScheduleOpeningRef = useRef(false);
-  const isKeyboardNavigationRef = useRef(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [hasRecommended, setHasRecommended] = useState(false);
   const [recommendedTitle, setRecommendedTitle] = useState('');
@@ -224,6 +220,23 @@ export default function CreateModal({
 
     handleCloseRequest();
   }, [handleCloseRequest, isLabelModalOpen, setIsLabelModalOpen]);
+
+  const {
+    keepKeyboardOpenRef,
+    isScheduleOpeningRef,
+    handleInputBlur,
+    handleInputKeyDown,
+  } = useCreateModalFocus({
+    dialogRef,
+    inputRef,
+    labelButtonRef,
+    isExitConfirmOpen,
+    isLabelModalOpen,
+    isScheduleOpen,
+    setIsLabelModalOpen,
+    handleCloseRequest,
+    handleExitConfirmClose,
+  });
 
   const handleExitConfirm = () => {
     // 확인한 경우에만 작성 중인 입력과 생성 후보를 삭제한다.
@@ -498,80 +511,6 @@ export default function CreateModal({
     };
   }, []);
 
-  // Tab 포커스를 생성 모달 안에서 순환시키고 Escape로 닫는다.
-  useEffect(() => {
-    const handleDialogKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (isScheduleOpen) {
-        return;
-      }
-
-      if (event.key === 'Escape') {
-        event.preventDefault();
-
-        if (isExitConfirmOpen) {
-          handleExitConfirmClose();
-          return;
-        }
-
-        if (isLabelModalOpen) {
-          setIsLabelModalOpen(false);
-          window.requestAnimationFrame(() => {
-            labelButtonRef.current?.focus();
-          });
-          return;
-        }
-
-        handleCloseRequest();
-        return;
-      }
-
-      if (event.key !== 'Tab') {
-        return;
-      }
-
-      const dialog = dialogRef.current;
-
-      if (!dialog) {
-        return;
-      }
-
-      const focusableElements = Array.from(
-        dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-      );
-
-      if (focusableElements.length === 0) {
-        event.preventDefault();
-        return;
-      }
-
-      const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
-      const activeElement = document.activeElement;
-      const isFocusOutside = !dialog.contains(activeElement);
-
-      if (event.shiftKey && (activeElement === firstElement || isFocusOutside)) {
-        event.preventDefault();
-        lastElement.focus();
-        return;
-      }
-
-      if (!event.shiftKey && (activeElement === lastElement || isFocusOutside)) {
-        event.preventDefault();
-        firstElement.focus();
-      }
-    };
-
-    document.addEventListener('keydown', handleDialogKeyDown);
-
-    return () => document.removeEventListener('keydown', handleDialogKeyDown);
-  }, [
-    handleCloseRequest,
-    handleExitConfirmClose,
-    isExitConfirmOpen,
-    isLabelModalOpen,
-    isScheduleOpen,
-    setIsLabelModalOpen,
-  ]);
   const handleOpenRecommendationEdit = useCallback(
     (candidate: RecommendationCandidate) => {
       if (isSaving || !candidate.selected) {
@@ -803,37 +742,6 @@ export default function CreateModal({
     setIsScheduleOpen(true);
     inputRef.current?.blur();
     onOpenCalendar?.();
-  };
-
-  // 생성 모달 안에서는 입력 포커스를 유지한다.
-  const handleInputBlur = (event: FocusEvent<HTMLInputElement>) => {
-    // 추천 항목 제목을 누르면 해당 입력창으로 포커스를 넘긴다.
-    if (
-      event.relatedTarget instanceof HTMLElement &&
-      event.relatedTarget.dataset.recommendationTitleInput === 'true'
-    ) {
-      return;
-    }
-
-    if (isKeyboardNavigationRef.current && event.relatedTarget instanceof HTMLElement) {
-      isKeyboardNavigationRef.current = false;
-      return;
-    }
-
-    isKeyboardNavigationRef.current = false;
-
-    window.requestAnimationFrame(() => {
-      if (keepKeyboardOpenRef.current) {
-        inputRef.current?.focus();
-      }
-    });
-  };
-
-  // Tab 이동은 다른 컨트롤의 포커스를 유지한다.
-  const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Tab') {
-      isKeyboardNavigationRef.current = true;
-    }
   };
 
   const handleInputChange = (value: string) => {
