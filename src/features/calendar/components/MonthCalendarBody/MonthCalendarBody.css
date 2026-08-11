@@ -1,4 +1,4 @@
-.calendar-body-viewport {
+.month-calendar-body-viewport {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -7,11 +7,11 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.calendar-body-viewport::-webkit-scrollbar {
+.month-calendar-body-viewport::-webkit-scrollbar {
   display: none;
 }
 
-.calendar-body {
+.month-calendar-body {
   display: flex;
   flex-direction: column;
   width: 100%;

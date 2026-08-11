@@ -7,7 +7,7 @@ export interface CalendarMonthItem {
   key: string;
 }
 
-interface UseMonthWindowParams {
+interface UseMonthWindowOptions {
   initialYear: number;
   /** 1부터 12까지의 월 */
   initialMonth: number;
@@ -37,7 +37,7 @@ const createInitialMonthWindow = (year: number, month: number) => {
   return [moveMonth(currentMonth, -1), currentMonth, moveMonth(currentMonth, 1)];
 };
 
-function useMonthWindow({ initialYear, initialMonth }: UseMonthWindowParams) {
+function useMonthWindow({ initialYear, initialMonth }: UseMonthWindowOptions) {
   const [months, setMonths] = useState<CalendarMonthItem[]>(() =>
     createInitialMonthWindow(initialYear, initialMonth),
   );

@@ -107,21 +107,26 @@ function useVisibleCalendarItem<
 
   useEffect(() => {
     const viewport = viewportRef.current;
+    const content = contentRef.current;
 
-    if (!viewport) {
+    if (!viewport || !content) {
       return;
     }
 
+    const resizeObserver = new ResizeObserver(scheduleMeasure);
+
     viewport.addEventListener('scroll', scheduleMeasure, { passive: true });
     window.addEventListener('resize', scheduleMeasure, { passive: true });
+    resizeObserver.observe(content);
     scheduleMeasure();
 
     return () => {
       viewport.removeEventListener('scroll', scheduleMeasure);
       window.removeEventListener('resize', scheduleMeasure);
+      resizeObserver.disconnect();
       cancelMeasure();
     };
-  }, [cancelMeasure, scheduleMeasure, viewportRef]);
+  }, [cancelMeasure, contentRef, scheduleMeasure, viewportRef]);
 }
 
 export default useVisibleCalendarItem;

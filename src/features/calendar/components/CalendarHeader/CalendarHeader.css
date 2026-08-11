@@ -2,7 +2,7 @@
 .calendar-header-daily {
   position: relative;
   z-index: 2;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.8);
   box-shadow: 0 2px 4px rgba(28, 22, 48, 0.06);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
@@ -24,6 +24,10 @@
   height: 42px;
   padding: 0 var(--Spacing-Semantic-Page-Padding-Large, 20px);
   box-sizing: border-box;
+}
+
+.calendar-header-button-section-yearly {
+  justify-content: flex-end;
 }
 
 .calendar-back-button {
@@ -78,6 +82,10 @@
   background: none;
   border: none;
   cursor: pointer;
+}
+
+.calendar-header-action-button:disabled {
+  cursor: default;
 }
 
 .calendar-header-action-button img {

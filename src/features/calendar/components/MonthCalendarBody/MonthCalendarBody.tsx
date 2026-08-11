@@ -7,16 +7,16 @@ import CalendarMonth from './CalendarMonth';
 import type { CalendarMonthEvent } from './CalendarMonth';
 import useMonthWindow from './hooks/useMonthWindow';
 
-import './CalendarBody.css';
+import './MonthCalendarBody.css';
 
 export type CalendarEventsByMonth = Partial<Record<string, CalendarMonthEvent[]>>;
 
-export interface CalendarDateScrollRequest {
+export interface CalendarMonthScrollRequest {
   date: string;
   requestId: number;
 }
 
-interface CalendarBodyProps {
+interface MonthCalendarBodyProps {
   initialYear: number;
   /** 1부터 12까지의 월 */
   initialMonth: number;
@@ -25,7 +25,7 @@ interface CalendarBodyProps {
   visibleMonth: number;
   eventsByMonth?: CalendarEventsByMonth;
   selectedDate?: string | null;
-  scrollToDateRequest?: CalendarDateScrollRequest | null;
+  scrollToDateRequest?: CalendarMonthScrollRequest | null;
   onSelectDate: (date: string) => void;
   onSelectEvent?: (eventId: number, occurrenceDate: string) => void;
   onLongPressDate?: (date: string) => void;
@@ -35,7 +35,7 @@ interface CalendarBodyProps {
 
 const getMonthKey = (element: HTMLElement) => element.dataset.calendarMonth ?? null;
 
-function CalendarBody({
+function MonthCalendarBody({
   initialYear,
   initialMonth,
   visibleYear,
@@ -48,7 +48,7 @@ function CalendarBody({
   onLongPressDate,
   onVisibleMonthChange,
   onScrollToDateComplete,
-}: CalendarBodyProps) {
+}: MonthCalendarBodyProps) {
   const { months, prependMonth, appendMonth, resetMonthWindow } = useMonthWindow({
     initialYear,
     initialMonth,
@@ -204,8 +204,8 @@ function CalendarBody({
   ]);
 
   return (
-    <div className="calendar-body-viewport" ref={viewportRef}>
-      <section className="calendar-body" ref={contentRef} aria-label="월간 캘린더">
+    <div className="month-calendar-body-viewport" ref={viewportRef}>
+      <section className="month-calendar-body" ref={contentRef} aria-label="월간 캘린더">
         {months.map(({ year, month, key }) => (
           <CalendarMonth
             key={key}
@@ -223,4 +223,4 @@ function CalendarBody({
   );
 }
 
-export default CalendarBody;
+export default MonthCalendarBody;

@@ -1,93 +1,168 @@
-import { useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import multiMonthPlugin from '@fullcalendar/multimonth';
+
+import Button from '@/components/common/Buttons/Button';
+import CreateModal from '@/components/common/CreateModal/CreateModal';
+import LabelEditSheet from '@/components/common/Popup/BottomSheet/Label/LabelEditSheet';
+import LabelCreateSheet from '@/components/common/Popup/BottomSheet/Label/LabelCreateSheet';
+import LabelListSheet from '@/components/common/Popup/BottomSheet/Label/LabelListSheet';
+import CalendarHeader from '@/features/calendar/components/CalendarHeader';
+import YearCalendarBody from '@/features/calendar/components/YearCalendarBody/YearCalendarBody';
+import type { CalendarYearScrollRequest } from '@/features/calendar/components/YearCalendarBody/YearCalendarBody';
+import { isSupportedCalendarYear } from '@/features/calendar/components/YearCalendarBody/hooks/useYearWindow';
+import SearchOverlay from '@/features/calendar/components/SearchOverlay';
+import useCalendarScrollRequest from '@/features/calendar/hooks/useCalendarScrollRequest';
+import useLabelSheetFlow from '@/features/calendar/hooks/useLabelSheetFlow';
+import useEventCreationFlow from '@/features/event/hooks/useEventCreationFlow';
+import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import type { YearCalendarNavigationState } from '@/routes/navigationState';
+import { PATH } from '@/routes/paths';
+import { useCalendarStore } from '@/stores';
+import { useUIStore } from '@/stores/uiStore';
+
 import './YearCalendarPage.css';
 
 function YearCalendarPage() {
-  const navigate = useNavigate();
   const location = useLocation();
-  const calendarRef = useRef<FullCalendar>(null);
+  const navigate = useNavigate();
   const navigationState = location.state as YearCalendarNavigationState | null;
-  const [year, setYear] = useState(() =>
-    typeof navigationState?.year === 'number' && Number.isInteger(navigationState.year)
+  const selectDate = useCalendarStore((state) => state.selectDate);
+  const setMonth = useCalendarStore((state) => state.setMonth);
+  const openSettings = useUIStore((state) => state.openSettings);
+  const [initialYear] = useState(() =>
+    isSupportedCalendarYear(navigationState?.year)
       ? navigationState.year
       : new Date().getFullYear(),
   );
+  const [visibleYear, setVisibleYear] = useState(initialYear);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const goToPrevYear = () => {
-    setYear((y) => y - 1);
-    calendarRef.current?.getApi().gotoDate(`${year - 1}-01-01`);
-  };
+  const handleEventCreated = useCallback(
+    (createdDate: string) => {
+      const [createdYear, createdMonth] = createdDate.split('-').map(Number);
 
-  const goToNextYear = () => {
-    setYear((y) => y + 1);
-    calendarRef.current?.getApi().gotoDate(`${year + 1}-01-01`);
-  };
+      selectDate(createdDate);
+      setMonth(createdYear, createdMonth);
+    },
+    [selectDate, setMonth],
+  );
+  const {
+    isCreateModalOpen,
+    createInputValue,
+    initialCreateDate,
+    isLabelCreateOpen: isLabelCreateForEventOpen,
+    pendingSelectedLabelId,
+    setCreateInputValue,
+    openCreateModal,
+    closeCreateModal,
+    completeCreate,
+    openLabelCreate: openEventLabelCreate,
+    closeLabelCreate: closeEventLabelCreate,
+    completeLabelCreate: completeEventLabelCreate,
+  } = useEventCreationFlow({ onCreated: handleEventCreated });
+  const {
+    labelSheetState,
+    openLabelList,
+    openLabelCreate,
+    openLabelEdit,
+    closeLabelSheet,
+  } = useLabelSheetFlow();
+  const {
+    scrollRequest: calendarScrollRequest,
+    requestScroll: requestCalendarScroll,
+    completeScroll: completeCalendarScroll,
+  } = useCalendarScrollRequest<Omit<CalendarYearScrollRequest, 'requestId'>>();
+
+  const handleGoToToday = useCallback(() => {
+    const today = new Date();
+
+    requestCalendarScroll({
+      year: today.getFullYear(),
+      date: today.toLocaleDateString('sv-SE'),
+    });
+  }, [requestCalendarScroll]);
+
+  const handleSelectMonth = useCallback(
+    (year: number, month: number) => {
+      setMonth(year, month);
+      navigate(PATH.HOME);
+    },
+    [navigate, setMonth],
+  );
+
+  const floatingButtonsContent = useMemo(
+    () => (
+      <div className="flex w-full items-center justify-between">
+        <Button variant="LargeStrongFit" onClick={handleGoToToday}>
+          오늘
+        </Button>
+        <Button variant="MainCTAButton" onClick={() => openCreateModal()} />
+      </div>
+    ),
+    [handleGoToToday, openCreateModal],
+  );
+  useFloatingButtons(floatingButtonsContent);
 
   return (
     <div className="year-calendar-page">
-      <div className="year-calendar-header">
-        <button
-          type="button"
-          className="icon-button"
-          onClick={() => navigate(-1)}
-          aria-label="뒤로가기"
-        >
-          <img src="/icon/chevron/left_small.svg" alt="" />
-        </button>
-        <div className="year-calendar-header-right">
-          <button type="button" className="icon-button" aria-label="검색">
-            <img src="/icon/search.svg" alt="" />
-          </button>
-          <button type="button" className="icon-button" aria-label="추가">
-            <img src="/icon/icons/label_small.svg" alt="" />
-          </button>
-        </div>
-      </div>
+      <CalendarHeader
+        variant="yearly"
+        onSearchClick={() => setIsSearchOpen(true)}
+        onViewToggleClick={openLabelList}
+        onSettingsClick={openSettings}
+      />
 
-      <div className="year-calendar-title-row">
-        <span className="year-calendar-title">{year}년</span>
-      </div>
+      <YearCalendarBody
+        initialYear={initialYear}
+        visibleYear={visibleYear}
+        scrollToYearRequest={calendarScrollRequest}
+        onVisibleYearChange={setVisibleYear}
+        onSelectMonth={handleSelectMonth}
+        onScrollToYearComplete={completeCalendarScroll}
+      />
 
-      <div className="year-calendar-scroll-wrapper">
-        <FullCalendar
-  ref={calendarRef}
-  plugins={[dayGridPlugin, multiMonthPlugin]}
-  initialView="multiMonthYear"
-  initialDate={`${year}-01-01`}
-  multiMonthMaxColumns={3}
-  multiMonthMinWidth={70}
-  dayHeaders={false}
-  locale="ko"
-  headerToolbar={false}
-  height="auto"
-  dayCellContent={(arg) => arg.dayNumberText.replace('일', '')}
-  fixedWeekCount={false}
-  showNonCurrentDates={false}
-/>
-      </div>
+      {isSearchOpen && (
+        <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      )}
 
-      <div className="year-calendar-footer">
-        <button type="button" className="year-nav-arrow" onClick={goToPrevYear} aria-label="이전 연도">
-          ‹
-        </button>
-        <button
-          type="button"
-          className="today-button"
-          onClick={() => {
-            setYear(new Date().getFullYear());
-            calendarRef.current?.getApi().today();
-          }}
-        >
-          오늘
-        </button>
-        <button type="button" className="year-nav-arrow" onClick={goToNextYear} aria-label="다음 연도">
-          ›
-        </button>
-      </div>
+      {isCreateModalOpen && (
+        <CreateModal
+          inputValue={createInputValue}
+          initialScheduleDate={initialCreateDate ?? undefined}
+          pendingSelectedLabelId={pendingSelectedLabelId}
+          onInputChange={setCreateInputValue}
+          onCreateLabel={openEventLabelCreate}
+          onCreate={completeCreate}
+          onClose={closeCreateModal}
+        />
+      )}
+
+      {isLabelCreateForEventOpen && (
+        <LabelCreateSheet
+          onClose={closeEventLabelCreate}
+          onComplete={(created) => completeEventLabelCreate(created.labelId)}
+        />
+      )}
+
+      {labelSheetState.view === 'list' && (
+        <LabelListSheet
+          onClose={closeLabelSheet}
+          onSelectLabel={openLabelEdit}
+          onCreateLabel={openLabelCreate}
+        />
+      )}
+
+      {labelSheetState.view === 'edit' && (
+        <LabelEditSheet
+          label={labelSheetState.label}
+          onBack={openLabelList}
+          onComplete={openLabelList}
+        />
+      )}
+
+      {labelSheetState.view === 'create' && (
+        <LabelCreateSheet onClose={openLabelList} onComplete={openLabelList} />
+      )}
     </div>
   );
 }
