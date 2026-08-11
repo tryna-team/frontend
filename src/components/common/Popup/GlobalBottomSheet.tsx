@@ -43,6 +43,7 @@ interface SheetLayoutProps {
   title: string;
   description: string;
   confirmText: string;
+  confirmDisabled?: boolean;
   cancelText: string;
   legalNotice?: ReactNode;
   onConfirm: () => void;
@@ -53,6 +54,7 @@ function SheetLayout({
   title,
   description,
   confirmText,
+  confirmDisabled,
   cancelText,
   legalNotice,
   onConfirm,
@@ -95,7 +97,12 @@ function SheetLayout({
         </div>
 
         <div className="flex w-full shrink-0 flex-col items-center justify-center gap-3">
-          <Button variant="LargeDefaultRegular" className="w-full gap-small" onClick={onConfirm}>
+          <Button
+            variant="LargeDefaultRegular"
+            className="w-full gap-small"
+            disabled={confirmDisabled}
+            onClick={onConfirm}
+          >
             {confirmText}
           </Button>
           <Button variant="Small" onClick={onClose}>
@@ -239,6 +246,7 @@ export default function GlobalBottomSheet() {
           title="로그인"
           description="구글 계정으로 로그인하세요."
           confirmText={isPending ? '진행 중...' : '동의하고 계속하기'}
+          confirmDisabled={isPending}
           cancelText="나중에"
           legalNotice={
             <p className="w-full max-w-[320px] default-caption-large text-left text-text-additional">
