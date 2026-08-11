@@ -94,8 +94,7 @@ export function useRecommendationEdit({
     const nextDisplayTime = isTimedAction
       ? recommendationEditDraft.hasTimeChanged
         ? normalizeTime(recommendationEditDraft.startTime)
-        : (recommendationEditDraft.originalDisplayTime ??
-          normalizeTime(recommendationEditDraft.startTime))
+        : recommendationEditDraft.originalDisplayTime
       : null;
     const hasScheduleChanged =
       nextItemType !== recommendationEditDraft.originalItemType ||
