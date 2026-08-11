@@ -2,14 +2,12 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { FocusEvent, KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 
-import { format, isSameDay, isToday, isValid, parseISO } from 'date-fns';
+import { format, isSameDay, isValid, parseISO } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 
 import { eventService } from '@/apis/services/eventService';
 import { labelService } from '@/apis/services/labelService';
 import { recommendationService } from '@/apis/services/recommendationService';
-import type { EventParseResponse, EventRecurrenceType } from '@/apis/types/event';
-import type { RecommendationResponse, RecommendationSuggestion } from '@/apis/types/recommendation';
 import { queryClient } from '@/apis/queryClient';
 import Button from '@/components/common/Buttons/Button';
 import Checklist, { type ChecklistItemData } from '@/components/common/Checklist/Checklist';
@@ -23,94 +21,43 @@ import {
   type ActionItemScheduleValue,
   type RepeatOption,
 } from '@/features/event/components/create';
-import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { useEventCreationStore } from '@/stores';
-import type { ActionItemType, ParsedEventCandidate, RecommendationCandidate } from '@/stores/types';
+import type { RecommendationCandidate } from '@/stores/types';
 
-import type { ChecklistStatus } from '@/components/common/Checklist/ChecklistItem';
-
+import {
+  ADD_CHECKLIST_ITEM_ID,
+  COLOR_ICON,
+  FOCUSABLE_SELECTOR,
+  PARSING_THROTTLE_DELAY,
+  RECOMMENDATION_DEBOUNCE_DELAY,
+} from './CreateModal.constants';
+import {
+  formatApiTimeForPicker,
+  formatChecklistDate,
+  formatTime,
+  getCurrentTime,
+  normalizeTime,
+} from './CreateModal.dateTime';
+import {
+  createParseFallback,
+  hasRecommendationFailed,
+  mapParseResponse,
+  mapRecommendationCandidate,
+} from './CreateModal.mappers';
 import CreateModalSkeleton from './CreateModalSkeleton';
+import { buildCreateEventRequest, getTimedActionDates } from './CreateModal.submit';
+import type { CreateModalProps, LabelColor, RecommendationEditDraft } from './CreateModal.types';
+import { useCreateModalScheduleText } from './useCreateModalScheduleText';
 
-export type LabelColor = 'apricot' | 'blue' | 'green' | 'pink' | 'purple' | 'yellow';
-
-export type CalendarStatus =
-  | {
-      type: 'default';
-    }
-  | {
-      type: 'repeat';
-      text: string;
-    };
-
-export type LabelStatus =
-  | {
-      type: 'default';
-    }
-  | {
-      type: 'selected';
-      id: number;
-      label: string;
-      color: LabelColor;
-    };
-
-// 기존 CreateModal에서 사용하던 체크리스트 데이터 타입을 유지
-type CreateModalChecklistItem = {
-  id: number;
-  label: string;
-  status?: ChecklistStatus;
-  itemType?: ActionItemType;
-  // status=add, done일 때 사용. 없으면 '당일'로 표시
-  date?: string;
-};
-
-export type CreateModalProps = {
-  mode?: 'default' | 'recommend';
-  inputValue?: string;
-  keyword?: string;
-  message?: string;
-  checklistItems?: CreateModalChecklistItem[];
-  initialScheduleDate?: Date;
-  calendarStatus?: CalendarStatus;
-  labelStatus?: LabelStatus;
-  labels?: LabelItemData[];
-  // 라벨 생성 시트(LabelCreateSheet)에서 방금 새로 만든 라벨의 id. 값이 바뀔 때마다
-  // 그 라벨을 선택 상태로 반영한다(라벨 목록 관리 화면과 달리, 이벤트 생성 흐름에선
-  // 라벨을 새로 만들면 바로 그 라벨이 선택돼 있어야 자연스럽다).
-  pendingSelectedLabelId?: number | null;
-  onInputChange?: (value: string) => void;
-  onOpenCalendar?: () => void;
-  onOpenLabel?: () => void;
-  onSelectLabel?: (id: number) => void;
-  onCreateLabel?: () => void;
-  onAddChecklist?: () => void;
-  onToggleChecklist?: (id: number) => void;
-  onCreate?: (createdDate: string) => void;
-  onClose?: () => void;
-};
-
-const COLOR_ICON = {
-  apricot: '/icon/color_picker/apricot_small.svg',
-  blue: '/icon/color_picker/blue_small.svg',
-  green: '/icon/color_picker/green_small.svg',
-  pink: '/icon/color_picker/pink_small.svg',
-  purple: '/icon/color_picker/purple_small.svg',
-  yellow: '/icon/color_picker/yellow_small.svg',
-} as const;
-
-// 직접 추가 항목에 사용하는 내부 전용 ID
-// 실제 체크리스트 ID와 겹치지 않도록 음수를 사용
-const ADD_CHECKLIST_ITEM_ID = -1;
-
+// 직접 추가 항목에 사용하는 임시 전용 ID
+// 실제 체크리스트 ID와 겹치지 않도록 접두사를 사용
 const createManualCandidateId = () =>
   `manual-${
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random()}`
   }`;
-
-const PARSING_THROTTLE_DELAY = 300;
-const RECOMMENDATION_DEBOUNCE_DELAY = 1000;
 
 const createFallbackTempEventId = () =>
   `fallback-${
@@ -119,186 +66,6 @@ const createFallbackTempEventId = () =>
       : `${Date.now()}-${Math.random()}`
   }`;
 
-const formatChecklistDate = (
-  date: string | null | undefined,
-  endDate: string | null | undefined,
-  fallbackDate: Date,
-) => {
-  const parsedDate = date ? parseISO(date) : fallbackDate;
-  const validStartDate = isValid(parsedDate) ? parsedDate : fallbackDate;
-  const parsedEndDate = endDate ? parseISO(endDate) : null;
-  const startText = format(validStartDate, 'MM. dd.');
-
-  return parsedEndDate && isValid(parsedEndDate) && !isSameDay(validStartDate, parsedEndDate)
-    ? `${startText} - ${format(parsedEndDate, 'MM. dd.')}`
-    : startText;
-};
-
-type RecommendationEditDraft = {
-  candidateId: string;
-  title: string;
-  startDate: Date;
-  endDate: Date;
-  startTime: string;
-  endTime: string;
-  originalItemType: RecommendationCandidate['itemType'];
-  originalApiItemType: NonNullable<RecommendationCandidate['apiItemType']>;
-  originalDisplayDate: string | null;
-  originalDisplayEndDate: string | null;
-  originalDisplayTime: string | null;
-  hasTimeChanged: boolean;
-};
-
-// 실제 API 연결 시 내부만 파싱 요청으로 교체한다.
-const mapParseResponse = (
-  input: string,
-  response: EventParseResponse,
-  tempEventId: string | null,
-): ParsedEventCandidate => ({
-  sourceText: input,
-  titleCandidate: response.eventTitle ?? input,
-  dateCandidate: response.startDate ?? null,
-  timeCandidate: response.startTime ?? null,
-  placeCandidate: response.placeCandidate ?? null,
-  eventTypeCandidate: null,
-  tempEventId,
-  dateSource: response.dateSource ?? null,
-  endDateCandidate: response.endDate ?? null,
-  endTimeCandidate: response.endTime ?? null,
-  embeddingWords: response.toEmbedding ?? [],
-  isAllDayCandidate: response.isAllDayCandidate ?? false,
-  needsConfirmation: response.needsConfirmation ?? false,
-  warnings: response.warnings ?? [],
-});
-
-const createParseFallback = (input: string, tempEventId: string | null): ParsedEventCandidate => ({
-  sourceText: input,
-  titleCandidate: input,
-  dateCandidate: null,
-  timeCandidate: null,
-  placeCandidate: null,
-  eventTypeCandidate: null,
-  tempEventId,
-  dateSource: null,
-  endDateCandidate: null,
-  endTimeCandidate: null,
-  embeddingWords: [],
-  isAllDayCandidate: true,
-  needsConfirmation: true,
-  warnings: [],
-});
-
-const mapRecommendationCandidate = (
-  suggestion: RecommendationSuggestion,
-  index: number,
-): RecommendationCandidate => ({
-  candidateId: suggestion.sourceCode ?? `recommendation-${index}`,
-  title: suggestion.displayText ?? suggestion.sourceCode ?? '',
-  // 공용 체크리스트에서는 비시간형 항목을 CHECKLIST로 표현한다.
-  itemType: suggestion.itemType === 'TIMED_ACTION' ? 'TIMED_ACTION' : 'CHECKLIST',
-  apiItemType: suggestion.itemType ?? 'UNRESOLVED',
-  sourceTemplateId: suggestion.sourceCode ?? null,
-  offsetDays: suggestion.offsetDays ?? null,
-  originalTitle: suggestion.displayText ?? suggestion.sourceCode ?? '',
-  displayDate: suggestion.displayDate ?? null,
-  displayTime: null,
-  // 추천 항목은 모두 저장 대상인 상태로 시작한다.
-  selected: true,
-  edited: false,
-});
-
-const hasRecommendationFailed = (response: RecommendationResponse) =>
-  response.suggestionStatus === 'ERROR' || response.suggestionStatus === 'EMPTY';
-
-const RECURRENCE_TYPE: Record<RepeatOption, EventRecurrenceType> = {
-  매일: 'DAILY',
-  매주: 'WEEKLY',
-  매월: 'MONTHLY',
-  매년: 'YEARLY',
-};
-
-const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: RepeatOption) => {
-  if (!hasRepeatChanged) {
-    return {
-      isRecurring: false,
-      recurrenceType: 'NONE' as const,
-      recurrenceInterval: null,
-      recurrenceEndDate: null,
-    };
-  }
-
-  return {
-    isRecurring: true,
-    recurrenceType: RECURRENCE_TYPE[repeat],
-    recurrenceInterval: 1,
-    // 반복 종료일 설정 UI가 추가되기 전까지 무기한 반복으로 저장한다.
-    recurrenceEndDate: null,
-  };
-};
-
-const normalizeTime = (time: string) => {
-  const apiTime = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(time);
-
-  if (apiTime) {
-    return `${apiTime[1]}:${apiTime[2]}:${apiTime[3] ?? '00'}`;
-  }
-
-  const displayTime = /^(\d{1,2}):(\d{2})\s(AM|PM)$/.exec(time);
-
-  if (!displayTime) {
-    return null;
-  }
-
-  const hour = (Number(displayTime[1]) % 12) + (displayTime[3] === 'PM' ? 12 : 0);
-
-  return `${String(hour).padStart(2, '0')}:${displayTime[2]}:00`;
-};
-
-const formatActionItemDisplayTime = (
-  displayDate: string | null | undefined,
-  displayTime: string | null | undefined,
-) => {
-  if (!displayDate || !displayTime) {
-    return null;
-  }
-
-  const time = displayTime.includes('T') ? displayTime.split('T')[1] : displayTime;
-  const normalizedTime = normalizeTime(time);
-
-  return normalizedTime ? `${displayDate}T${normalizedTime}` : null;
-};
-
-const FOCUSABLE_SELECTOR = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',');
-
-const formatTime = ({ meridiem, hour, minute }: TimePickerValue) =>
-  `${hour}:${String(minute).padStart(2, '0')} ${meridiem}`;
-
-const formatTriggerDate = (date: Date) => (isToday(date) ? '오늘' : format(date, 'MM.dd'));
-
-const formatTriggerTime = (time: string) => normalizeTime(time)?.slice(0, 5) ?? time;
-
-const getCurrentTime = () => format(new Date(), 'h:mm a').toUpperCase();
-
-const formatApiTimeForPicker = (time: string | null | undefined) => {
-  const normalizedTime = time ? normalizeTime(time) : null;
-
-  if (!normalizedTime) {
-    return getCurrentTime();
-  }
-
-  const [hourText, minute] = normalizedTime.split(':');
-  const hour = Number(hourText);
-  const meridiem = hour >= 12 ? 'PM' : 'AM';
-
-  return `${hour % 12 || 12}:${minute} ${meridiem}`;
-};
 
 export default function CreateModal({
   mode = 'default',
@@ -443,44 +210,21 @@ export default function CreateModal({
     hasRecommendationResponse &&
     recommendationCandidates.length > 0;
 
-  const propCalendarText =
-    calendarStatus.type === 'default' ? '오늘 · 반복 없음' : `${calendarStatus.text}마다`;
-  const initialCalendarText = initialScheduleDate
-    ? `${formatTriggerDate(startDate)} · 반복 없음`
-    : propCalendarText;
-  const hasDateRange =
-    Boolean(parsedCandidate?.dateCandidate && parsedCandidate.endDateCandidate) ||
-    hasEndDateChanged ||
-    !isSameDay(startDate, endDate);
-  const selectedDateText = hasDateRange
-    ? `${format(startDate, 'MM.dd')}-${format(endDate, 'MM.dd')}`
-    : formatTriggerDate(startDate);
-  const hasParsedScheduleDate = Boolean(parsedCandidate?.dateCandidate);
-  const hasConfiguredStartTime =
-    Boolean(startTime) && (hasStartTimeChanged || Boolean(parsedCandidate?.timeCandidate));
-  const hasConfiguredEndTime =
-    Boolean(endTime) && (hasEndTimeChanged || Boolean(parsedCandidate?.endTimeCandidate));
-  const hasParsedScheduleTime = Boolean(
-    parsedCandidate?.timeCandidate || parsedCandidate?.endTimeCandidate,
-  );
-  const repeatText = hasRepeatChanged ? repeat : '반복 없음';
-  // 단일 일정의 실제로 설정된 시간만 24시간제로 표시한다.
-  const selectedTimeText = hasConfiguredStartTime
-    ? `시작 ${formatTriggerTime(startTime)}${
-        hasConfiguredEndTime ? ` - 종료 ${formatTriggerTime(endTime)}` : ''
-      }`
-    : hasConfiguredEndTime
-      ? `종료 ${formatTriggerTime(endTime)}`
-      : '';
-  const selectedScheduleText =
-    !hasDateRange && selectedTimeText
-      ? `${selectedDateText} ${selectedTimeText}`
-      : `${selectedDateText} · ${repeatText}`;
-  const calendarText =
-    hasScheduleChanged || hasParsedScheduleDate || hasParsedScheduleTime
-      ? selectedScheduleText
-      : initialCalendarText;
-
+  const { calendarText } = useCreateModalScheduleText({
+    calendarStatus,
+    initialScheduleDate,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    repeat,
+    parsedCandidate,
+    hasScheduleChanged,
+    hasStartTimeChanged,
+    hasEndTimeChanged,
+    hasEndDateChanged,
+    hasRepeatChanged,
+  });
   const handleCloseRequest = useCallback(() => {
     if (trimmedInput && !isSaving) {
       setIsExitConfirmOpen(true);
@@ -1240,95 +984,27 @@ export default function CreateModal({
     }
     const controller = new AbortController();
     createAbortControllerRef.current = controller;
-    const hasParsedStartTime = Boolean(parsedCandidate?.timeCandidate);
-    const hasParsedEndTime = Boolean(parsedCandidate?.endTimeCandidate);
-    const startTimeValue =
-      hasStartTimeChanged || hasParsedStartTime ? normalizeTime(startTime) : null;
-    const endTimeValue = hasEndTimeChanged || hasParsedEndTime ? normalizeTime(endTime) : null;
-    // 종료 시간이 있으면 단일 날짜 일정도 종료 날짜를 함께 저장한다.
-    const shouldSaveEndDate =
-      Boolean(endTimeValue) ||
-      hasEndDateChanged ||
-      Boolean(parsedCandidate?.endDateCandidate) ||
-      !isSameDay(startDate, endDate);
-    // 주간 요일과 월간·연간 기준일은 서버가 시작 날짜에서 계산한다.
-    const recurrencePayload = buildRecurrencePayload(hasRepeatChanged, repeat);
-
+    const createRequest = buildCreateEventRequest({
+      trimmedInput,
+      selectedLabelId,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      hasStartTimeChanged,
+      hasEndTimeChanged,
+      hasEndDateChanged,
+      hasRepeatChanged,
+      repeat,
+      parsedCandidate,
+      recommendationCandidates,
+    });
     setIsSaving(true);
 
     try {
-      const createResponse = await eventService.create(
-        {
-          eventTitle: trimmedInput,
-          // null이면 서버가 현재 사용자의 기본 라벨을 연결한다.
-          labelId: selectedLabelId,
-          description: null,
-          startDate: format(startDate, 'yyyy-MM-dd'),
-          startTime: startTimeValue,
-          endDate: shouldSaveEndDate ? format(endDate, 'yyyy-MM-dd') : null,
-          endTime: endTimeValue,
-          isAllDay: !startTimeValue && !endTimeValue,
-          location: parsedCandidate?.placeCandidate ?? null,
-          eventType: parsedCandidate?.eventTypeCandidate ?? null,
-          ...recurrencePayload,
-          actionItems:
-            recommendationCandidates.length > 0
-              ? {
-                  // 생성 모달의 add 상태인 항목만 최종 저장한다.
-                  items: selectedCandidates.map((candidate) => {
-                    const apiItemType =
-                      candidate.apiItemType ??
-                      (candidate.itemType === 'TIMED_ACTION' ? 'TIMED_ACTION' : 'UNTIMED_PREP');
+      const createResponse = await eventService.create(createRequest, controller.signal);
 
-                    return {
-                      title: candidate.title,
-                      itemType: apiItemType,
-                      createdBy:
-                        candidate.createdBy === 'USER'
-                          ? 'USER'
-                          : candidate.edited
-                            ? 'USER_EDITED'
-                            : 'SYSTEM',
-                      displayDate:
-                        apiItemType === 'TIMED_ACTION' ? (candidate.displayDate ?? null) : null,
-                      displayTime:
-                        apiItemType === 'TIMED_ACTION'
-                          ? formatActionItemDisplayTime(
-                              candidate.displayDate,
-                              candidate.displayTime,
-                            )
-                          : null,
-                      offsetDays: candidate.offsetDays ?? null,
-                      sourceTemplateId: candidate.sourceTemplateId ?? null,
-                    };
-                  }),
-                  // 제외·수정 여부도 추천 개선용 피드백으로 전달한다.
-                  feedbackLogs: recommendationCandidates
-                    .filter((candidate) => candidate.createdBy !== 'USER')
-                    .map((candidate) => ({
-                      actionType: candidate.selected
-                        ? candidate.edited
-                          ? 'EDITED'
-                          : 'SELECTED'
-                        : 'REJECTED',
-                      sourceTemplateId: candidate.sourceTemplateId ?? null,
-                      originalTitle: candidate.originalTitle ?? candidate.title,
-                      editedTitle: candidate.edited ? candidate.title : null,
-                      reason: null,
-                    })),
-                }
-              : null,
-        },
-        controller.signal,
-      );
-
-      const timedActionDates = [
-        ...new Set(
-          (createResponse.savedActionItems ?? [])
-            .filter((item) => item.itemType === 'TIMED_ACTION' && Boolean(item.displayDate))
-            .map((item) => item.displayDate as string),
-        ),
-      ];
+      const timedActionDates = getTimedActionDates(createResponse);
 
       // 생성된 일정과 시간형 항목을 각 화면에서 다시 조회한다.
       await Promise.all([
