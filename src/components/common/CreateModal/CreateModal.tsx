@@ -36,8 +36,6 @@ import {
   formatApiTimeForPicker,
   formatChecklistDate,
   formatTime,
-  formatTriggerDate,
-  formatTriggerTime,
   getCurrentTime,
   normalizeTime,
 } from './CreateModal.dateTime';
@@ -50,6 +48,7 @@ import {
 import CreateModalSkeleton from './CreateModalSkeleton';
 import { buildCreateEventRequest, getTimedActionDates } from './CreateModal.submit';
 import type { CreateModalProps, LabelColor, RecommendationEditDraft } from './CreateModal.types';
+import { useCreateModalScheduleText } from './useCreateModalScheduleText';
 
 // 직접 추가 항목에 사용하는 임시 전용 ID
 // 실제 체크리스트 ID와 겹치지 않도록 접두사를 사용
@@ -211,44 +210,21 @@ export default function CreateModal({
     hasRecommendationResponse &&
     recommendationCandidates.length > 0;
 
-  const propCalendarText =
-    calendarStatus.type === 'default' ? '오늘 · 반복 없음' : `${calendarStatus.text}마다`;
-  const initialCalendarText = initialScheduleDate
-    ? `${formatTriggerDate(startDate)} · 반복 없음`
-    : propCalendarText;
-  const hasDateRange =
-    Boolean(parsedCandidate?.dateCandidate && parsedCandidate.endDateCandidate) ||
-    hasEndDateChanged ||
-    !isSameDay(startDate, endDate);
-  const selectedDateText = hasDateRange
-    ? `${format(startDate, 'MM.dd')}-${format(endDate, 'MM.dd')}`
-    : formatTriggerDate(startDate);
-  const hasParsedScheduleDate = Boolean(parsedCandidate?.dateCandidate);
-  const hasConfiguredStartTime =
-    Boolean(startTime) && (hasStartTimeChanged || Boolean(parsedCandidate?.timeCandidate));
-  const hasConfiguredEndTime =
-    Boolean(endTime) && (hasEndTimeChanged || Boolean(parsedCandidate?.endTimeCandidate));
-  const hasParsedScheduleTime = Boolean(
-    parsedCandidate?.timeCandidate || parsedCandidate?.endTimeCandidate,
-  );
-  const repeatText = hasRepeatChanged ? repeat : '반복 없음';
-  // 단일 일정의 실제로 설정된 시간만 24시간제로 표시한다.
-  const selectedTimeText = hasConfiguredStartTime
-    ? `시작 ${formatTriggerTime(startTime)}${
-        hasConfiguredEndTime ? ` - 종료 ${formatTriggerTime(endTime)}` : ''
-      }`
-    : hasConfiguredEndTime
-      ? `종료 ${formatTriggerTime(endTime)}`
-      : '';
-  const selectedScheduleText =
-    !hasDateRange && selectedTimeText
-      ? `${selectedDateText} ${selectedTimeText}`
-      : `${selectedDateText} · ${repeatText}`;
-  const calendarText =
-    hasScheduleChanged || hasParsedScheduleDate || hasParsedScheduleTime
-      ? selectedScheduleText
-      : initialCalendarText;
-
+  const { calendarText } = useCreateModalScheduleText({
+    calendarStatus,
+    initialScheduleDate,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    repeat,
+    parsedCandidate,
+    hasScheduleChanged,
+    hasStartTimeChanged,
+    hasEndTimeChanged,
+    hasEndDateChanged,
+    hasRepeatChanged,
+  });
   const handleCloseRequest = useCallback(() => {
     if (trimmedInput && !isSaving) {
       setIsExitConfirmOpen(true);
