@@ -220,13 +220,20 @@ function EventViewPage() {
   const pendingActionItemIdsRef = useRef(new Set<number>());
   const [pendingActionItemIds, setPendingActionItemIds] = useState<Set<number>>(() => new Set());
 
+  // 외부 캘린더(구글/카카오/애플) 연동 일정은 백엔드가 수정/삭제 요청 자체를 거부한다
+  // (EventUpdateService/EventDeletionService의 validateInternalOwnerEvent, sourceType ===
+  // EXTERNAL_CALENDAR면 400) — 프론트에서도 수정/삭제 버튼을 아예 노출하지 않는다. 아직
+  // eventDetail이 로딩 중일 수 있어 optional chaining으로 안전하게 읽는다.
+  const isExternalCalendarEvent = eventDetail?.sourceType === 'EXTERNAL_CALENDAR';
+
   const floatingButtonsContent = useMemo(
-    () => (
-      <Button variant="LargeWarningFit" onClick={() => setIsDeleteModalOpen(true)}>
-        이벤트 삭제
-      </Button>
-    ),
-    [setIsDeleteModalOpen],
+    () =>
+      isExternalCalendarEvent ? null : (
+        <Button variant="LargeWarningFit" onClick={() => setIsDeleteModalOpen(true)}>
+          이벤트 삭제
+        </Button>
+      ),
+    [isExternalCalendarEvent, setIsDeleteModalOpen],
   );
   useFloatingButtons(floatingButtonsContent);
 
@@ -424,7 +431,11 @@ function EventViewPage() {
           text: formatDateLabel(parentDate ?? eventDetail.startDate),
           onClick: handleBack,
         }}
-        trailing={{ type: 'text', text: '수정', onClick: () => setIsEditOpen(true) }}
+        trailing={
+          isExternalCalendarEvent
+            ? { type: 'none' }
+            : { type: 'text', text: '수정', onClick: () => setIsEditOpen(true) }
+        }
       />
 
       <div className="event-view-page-content">
@@ -452,8 +463,6 @@ function EventViewPage() {
               준비 항목이 없어요.
             </p>
           ) : (
-            // "직접 추가" 버튼(onAddClick)은 의도적으로 연결하지 않음 — 관련 기능인
-            // ActionItemEditBottomSheet를 제거하면서 함께 비활성화했다.
             <DailyScheduleCard
               items={todoItems}
               onToggleItem={handleToggleItem}
