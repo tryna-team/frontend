@@ -3,15 +3,13 @@ import type { FocusEvent, KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 
 import { format, isSameDay, isValid, parseISO } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
 
 import { eventService } from '@/apis/services/eventService';
-import { labelService } from '@/apis/services/labelService';
 import { recommendationService } from '@/apis/services/recommendationService';
 import { queryClient } from '@/apis/queryClient';
 import Button from '@/components/common/Buttons/Button';
 import Checklist, { type ChecklistItemData } from '@/components/common/Checklist/Checklist';
-import LabelModal, { type LabelItemData } from '@/components/common/LabelModal/LabelModal';
+import LabelModal from '@/components/common/LabelModal/LabelModal';
 import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
 import Overlay from '@/components/common/Popup/Overlay';
 import ToastPopup from '@/components/common/Popup/ToastPopup';
@@ -47,7 +45,8 @@ import {
 } from './CreateModal.mappers';
 import CreateModalSkeleton from './CreateModalSkeleton';
 import { buildCreateEventRequest, getTimedActionDates } from './CreateModal.submit';
-import type { CreateModalProps, LabelColor, RecommendationEditDraft } from './CreateModal.types';
+import type { CreateModalProps, RecommendationEditDraft } from './CreateModal.types';
+import { useCreateModalLabels } from './useCreateModalLabels';
 import { useCreateModalScheduleText } from './useCreateModalScheduleText';
 
 // 직접 추가 항목에 사용하는 임시 전용 ID
@@ -105,23 +104,6 @@ export default function CreateModal({
   const keepKeyboardOpenRef = useRef(true);
   const isScheduleOpeningRef = useRef(false);
   const isKeyboardNavigationRef = useRef(false);
-  const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
-  const [selectedLabelId, setSelectedLabelId] = useState<number | null>(
-    labelStatus.type === 'selected' ? labelStatus.id : null,
-  );
-
-  // pendingSelectedLabelId가 바뀔 때(라벨 생성 시트에서 방금 새 라벨을 만들었을 때)만
-  // 그 라벨을 선택 상태로 반영한다 — CreateModal은 그 사이 계속 마운트돼 있어
-  // selectedLabelId의 초기값(위 labelStatus)만으로는 갱신되지 않는다.
-  // (effect + setState 대신, "prop이 바뀌면 렌더 중에 state를 조정"하는 React 권장 패턴 —
-  // eslint react-hooks/set-state-in-effect가 지적하는 불필요한 추가 렌더링을 피한다)
-  const [appliedPendingLabelId, setAppliedPendingLabelId] = useState(pendingSelectedLabelId);
-  if (pendingSelectedLabelId !== appliedPendingLabelId) {
-    setAppliedPendingLabelId(pendingSelectedLabelId);
-    if (pendingSelectedLabelId != null) {
-      setSelectedLabelId(pendingSelectedLabelId);
-    }
-  }
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [hasRecommended, setHasRecommended] = useState(false);
   const [recommendedTitle, setRecommendedTitle] = useState('');
@@ -175,27 +157,22 @@ export default function CreateModal({
   const editCandidate = useEventCreationStore((state) => state.editCandidate);
   const addManualCandidate = useEventCreationStore((state) => state.addManualCandidate);
   const resetCreation = useEventCreationStore((state) => state.reset);
-  const { data: labelData } = useQuery({
-    queryKey: queryKeys.labels.list(),
-    queryFn: labelService.getLabels,
+  const {
+    isLabelModalOpen,
+    setIsLabelModalOpen,
+    selectedLabelId,
+    selectableLabels,
+    selectedLabel,
+    handleSelectLabel,
+    handleCreateLabel,
+  } = useCreateModalLabels({
+    labels,
+    labelStatus,
+    pendingSelectedLabelId,
+    isSaving,
+    onSelectLabel,
+    onCreateLabel,
   });
-
-  const apiLabels = useMemo<LabelItemData[]>(
-    () =>
-      (labelData?.labels ?? [])
-        .filter((label) => label.isVisible)
-        .map((label) => ({
-          id: label.labelId,
-          label: label.name,
-          color: label.color.toLowerCase() as LabelColor,
-        })),
-    [labelData],
-  );
-  const selectableLabels = useMemo(
-    () => Array.from(new Map([...labels, ...apiLabels].map((label) => [label.id, label])).values()),
-    [apiLabels, labels],
-  );
-  const selectedLabel = selectableLabels.find((label) => label.id === selectedLabelId);
 
   const trimmedInput = inputValue.trim();
   const isRecommendMode = mode === 'recommend' || hasRecommended;
@@ -254,7 +231,7 @@ export default function CreateModal({
     }
 
     handleCloseRequest();
-  }, [handleCloseRequest, isLabelModalOpen]);
+  }, [handleCloseRequest, isLabelModalOpen, setIsLabelModalOpen]);
 
   const handleExitConfirm = () => {
     // 확인한 경우에만 작성 중인 입력과 생성 후보를 삭제한다.
@@ -601,6 +578,7 @@ export default function CreateModal({
     isExitConfirmOpen,
     isLabelModalOpen,
     isScheduleOpen,
+    setIsLabelModalOpen,
   ]);
 
   // 오버레이를 키보드를 제외한 실제 화면 영역에 맞춘다.
@@ -950,25 +928,6 @@ export default function CreateModal({
     window.requestAnimationFrame(() => {
       inputRef.current?.focus();
     });
-  };
-
-  const handleSelectLabel = (id: number) => {
-    if (isSaving) {
-      return;
-    }
-
-    setSelectedLabelId(id);
-    setIsLabelModalOpen(false);
-    onSelectLabel?.(id);
-  };
-
-  const handleCreateLabel = () => {
-    if (isSaving) {
-      return;
-    }
-
-    setIsLabelModalOpen(false);
-    onCreateLabel?.();
   };
 
   const handleCreate = async () => {
