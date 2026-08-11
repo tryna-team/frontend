@@ -24,7 +24,6 @@ interface YearCalendarBodyProps {
 }
 
 const getYearKey = (element: HTMLElement) => element.dataset.calendarYear ?? null;
-const YEAR_SCROLL_EDGE_THRESHOLD_PX = 1;
 
 function YearCalendarBody({
   initialYear,
@@ -42,10 +41,10 @@ function YearCalendarBody({
   const initialYearKey = String(initialYear);
   const visibleYearKey = String(visibleYear);
   const isScrollFeatureEnabled = isScrollEnabled && !scrollToYearRequest;
+  // 공통 기본 임계값에서 다음 연도를 미리 준비해 모멘텀 스크롤이 끝에서 끊기지 않게 한다.
   const { viewportRef, contentRef } = useCalendarScroll({
     onReachStart: prependYear,
     onReachEnd: appendYear,
-    threshold: YEAR_SCROLL_EDGE_THRESHOLD_PX,
     enabled: isScrollFeatureEnabled,
   });
 
