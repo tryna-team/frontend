@@ -153,10 +153,11 @@ export function ActionItemChecklistSection({
       if (trimmed) {
         // 이 시점엔 저장 안 함 — onPendingChanges로 부모에 보고되고, "완료" 시 부모가
         // C107 PATCH의 actionItems.items에 실어 보낸다.
-        setLocalNewItems((prev) => [
-          ...prev,
-          { id: nextLocalIdRef.current--, label: trimmed, checked: false },
-        ]);
+        // id 확정/ref 감소는 updater 밖에서 먼저 끝낸다 — StrictMode가 updater를 두 번
+        // 호출해도 ref가 중복 감소하거나 두 호출이 서로 다른 id를 쓰는 일이 없도록.
+        const localId = nextLocalIdRef.current;
+        nextLocalIdRef.current -= 1;
+        setLocalNewItems((prev) => [...prev, { id: localId, label: trimmed, checked: false }]);
       }
     } else if (inlineMode?.type === 'edit') {
       if (trimmed) {
@@ -227,7 +228,9 @@ export function ActionItemChecklistSection({
         <div className="flex w-full items-center py-1">
           <input
             key={inlineMode.type === 'add' ? 'add-row' : `edit-row-${inlineMode.itemId}`}
+            type="text"
             autoFocus
+            aria-label={inlineMode.type === 'add' ? '할 일 추가' : '할 일 제목 수정'}
             value={inlineValue}
             onChange={(event) => setInlineValue(event.target.value)}
             onKeyDown={(event) => {
