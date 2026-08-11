@@ -22,9 +22,6 @@ type SettingsSheetProps = {
   isMember: boolean;
 };
 
-// 접근 > 알림 토글의 초기값 — 아직 연결할 설정/API가 없어 UI만 구현(요청 확인 사항)
-const INITIAL_NOTIFICATION_ENABLED = true;
-
 type SettingsView = 'main' | 'terms-of-use' | 'privacy-policy';
 
 const VIEW_TITLE: Record<SettingsView, string> = {
@@ -40,13 +37,7 @@ export default function SettingsSheet({
   onDeleteAccount,
   isMember,
 }: SettingsSheetProps) {
-  // "접근 > 알림" 토글 — 연결할 설정 상태/API가 아직 없어 이번엔 UI만 구현한다
-  // (값을 바꿔도 저장되지 않고, 시트를 다시 열면 기본값으로 초기화됨).
-  const [isNotificationEnabled, setIsNotificationEnabled] = useState(
-    INITIAL_NOTIFICATION_ENABLED,
-  );
   const [activeView, setActiveView] = useState<SettingsView>('main');
-  const isDirty = isNotificationEnabled !== INITIAL_NOTIFICATION_ENABLED;
   const isMainView = activeView === 'main';
 
   // 이미 구축된 전역 로그인 흐름(GlobalBottomSheet의 4-1-1)을 그대로 연다 — uiStore 설계
@@ -67,9 +58,8 @@ export default function SettingsSheet({
               : { type: 'icon', onClick: () => setActiveView('main') }
           }
           trailing={{
-            // 변경 사항이 있으면 "닫기"가 "완료"로 바뀐다(실제 저장할 API는 없어 동작은 onClose와 동일)
             type: 'text',
-            text: isMainView && isDirty ? '완료' : '닫기',
+            text: '닫기',
             onClick: onClose,
           }}
         />
@@ -77,8 +67,6 @@ export default function SettingsSheet({
         {activeView === 'main' && (
           <SettingsMainView
             isMember={isMember}
-            isNotificationEnabled={isNotificationEnabled}
-            onNotificationToggle={() => setIsNotificationEnabled((previous) => !previous)}
             onLogin={() => openBottomSheet('login')}
             onLogout={onLogout}
             onDeleteAccount={onDeleteAccount}

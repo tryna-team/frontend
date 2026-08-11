@@ -4,8 +4,6 @@ import ContentBox from '@/components/common/Popup/BottomSheet/Layout/ContentBox'
 
 type SettingsMainViewProps = {
   isMember: boolean;
-  isNotificationEnabled: boolean;
-  onNotificationToggle: () => void;
   onLogin: () => void;
   onLogout: () => void;
   onDeleteAccount: () => void;
@@ -15,8 +13,6 @@ type SettingsMainViewProps = {
 
 export default function SettingsMainView({
   isMember,
-  isNotificationEnabled,
-  onNotificationToggle,
   onLogin,
   onLogout,
   onDeleteAccount,
@@ -30,8 +26,9 @@ export default function SettingsMainView({
           leading={{ type: 'text', text: '알림' }}
           accessory={{
             type: 'toggle',
-            checked: isNotificationEnabled,
-            onClick: onNotificationToggle,
+            checked: false,
+            disabled: true,
+            ariaLabel: '알림 설정 준비 중',
           }}
         />
       </ContentBox>
