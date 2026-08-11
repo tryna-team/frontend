@@ -2,9 +2,10 @@
  * 인증 도메인 타입 (A104~A109 API 명세서 기준)
  *
  * - 인증 기반: Authorization 헤더(Bearer), 쿠키 미사용
- * - 소셜 로그인은 클라이언트 SDK 기반: 프론트가 구글/카카오/애플 SDK로 먼저 로그인시킨 뒤
- *   oauthAccessToken을 백엔드로 넘긴다. 백엔드가 해당 소셜 서버에 직접 토큰을 검증하므로
- *   Spoofing 위험은 없다.
+ * - 소셜 로그인은 클라이언트 SDK 기반 + 인가 코드 방식: 프론트가 구글 SDK로 로그인시켜
+ *   **인가 코드까지만** 받고, 코드를 토큰으로 교환하는 것은 백엔드가 한다.
+ *   교환에 CLIENT_SECRET이 필요해 프론트에서 할 수 없기 때문이며, 이 방식이라야
+ *   백엔드가 구글 refresh token을 확보해 외부 캘린더 연동(B105)을 할 수 있다.
  * - 가입/로그인은 A105 단일 API로 통합 처리된다 (isNewUser로 신규/기존 구분).
  * - 현재 prod는 GOOGLE만 실동작하며, KAKAO/APPLE은 미구현 상태로 요청 시 400이 반환된다.
  */
@@ -46,8 +47,14 @@ export interface AuthTokens {
  */
 export interface SocialLoginRequest {
   provider: SocialProvider;
-  /** 소셜 SDK(구글/카카오/애플)에서 받은 토큰. 백엔드가 해당 소셜 서버에 직접 검증함 */
-  oauthAccessToken: string;
+  /**
+   * 소셜 SDK로 받은 인가 코드. 백엔드가 이 코드를 토큰으로 교환한다.
+   * 교환에는 CLIENT_SECRET이 필요해 프론트에서는 할 수 없고, 이 방식이라야
+   * 백엔드가 구글 refresh token까지 확보해 외부 캘린더 연동(B105)을 할 수 있다.
+   */
+  authorizationCode: string;
+  /** 코드를 발급받을 때 쓴 리디렉션 값. 백엔드가 교환 시 그대로 넘겨야 구글이 검증을 통과시킨다 */
+  redirectUri: string;
   deviceId: string;
   /** 접속 기기 정보, 선택 (예: "iPhone14,2") */
   deviceInfo?: string;
@@ -66,7 +73,10 @@ export interface SocialLoginRequest {
 export interface SocialLoginResponseData {
   userId: number;
   userRole: UserRole;
+  /** true면 방금 가입한 신규 유저 — 온보딩/환영 화면 분기에 쓸 수 있다 */
   isNewUser: boolean;
+  /** 외부 캘린더 동기화가 예약됐는지 (백엔드가 비동기로 구글 일정을 적재한다) */
+  syncScheduled?: boolean;
   auth: AuthTokenResponse;
 }
 
@@ -78,7 +88,9 @@ export interface SocialLoginResponseData {
  */
 export interface ConversionRequest {
   provider: SocialProvider;
-  oauthAccessToken: string;
+  /** A105와 동일 — 프론트는 인가 코드까지만 넘기고 토큰 교환은 백엔드가 한다 */
+  authorizationCode: string;
+  redirectUri: string;
   deviceId: string;
   deviceInfo?: string;
   fcmToken?: string;

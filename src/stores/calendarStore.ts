@@ -3,7 +3,7 @@
 // 커버: B101(캘린더 메인 조회)/B102(월간 조회)/B103(날짜별 목록)/레이블(홈/레이블 수정) 화면
 // ============================================================
 //
-// 설계 노트: 캘린더 "일정 데이터 자체"(GET /api/v1/calendars/monthly 등의 응답)는
+// 설계 노트: 캘린더 "일정 데이터 자체"(GET /api/v1/calendars/main 등의 응답)는
 // 서버 캐시 성격이 강하므로 React Query / SWR로 관리하는 것을 권장한다.
 // (동일 월을 여러 화면에서 재조회, 백그라운드 refetch, 로딩/에러 상태 등을
 //  Zustand로 직접 구현하면 React Query가 이미 잘하는 일을 재발명하게 된다.)
@@ -50,7 +50,7 @@ interface CalendarState {
 // 실제 오늘이 아니라 앱 로드 시점 날짜로 돌아가는 stale closure 버그) —
 // 액션 내부에서는 항상 new Date()를 새로 생성해서 씀.
 const today = new Date();
-// Date → 'YYYY-MM-DD' 문자열 변환 헬퍼. WeekStrip.tsx/CalendarGrid.tsx가 이미 쓰는
+// Date → 'YYYY-MM-DD' 문자열 변환 헬퍼. 캘린더 컴포넌트에서 사용하는
 // toLocaleDateString('sv-SE') 패턴과 동일 — 로컬 타임존 기준이라 toISOString()(UTC)의
 // 자정 근처 하루 밀림 문제가 없음.
 const toISODate = (d: Date) => d.toLocaleDateString('sv-SE');

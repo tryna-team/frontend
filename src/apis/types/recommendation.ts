@@ -1,11 +1,8 @@
-import type { EventDateSource, EventSourceType } from "./event";
+import type { EventDateSource, EventSourceType } from './event';
 
-export type RecommendationStatus = "READY" | "EMPTY" | "ERROR";
+export type RecommendationStatus = 'READY' | 'EMPTY' | 'ERROR';
 
-export type RecommendationItemType =
-  | "TIMED_ACTION"
-  | "UNTIMED_PREP"
-  | "UNRESOLVED";
+export type RecommendationItemType = 'TIMED_ACTION' | 'UNTIMED_PREP' | 'UNRESOLVED';
 
 /** D101~D105 추천 파이프라인 요청 */
 export interface RecommendationRequest {
@@ -45,13 +42,9 @@ export interface RecommendationResponse {
   errors?: string[];
 }
 
-export type ActionItemCreatedBy = "SYSTEM" | "USER" | "USER_EDITED";
+export type ActionItemCreatedBy = 'SYSTEM' | 'USER' | 'USER_EDITED';
 
-export type RecommendationFeedbackAction =
-  | "SELECTED"
-  | "REJECTED"
-  | "EDITED"
-  | "USER_ADDED";
+export type RecommendationFeedbackAction = 'SELECTED' | 'REJECTED' | 'EDITED' | 'USER_ADDED';
 
 /** E105 최종 저장 대상 항목 */
 export interface ActionItemSaveItem {
@@ -80,4 +73,3 @@ export interface ActionItemSaveRequest {
 
 /** 일정 생성 응답에 포함되는 저장 항목 */
 export type SavedActionItem = ActionItemSaveItem;
-

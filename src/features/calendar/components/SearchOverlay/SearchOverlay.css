@@ -1,3 +1,4 @@
+/* SearchOverlay 전용 스타일 */
 .search-overlay {
   position: absolute;
   inset: 0;
@@ -21,7 +22,9 @@
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 2px;
+  /* 자식 간 간격은 각자 지정한다. 여기에 gap을 주면 닫기 버튼의 margin에 더해져
+     의도한 값보다 벌어진다 (입력창~X 사이는 X 버튼의 좌우 padding이 담당) */
+  gap: 0;
   padding: var(--spacing-padding-xsmall);
   border: 1px solid var(--color-divider-default);
   border-radius: var(--radius-medium);
@@ -62,9 +65,10 @@
   height: 24px;
 }
 
+/* 피그마 기준 X 버튼과 닫기 버튼 사이 6px */
 .search-overlay-close-wrap {
   flex-shrink: 0;
-  margin-left: 8px;
+  margin-left: 6px;
 }
 
 .search-overlay-results-wrap {

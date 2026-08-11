@@ -115,10 +115,9 @@ export default function GlobalBottomSheet() {
   const toast = useUIStore((state) => state.toast);
   const clearToast = useUIStore((state) => state.clearToast);
 
-  const { login, reset, isPending } = useSocialLogin();
+  const { login, isPending } = useSocialLogin();
 
   const closeLoginFlow = () => {
-    reset();
     closeBottomSheet();
   };
 

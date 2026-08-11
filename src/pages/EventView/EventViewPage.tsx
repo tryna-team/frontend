@@ -1,19 +1,6 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import {
-  Navigate,
-  useNavigate,
-  useParams,
-} from 'react-router';
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, isValid, parseISO } from 'date-fns';
 
 import Header from '@/components/common/Header/Header';
@@ -24,7 +11,7 @@ import DailyScheduleDetail from '@/features/event/components/DailyScheduleDetail
 import DailyScheduleCard, {
   type DailyScheduleTodoItem,
 } from '@/features/event/components/DailyScheduleCard';
-import QuickModal from '@/features/event/components/QuickModal';
+import QuickModal from '@/components/common/Popup/QuickModal';
 import ToastPopup from '@/components/common/Popup/ToastPopup';
 import type { ActionItemEditItem } from '@/features/event/components/edit/ActionItemEditItem';
 import EventEditBottomSheet, {
@@ -32,24 +19,21 @@ import EventEditBottomSheet, {
 } from '@/features/event/components/edit/EventEditBottomSheet';
 import type { RepeatOption } from '@/features/event/components/create/EventScheduleRow';
 import type { CategoryColor } from '@/features/calendar/types';
-import { PATH } from '@/routes/paths';
+import { generateDailyPath, PATH } from '@/routes/paths';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
-import { useCanGoBack } from '@/hooks/useCanGoBack';
 import { useCalendarStore } from '@/stores';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { eventDetailService } from '@/apis/services/eventDetailService';
 import { actionItemService } from '@/apis/services/actionItemService';
 import { labelService, toCalendarLabel } from '@/apis/services/labelService';
-import type {
-  ActionItemCompletionStatus,
-  EventActionItemResponse,
-} from '@/apis/types/actionItem';
+import type { ActionItemCompletionStatus, EventActionItemResponse } from '@/apis/types/actionItem';
 import type {
   EventDetailResponseData,
   RecurrenceDayOfWeek,
   RecurrenceType,
   DeleteScope,
 } from '@/apis/types/eventDetail';
+import type { EventViewNavigationState } from '@/routes/navigationState';
 
 import './EventViewPage.css';
 
@@ -73,6 +57,21 @@ const RECURRENCE_TYPE_TO_REPEAT_OPTION: Partial<Record<RecurrenceType, RepeatOpt
 function formatDateLabel(dateStr: string): string {
   const date = new Date(`${dateStr}T00:00:00`);
   return `${date.getMonth() + 1}월 ${date.getDate()}일`;
+}
+
+function isValidDateParam(value: string | null | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(`${value}T00:00:00`);
+
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() + 1 === month &&
+    date.getDate() === day
+  );
 }
 
 const RECURRENCE_DAY_LABEL: Record<RecurrenceDayOfWeek, string> = {
@@ -111,11 +110,14 @@ function formatRecurrenceText(eventDetail: EventDetailResponseData): string | un
 
 function EventViewPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
 
   // URL에서 조회할 일정 ID를 읽음
   const { eventId } = useParams<{ eventId: string }>();
-  const canGoBack = useCanGoBack();
+  const [searchParams] = useSearchParams();
+  const occurrenceDate = searchParams.get('occurrenceDate');
+  const navigationState = location.state as EventViewNavigationState | null;
   const labels = useCalendarStore((s) => s.labels);
   const setLabels = useCalendarStore((s) => s.setLabels);
 
@@ -150,8 +152,8 @@ function EventViewPage() {
     isPending: isActionItemsPending,
     isError: isActionItemsError,
   } = useQuery({
-    queryKey: queryKeys.actionItems.byEvent(eventId ?? ''),
-    queryFn: () => actionItemService.getByEvent(eventId as string),
+    queryKey: queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
+    queryFn: () => actionItemService.getByEvent(eventId as string, occurrenceDate ?? undefined),
     enabled: !!eventId,
   });
 
@@ -189,8 +191,11 @@ function EventViewPage() {
         deleteScope,
         cascade: true,
         // 반복 일정은 "지금 보고 있는 이 회차" 기준으로 SINGLE/THIS_AND_FUTURE를 판단해야
-        // 하므로 startDate를 occurrenceDate로 전달. 반복 일정이 아니면 null.
-        occurrenceDate: eventDetail?.isRecurring ? (eventDetail?.startDate ?? null) : null,
+        // 하므로 현재 보고 있는 occurrenceDate를 우선 전달하도록 한다. occurrenceDate가
+        // 없으면 eventDetail.startDate를 폴백으로 사용한다. 반복 일정이 아니면 null.
+        occurrenceDate: eventDetail?.isRecurring
+          ? (occurrenceDate ?? eventDetail.startDate ?? null)
+          : null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
@@ -213,9 +218,7 @@ function EventViewPage() {
   };
 
   const pendingActionItemIdsRef = useRef(new Set<number>());
-  const [pendingActionItemIds, setPendingActionItemIds] = useState<Set<number>>(
-    () => new Set(),
-  );
+  const [pendingActionItemIds, setPendingActionItemIds] = useState<Set<number>>(() => new Set());
 
   const floatingButtonsContent = useMemo(
     () => (
@@ -223,18 +226,24 @@ function EventViewPage() {
         이벤트 삭제
       </Button>
     ),
-    [],
+    [setIsDeleteModalOpen],
   );
   useFloatingButtons(floatingButtonsContent);
 
-  // Header: chevron -> 직전 화면 이동
+  const fromDate = isValidDateParam(navigationState?.fromDate)
+    ? navigationState.fromDate
+    : undefined;
+  const validOccurrenceDate = isValidDateParam(occurrenceDate) ? occurrenceDate : undefined;
+  const parentDate = fromDate ?? validOccurrenceDate ?? eventDetail?.startDate;
+
+  // 캘린더 계층의 상위 화면인 데일리 뷰로 이동
   const handleBack = () => {
-    if (canGoBack) {
-      navigate(-1);
-    } else {
-      // 방문 기록이 없으면 Home으로 이동한다.
+    if (!parentDate) {
       navigate(PATH.HOME, { replace: true });
+      return;
     }
+
+    navigate(generateDailyPath(parentDate), { replace: true });
   };
 
   // E106 요청 전후의 캐시와 체크 상태를 동기화한다.
@@ -251,7 +260,10 @@ function EventViewPage() {
         actionItemStatus: status,
       }),
     onMutate: async ({ actionItemId, status }) => {
-      const eventItemsQueryKey = queryKeys.actionItems.byEvent(eventId ?? '');
+      const eventItemsQueryKey = queryKeys.actionItems.byEvent(
+        eventId ?? '',
+        occurrenceDate ?? undefined,
+      );
 
       pendingActionItemIdsRef.current.add(actionItemId);
       setPendingActionItemIds(new Set(pendingActionItemIdsRef.current));
@@ -262,19 +274,15 @@ function EventViewPage() {
         ?.items.find((item) => item.actionItemId === actionItemId)?.actionItemStatus;
 
       // 응답 전에도 체크 상태를 즉시 반영한다.
-      queryClient.setQueryData<EventActionItemResponse>(
-        eventItemsQueryKey,
-        (current) =>
-          current
-            ? {
-                ...current,
-                items: current.items.map((item) =>
-                  item.actionItemId === actionItemId
-                    ? { ...item, actionItemStatus: status }
-                    : item,
-                ),
-              }
-            : current,
+      queryClient.setQueryData<EventActionItemResponse>(eventItemsQueryKey, (current) =>
+        current
+          ? {
+              ...current,
+              items: current.items.map((item) =>
+                item.actionItemId === actionItemId ? { ...item, actionItemStatus: status } : item,
+              ),
+            }
+          : current,
       );
 
       return { previousStatus };
@@ -284,7 +292,7 @@ function EventViewPage() {
 
       if (previousStatus) {
         queryClient.setQueryData<EventActionItemResponse>(
-          queryKeys.actionItems.byEvent(eventId ?? ''),
+          queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
           (current) =>
             current
               ? {
@@ -308,7 +316,7 @@ function EventViewPage() {
 
       const invalidations = [
         queryClient.invalidateQueries({
-          queryKey: queryKeys.actionItems.byEvent(eventId ?? ''),
+          queryKey: queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
         }),
       ];
 
@@ -325,9 +333,7 @@ function EventViewPage() {
   });
 
   const handleToggleItem = (id: string) => {
-    const actionItem = actionItemsData?.items.find(
-      (item) => String(item.actionItemId) === id,
-    );
+    const actionItem = actionItemsData?.items.find((item) => String(item.actionItemId) === id);
 
     if (!actionItem || pendingActionItemIdsRef.current.has(actionItem.actionItemId)) {
       return;
@@ -335,14 +341,8 @@ function EventViewPage() {
 
     actionItemStatusMutation.mutate({
       actionItemId: actionItem.actionItemId,
-      status:
-        actionItem.actionItemStatus === 'COMPLETED'
-          ? 'PENDING'
-          : 'COMPLETED',
-      displayDate:
-        actionItem.itemType === 'TIMED_ACTION'
-          ? actionItem.displayDate
-          : null,
+      status: actionItem.actionItemStatus === 'COMPLETED' ? 'PENDING' : 'COMPLETED',
+      displayDate: actionItem.itemType === 'TIMED_ACTION' ? actionItem.displayDate : null,
     });
   };
 
@@ -358,8 +358,7 @@ function EventViewPage() {
         actionItemStatusMutation.mutate({
           actionItemId: item.actionItemId,
           status: 'COMPLETED',
-          displayDate:
-            item.itemType === 'TIMED_ACTION' ? item.displayDate : null,
+          displayDate: item.itemType === 'TIMED_ACTION' ? item.displayDate : null,
         });
       });
   };
@@ -422,18 +421,14 @@ function EventViewPage() {
         variant="daily"
         leading={{
           type: 'icon-text',
-          text: formatDateLabel(eventDetail.startDate),
+          text: formatDateLabel(parentDate ?? eventDetail.startDate),
           onClick: handleBack,
         }}
         trailing={{ type: 'text', text: '수정', onClick: () => setIsEditOpen(true) }}
       />
 
       <div className="event-view-page-content">
-        <ScheduleBanner
-          categoryColor={categoryColor}
-          title={eventDetail.eventTitle}
-          dateText=""
-        />
+        <ScheduleBanner categoryColor={categoryColor} title={eventDetail.eventTitle} dateText="" />
 
         <DailyScheduleDetail
           categoryColor={categoryColor}

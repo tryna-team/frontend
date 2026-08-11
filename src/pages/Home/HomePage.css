@@ -2,5 +2,11 @@
   /* App.tsx가 프레임 크기/배경을 담당. SearchOverlay(absolute)의 위치 기준(containing
      block)으로 position: relative만 유지 */
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100%;
+  height: calc(100dvh - 82px);
+  min-height: 0;
+  overflow: hidden;
+  background: #fff;
 }

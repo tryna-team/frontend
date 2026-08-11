@@ -1,9 +1,11 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 
 interface OverlayProps {
   children: ReactNode;
-  // 배경(dim) 클릭 시 닫기 등. 전달 안 하면 배경 클릭에 반응하지 않음
-  onClick?: () => void;
+  // 배경(dim) 클릭 시 닫기 등. 전달 안 하면 배경 클릭에 반응하지 않음.
+  // 이벤트를 받는 이유: 호출부가 이 클릭이 자신의 부모(다른 Overlay 등)로
+  // 버블링되는 걸 막아야 할 때(event.stopPropagation()) 필요하다.
+  onClick?: (event: MouseEvent<HTMLDivElement>) => void;
   // 콘텐츠 정렬/배치(예: items-end justify-center)는 각 호출부에서 지정
   className?: string;
 }

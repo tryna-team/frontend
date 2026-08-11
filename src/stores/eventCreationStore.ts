@@ -28,6 +28,7 @@ type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 interface EventCreationState {
   step: CreationStep;
+  tempEventId: string | null;
   rawInput: string; // C101 자연어 원문
   parsedCandidate: ParsedEventCandidate | null; // C102 결과
 
@@ -40,6 +41,7 @@ interface EventCreationState {
   labelId: string | null;
 
   setRawInput: (text: string) => void;
+  setTempEventId: (tempEventId: string | null) => void;
   setStep: (step: CreationStep) => void;
   setParsedCandidate: (candidate: ParsedEventCandidate) => void;
   setLoadingRecommendations: (loading: boolean) => void;
@@ -59,6 +61,7 @@ interface EventCreationState {
 const initialState = {
   step: 'idle' as CreationStep,
   rawInput: '',
+  tempEventId: null as string | null,
   parsedCandidate: null as ParsedEventCandidate | null,
   recommendationCandidates: [] as RecommendationCandidate[],
   isLoadingRecommendations: false,
@@ -72,6 +75,7 @@ export const useEventCreationStore = create<EventCreationState>((set) => ({
   ...initialState,
 
   setRawInput: (text) => set({ rawInput: text }),
+  setTempEventId: (tempEventId) => set({ tempEventId }),
   setStep: (step) => set({ step }),
 
   setParsedCandidate: (candidate) =>

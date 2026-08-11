@@ -22,7 +22,7 @@ import {
   REPEAT_OPTION_TO_RECURRENCE_TYPE,
 } from '@/features/event/components/create/repeatOption';
 import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial.types';
-import QuickModal from '@/features/event/components/QuickModal';
+import QuickModal from '@/components/common/Popup/QuickModal';
 import { eventDetailService } from '@/apis/services/eventDetailService';
 import type {
   EventUpdateActionItemRequestItem,

@@ -37,11 +37,8 @@ export default function QuickModal({
 
   return (
     <>
-      {/* 위치 고정 — z-index는 바텀시트 등에서 쓰는 공용 Overlay(z-50)와 같은 값으로 맞춰야
-          한다. 더 낮으면(예전 z-40) 이 배경이 Overlay 아래 깔려서 바깥 클릭이 QuickModal이
-          아니라 Overlay 쪽으로 넘어가 버린다 — DOM 순서상 QuickModal이 Overlay보다 나중에
-          렌더링되므로, z-index가 같으면 이 배경이 위에 그려져 클릭을 정상적으로 가로챈다. */}
-      <div className="fixed inset-0 z-50" onClick={onClose} />
+      {/* 공용 Overlay(z-50) 위에서 바깥 클릭을 정상적으로 가로챈다. */}
+      <div className="fixed inset-0 z-60" onClick={onClose} />
       {/* 코드래빗 적용_role/aria-modal/aria-labelledby로 다이얼로그임을 스크린 리더에 안내 */}
       {/*
         위치: 모바일 화면(뷰포트) 하단 기준 고정. 기존엔 top-144.75(임의의 절대 픽셀 값)
@@ -54,11 +51,14 @@ export default function QuickModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={messageId}
-        className="fixed bottom-22.75 left-1/2 -translate-x-1/2 z-50 bg-white rounded-medium drop-shadow-[0px_0px_10px_rgba(0,0,0,0.08)] flex flex-col gap-6 items-center py-4 w-61.25"
+        className="fixed bottom-22.75 left-1/2 z-70 flex w-61.25 -translate-x-1/2 flex-col items-center gap-6 rounded-medium bg-white py-4 drop-shadow-[0px_0px_10px_rgba(0,0,0,0.08)]"
       >
         <div className="flex items-center pl-5 pr-3 w-full">
           {/* 코드래빗 적용_위 aria-labelledby가 참조하는 id */}
-          <p id={messageId} className="font-['Pretendard_Variable',Pretendard,sans-serif] text-[17px] font-semibold text-[#1C1630] leading-6.5 tracking-[-0.17px] flex-1">
+          <p
+            id={messageId}
+            className="font-['Pretendard_Variable',Pretendard,sans-serif] text-[17px] font-semibold text-[#1C1630] leading-6.5 tracking-[-0.17px] flex-1"
+          >
             {message}
           </p>
         </div>
@@ -67,7 +67,11 @@ export default function QuickModal({
             {primaryAction.text}
           </Button>
           {secondaryAction && (
-            <Button variant="LargeWarningRegular" className="w-full" onClick={secondaryAction.onClick}>
+            <Button
+              variant="LargeWarningRegular"
+              className="w-full"
+              onClick={secondaryAction.onClick}
+            >
               {secondaryAction.text}
             </Button>
           )}

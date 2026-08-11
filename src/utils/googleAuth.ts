@@ -1,36 +1,49 @@
 /**
- * 구글 로그인 (Google Identity Services)
+ * 구글 로그인 (Google Identity Services · 인가 코드 방식)
  *
- * 백엔드(A105/A106)는 `oauthAccessToken`을 받아 구글 서버에 직접 검증하고 social_id를
- * 추출한다. 그래서 프론트는 ID 토큰(JWT)이 아니라 **OAuth2 access token**을 넘겨야 한다
- * — GIS의 `google.accounts.oauth2.initTokenClient`가 그 토큰을 발급한다.
- * (`google.accounts.id`는 ID 토큰용이라 여기서는 쓰지 않는다)
+ * 프론트는 **인가 코드(authorization code)까지만** 받아서 백엔드에 넘기고,
+ * 코드를 토큰으로 교환하는 단계는 백엔드가 담당한다. 교환에는 CLIENT_SECRET이
+ * 필요한데 프론트 번들은 브라우저에서 그대로 열람 가능하기 때문이다.
  *
- * CLIENT_SECRET은 이 흐름에 필요 없고, 프론트 번들은 공개되므로 절대 두면 안 된다.
+ * 이 방식이라야 백엔드가 구글 refresh token까지 확보할 수 있고,
+ * 그게 있어야 외부 캘린더 연동(B105)에서 사용자의 구글 캘린더를 읽을 수 있다.
+ * (access token만 넘기던 이전 방식으로는 refresh token을 받을 수 없었다)
  */
 
 const GIS_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
 const GIS_SCRIPT_ID = 'google-identity-services';
 
-/** 백엔드가 social_id와 이메일을 얻는 데 필요한 최소 범위 */
-const OAUTH_SCOPE = 'openid email profile';
+/**
+ * 백엔드가 요구하는 권한.
+ * - email, profile: 사용자 식별
+ * - calendar.readonly: 외부 캘린더 연동(B105)에서 구글 일정을 읽기 위함
+ */
+const OAUTH_SCOPE = 'email profile https://www.googleapis.com/auth/calendar.readonly';
 
-interface TokenResponse {
-  access_token?: string;
+/**
+ * 팝업 방식에서 구글이 인가 코드를 발급할 때 쓰는 리디렉션 값.
+ * 실제로 어딘가로 이동하지 않고 부모 창으로 코드를 전달하는 특수값이며,
+ * 백엔드가 코드를 교환할 때 같은 값을 함께 보내야 구글이 검증을 통과시킨다.
+ */
+export const GOOGLE_REDIRECT_URI = 'postmessage';
+
+interface CodeResponse {
+  code?: string;
   error?: string;
 }
 
-interface TokenClient {
-  requestAccessToken: () => void;
+interface CodeClient {
+  requestCode: () => void;
 }
 
 interface GoogleOAuth2 {
-  initTokenClient: (config: {
+  initCodeClient: (config: {
     client_id: string;
     scope: string;
-    callback: (response: TokenResponse) => void;
+    ux_mode: 'popup';
+    callback: (response: CodeResponse) => void;
     error_callback?: (error: { type?: string }) => void;
-  }) => TokenClient;
+  }) => CodeClient;
 }
 
 declare global {
@@ -60,9 +73,7 @@ function loadGoogleScript(): Promise<void> {
   }
 
   scriptLoadPromise = new Promise((resolve, reject) => {
-    const existing = document.getElementById(GIS_SCRIPT_ID);
-
-    if (existing) {
+    if (document.getElementById(GIS_SCRIPT_ID)) {
       resolve();
       return;
     }
@@ -86,13 +97,16 @@ function loadGoogleScript(): Promise<void> {
 }
 
 /**
- * 구글 로그인 팝업을 띄우고 access token을 받아온다.
+ * 구글 로그인 팝업을 띄우고 인가 코드를 받아온다.
  *
  * ⚠️ 반드시 사용자 클릭 핸들러 안에서 호출할 것 — 팝업이 브라우저에 차단된다.
  * ⚠️ GCP 콘솔의 "승인된 자바스크립트 원본"에 실행 중인 origin이 등록돼 있어야 한다
  *    (localhost:5173, 배포 도메인 등). 없으면 팝업이 뜨자마자 오류로 닫힌다.
+ *
+ * 발급된 코드는 일회용이고 수명이 짧다. 받은 즉시 백엔드로 넘겨야 하며,
+ * 재시도할 때는 코드를 재사용하지 말고 팝업을 다시 띄워 새로 받아야 한다.
  */
-export async function requestGoogleAccessToken(): Promise<string> {
+export async function requestGoogleAuthorizationCode(): Promise<string> {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   if (!clientId) {
@@ -108,12 +122,13 @@ export async function requestGoogleAccessToken(): Promise<string> {
   }
 
   return new Promise<string>((resolve, reject) => {
-    const client = oauth2.initTokenClient({
+    const client = oauth2.initCodeClient({
       client_id: clientId,
       scope: OAUTH_SCOPE,
+      ux_mode: 'popup',
       callback: (response) => {
-        if (response.access_token) {
-          resolve(response.access_token);
+        if (response.code) {
+          resolve(response.code);
           return;
         }
 
@@ -124,6 +139,6 @@ export async function requestGoogleAccessToken(): Promise<string> {
       error_callback: () => reject(new GoogleLoginCancelledError()),
     });
 
-    client.requestAccessToken();
+    client.requestCode();
   });
 }

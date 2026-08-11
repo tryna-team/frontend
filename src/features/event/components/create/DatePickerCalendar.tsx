@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { addMonths, isSameDay, startOfMonth, subMonths } from 'date-fns';
+import { addMonths, isAfter, isBefore, isSameDay, startOfMonth, subMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { DayPicker } from 'react-day-picker';
 
@@ -13,6 +13,9 @@ type DatePickerCalendarProps = {
   value: EventDate;
   onChange: (date: EventDate) => void;
   defaultMonth?: Date;
+  referenceDate?: Date;
+  referenceEndDate?: Date;
+  showCurrentDay?: boolean;
   onMonthTitleClick?: () => void;
 };
 
@@ -22,6 +25,9 @@ export default function DatePickerCalendar({
   value,
   onChange,
   defaultMonth,
+  referenceDate,
+  referenceEndDate,
+  showCurrentDay = true,
   onMonthTitleClick,
 }: DatePickerCalendarProps) {
   const today = new Date();
@@ -40,6 +46,19 @@ export default function DatePickerCalendar({
   const handleNextMonth = () => {
     setVisibleMonth((previousMonth) => addMonths(previousMonth, 1));
   };
+
+  const hasReferenceRange = Boolean(
+    referenceDate && referenceEndDate && !isSameDay(referenceDate, referenceEndDate),
+  );
+  const isReferenceRangeDay = (date: Date) =>
+    Boolean(
+      hasReferenceRange &&
+        referenceDate &&
+        referenceEndDate &&
+        (isSameDay(date, referenceDate) ||
+          isSameDay(date, referenceEndDate) ||
+          (isAfter(date, referenceDate) && isBefore(date, referenceEndDate))),
+    );
 
   return (
     <section className="create-date-picker">
@@ -96,11 +115,22 @@ export default function DatePickerCalendar({
             formatDay: (date) => String(date.getDate()),
           }}
           modifiers={{
-            currentDay: (date) => isSameDay(date, today),
+            currentDay: (date) => showCurrentDay && isSameDay(date, today),
+            referenceDay: (date) =>
+              Boolean(!hasReferenceRange && referenceDate && isSameDay(date, referenceDate)),
+            referenceRangeDay: isReferenceRangeDay,
+            referenceRangeStart: (date) =>
+              Boolean(hasReferenceRange && referenceDate && isSameDay(date, referenceDate)),
+            referenceRangeEnd: (date) =>
+              Boolean(hasReferenceRange && referenceEndDate && isSameDay(date, referenceEndDate)),
             selectedDay: (date) => isSameDay(date, value),
           }}
           modifiersClassNames={{
             currentDay: 'create-calendar-current-day',
+            referenceDay: 'create-calendar-reference-day',
+            referenceRangeDay: 'create-calendar-reference-range-day',
+            referenceRangeStart: 'create-calendar-reference-range-start',
+            referenceRangeEnd: 'create-calendar-reference-range-end',
             selectedDay: 'create-calendar-selected-day',
           }}
         />
