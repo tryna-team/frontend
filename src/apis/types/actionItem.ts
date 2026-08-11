@@ -24,6 +24,7 @@ export type ActionItemCreatedBy = 'SYSTEM' | 'USER' | 'USER_EDITED';
 
 /** E106 준비/실행 항목 상태 변경 요청 */
 export interface ActionItemStatusUpdateRequest {
+  occurrenceDate: string;
   actionItemStatus: ActionItemCompletionStatus;
 }
 

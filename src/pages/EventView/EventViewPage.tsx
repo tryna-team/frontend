@@ -250,13 +250,16 @@ function EventViewPage() {
   const actionItemStatusMutation = useMutation({
     mutationFn: ({
       actionItemId,
+      occurrenceDate,
       status,
     }: {
       actionItemId: number;
+      occurrenceDate: string;
       status: ActionItemCompletionStatus;
       displayDate: string | null;
     }) =>
       actionItemService.updateStatus(actionItemId, {
+        occurrenceDate,
         actionItemStatus: status,
       }),
     onMutate: async ({ actionItemId, status }) => {
@@ -339,8 +342,16 @@ function EventViewPage() {
       return;
     }
 
+    const statusOccurrenceDate =
+      viewDate ?? actionItem.displayDate ?? eventDetail?.startDate ?? parentDate;
+
+    if (!statusOccurrenceDate) {
+      return;
+    }
+
     actionItemStatusMutation.mutate({
       actionItemId: actionItem.actionItemId,
+      occurrenceDate: statusOccurrenceDate,
       status: actionItem.actionItemStatus === 'COMPLETED' ? 'PENDING' : 'COMPLETED',
       displayDate: actionItem.itemType === 'TIMED_ACTION' ? actionItem.displayDate : null,
     });
@@ -355,8 +366,16 @@ function EventViewPage() {
           !pendingActionItemIdsRef.current.has(item.actionItemId),
       )
       .forEach((item) => {
+        const statusOccurrenceDate =
+          viewDate ?? item.displayDate ?? eventDetail?.startDate ?? parentDate;
+
+        if (!statusOccurrenceDate) {
+          return;
+        }
+
         actionItemStatusMutation.mutate({
           actionItemId: item.actionItemId,
+          occurrenceDate: statusOccurrenceDate,
           status: 'COMPLETED',
           displayDate: item.itemType === 'TIMED_ACTION' ? item.displayDate : null,
         });
