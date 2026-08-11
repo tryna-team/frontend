@@ -18,7 +18,7 @@ import { queryKeys } from './queries/queryKeys';
  * retry를 끈 이유: Splash가 이 요청이 끝날 때까지 대기하는데, 재시도까지 붙으면
  * 네트워크 장애 시 스플래시가 axios 타임아웃(10초)의 배수만큼 길어진다.
  */
-export function useAppBootstrap() {
+export function useAppBootstrap(enabled = true) {
   const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: queryKeys.users.status(),
     queryFn: resolveAppEntry,
@@ -26,11 +26,12 @@ export function useAppBootstrap() {
     gcTime: Infinity,
     retry: false,
     refetchOnWindowFocus: false,
+    enabled,
   });
 
   return {
     /** 부트스트랩 진행 중 — App은 이 동안 스플래시를 유지한다 (실패는 완료로 간주해 진입을 막지 않음) */
-    isPending,
+    isPending: enabled && isPending,
     isError,
     error,
     retry: refetch,
