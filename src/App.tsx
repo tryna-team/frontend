@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { useLocation } from 'react-router';
+import { matchPath, useLocation } from 'react-router';
 
 import { WebIntro } from '@/components/common/WebIntro';
 import AppRouter from '@/routes/AppRouter';
@@ -20,8 +20,9 @@ const FLOATING_BOTTOM_PADDING = 'max(16px,env(safe-area-inset-bottom))';
 function App() {
   const [floatingContent, setFloatingContent] = useState<ReactNode>(null);
   const location = useLocation();
-  const normalizedPath = location.pathname.replace(/\/+$/, '') || '/';
-  const isPublicLegalPage = normalizedPath === PATH.TERMS || normalizedPath === PATH.PRIVACY;
+  const isPublicLegalPage = [PATH.TERMS, PATH.PRIVACY].some((path) =>
+    Boolean(matchPath({ path, end: true, caseSensitive: false }, location.pathname)),
+  );
   // 앱 진입 상태 확인(A101). 유효한 토큰이 없으면 내부에서 비회원 생성(A102)까지 끝낸다.
   // Splash 라우트가 아니라 여기서 부트스트랩하는 이유: /home, /daily/:date 등으로 직접
   // 진입하거나 새로고침하면 Splash를 거치지 않아 토큰 없이 API가 나가게 된다.

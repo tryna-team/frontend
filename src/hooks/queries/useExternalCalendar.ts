@@ -145,7 +145,12 @@ export function useAutoSyncExternalCalendar(viewingYear: number, enabled = true)
   const syncedYearsRef = useRef(new Set<number>());
 
   useEffect(() => {
-    if (!enabled || !isConnected || isSyncing || syncedYearsRef.current.has(viewingYear)) {
+    if (!enabled) {
+      syncedYearsRef.current.clear();
+      return;
+    }
+
+    if (!isConnected || isSyncing || syncedYearsRef.current.has(viewingYear)) {
       return;
     }
 
