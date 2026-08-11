@@ -48,6 +48,7 @@ import { buildCreateEventRequest, getTimedActionDates } from './CreateModal.subm
 import type { CreateModalProps, RecommendationEditDraft } from './CreateModal.types';
 import { useCreateModalLabels } from './useCreateModalLabels';
 import { useCreateModalScheduleText } from './useCreateModalScheduleText';
+import { useCreateModalViewport } from './useCreateModalViewport';
 
 // 직접 추가 항목에 사용하는 임시 전용 ID
 // 실제 체크리스트 ID와 겹치지 않도록 접두사를 사용
@@ -130,16 +131,7 @@ export default function CreateModal({
     useState<RecommendationEditDraft | null>(null);
   const [hasInputInteractionStarted, setHasInputInteractionStarted] = useState(false);
   const startDateRef = useRef(startDate);
-  const [visualViewportRect, setVisualViewportRect] = useState(() => ({
-    top: window.visualViewport?.offsetTop ?? 0,
-    height: window.visualViewport?.height ?? window.innerHeight,
-  }));
-  const [appFrameRect, setAppFrameRect] = useState(() => {
-    const appFrame = document.querySelector<HTMLElement>('.transform-gpu');
-    const { left = 0, width = window.innerWidth } = appFrame?.getBoundingClientRect() ?? {};
-
-    return { left, width };
-  });
+  const { visualViewportRect, appFrameRect } = useCreateModalViewport();
   const isRecommendationLoading = useEventCreationStore((state) => state.isLoadingRecommendations);
   const recommendationCandidates = useEventCreationStore((state) => state.recommendationCandidates);
   const parsedCandidate = useEventCreationStore((state) => state.parsedCandidate);
@@ -580,57 +572,6 @@ export default function CreateModal({
     isScheduleOpen,
     setIsLabelModalOpen,
   ]);
-
-  // 오버레이를 키보드를 제외한 실제 화면 영역에 맞춘다.
-  useEffect(() => {
-    const viewport = window.visualViewport;
-
-    if (!viewport) {
-      return;
-    }
-
-    const updateVisualViewport = () => {
-      setVisualViewportRect({
-        top: viewport.offsetTop,
-        height: viewport.height,
-      });
-    };
-
-    viewport.addEventListener('resize', updateVisualViewport);
-    viewport.addEventListener('scroll', updateVisualViewport);
-    const frameId = window.requestAnimationFrame(updateVisualViewport);
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      viewport.removeEventListener('resize', updateVisualViewport);
-      viewport.removeEventListener('scroll', updateVisualViewport);
-    };
-  }, []);
-
-  // Portal 내부 콘텐츠를 실제 캘린더 앱 프레임에 맞춘다.
-  useEffect(() => {
-    const appFrame = document.querySelector<HTMLElement>('.transform-gpu');
-
-    if (!appFrame) {
-      return;
-    }
-
-    const updateAppFrameRect = () => {
-      const { left, width } = appFrame.getBoundingClientRect();
-      setAppFrameRect({ left, width });
-    };
-    const resizeObserver = new ResizeObserver(updateAppFrameRect);
-
-    updateAppFrameRect();
-    resizeObserver.observe(appFrame);
-    window.addEventListener('resize', updateAppFrameRect);
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener('resize', updateAppFrameRect);
-    };
-  }, []);
-
   const handleOpenRecommendationEdit = useCallback(
     (candidate: RecommendationCandidate) => {
       if (isSaving || !candidate.selected) {
