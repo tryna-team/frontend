@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { eventService } from '@/apis/services/eventService';
 import { labelService } from '@/apis/services/labelService';
 import { recommendationService } from '@/apis/services/recommendationService';
-import type { EventParseResponse, EventRecurrenceType } from '@/apis/types/event';
+import type { EventParseResponse } from '@/apis/types/event';
 import type { RecommendationResponse, RecommendationSuggestion } from '@/apis/types/recommendation';
 import { queryClient } from '@/apis/queryClient';
 import Button from '@/components/common/Buttons/Button';
@@ -28,31 +28,25 @@ import { queryKeys } from '@/hooks/queries/queryKeys';
 import { useEventCreationStore } from '@/stores';
 import type { ParsedEventCandidate, RecommendationCandidate } from '@/stores/types';
 
+import {
+  ADD_CHECKLIST_ITEM_ID,
+  COLOR_ICON,
+  FOCUSABLE_SELECTOR,
+  PARSING_THROTTLE_DELAY,
+  RECOMMENDATION_DEBOUNCE_DELAY,
+  RECURRENCE_TYPE,
+} from './CreateModal.constants';
 import CreateModalSkeleton from './CreateModalSkeleton';
 import type { CreateModalProps, LabelColor, RecommendationEditDraft } from './CreateModal.types';
 
-const COLOR_ICON = {
-  apricot: '/icon/color_picker/apricot_small.svg',
-  blue: '/icon/color_picker/blue_small.svg',
-  green: '/icon/color_picker/green_small.svg',
-  pink: '/icon/color_picker/pink_small.svg',
-  purple: '/icon/color_picker/purple_small.svg',
-  yellow: '/icon/color_picker/yellow_small.svg',
-} as const;
-
 // 직접 추가 항목에 사용하는 내부 전용 ID
 // 실제 체크리스트 ID와 겹치지 않도록 음수를 사용
-const ADD_CHECKLIST_ITEM_ID = -1;
-
 const createManualCandidateId = () =>
   `manual-${
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random()}`
   }`;
-
-const PARSING_THROTTLE_DELAY = 300;
-const RECOMMENDATION_DEBOUNCE_DELAY = 1000;
 
 const createFallbackTempEventId = () =>
   `fallback-${
@@ -137,13 +131,6 @@ const mapRecommendationCandidate = (
 const hasRecommendationFailed = (response: RecommendationResponse) =>
   response.suggestionStatus === 'ERROR' || response.suggestionStatus === 'EMPTY';
 
-const RECURRENCE_TYPE: Record<RepeatOption, EventRecurrenceType> = {
-  매일: 'DAILY',
-  매주: 'WEEKLY',
-  매월: 'MONTHLY',
-  매년: 'YEARLY',
-};
-
 const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: RepeatOption) => {
   if (!hasRepeatChanged) {
     return {
@@ -194,15 +181,6 @@ const formatActionItemDisplayTime = (
 
   return normalizedTime ? `${displayDate}T${normalizedTime}` : null;
 };
-
-const FOCUSABLE_SELECTOR = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',');
 
 const formatTime = ({ meridiem, hour, minute }: TimePickerValue) =>
   `${hour}:${String(minute).padStart(2, '0')} ${meridiem}`;
