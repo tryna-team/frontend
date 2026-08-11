@@ -10,6 +10,7 @@ import { useUIStore } from '@/stores/uiStore';
 function GlobalSettings() {
   const location = useLocation();
   const previousLocationKeyRef = useRef(location.key);
+  const isAccountActionLockedRef = useRef(false);
   const isSettingsOpen = useUIStore((state) => state.isSettingsOpen);
   const accountConfirm = useUIStore((state) => state.settingsAccountConfirm);
   const closeSettings = useUIStore((state) => state.closeSettings);
@@ -17,6 +18,24 @@ function GlobalSettings() {
   const closeAccountConfirm = useUIStore((state) => state.closeSettingsAccountConfirm);
   const isMember = useAuthStore((state) => state.userRole) === 'USER';
   const { logout, deleteAccount, isPending } = useAccountActions();
+
+  const runAccountAction = (action: () => Promise<void>, failureMessage: string) => {
+    if (isPending || isAccountActionLockedRef.current) {
+      return;
+    }
+
+    isAccountActionLockedRef.current = true;
+    closeAccountConfirm();
+
+    void action()
+      .catch((error: unknown) => {
+        console.error(failureMessage, error);
+      })
+      .finally(() => {
+        isAccountActionLockedRef.current = false;
+      });
+  };
+
   useEffect(() => {
     if (previousLocationKeyRef.current === location.key) {
       return;
@@ -38,8 +57,6 @@ function GlobalSettings() {
       <Setting
         isMember={isMember}
         onClose={closeSettings}
-        onOpenTerms={() => console.log('이용 약관(연동 예정)')}
-        onOpenPrivacy={() => console.log('개인정보 처리 방침(연동 예정)')}
         onLogout={() => {
           if (!isMember || isPending) return;
           requestAccountConfirm('logout');
@@ -55,10 +72,7 @@ function GlobalSettings() {
           message="로그아웃 하시겠습니까?"
           primaryAction={{
             text: '로그아웃',
-            onClick: () => {
-              closeAccountConfirm();
-              void logout();
-            },
+            onClick: () => runAccountAction(logout, '로그아웃에 실패했습니다.'),
           }}
           onClose={closeAccountConfirm}
         />
@@ -69,12 +83,7 @@ function GlobalSettings() {
           message="회원탈퇴 하시겠습니까?"
           primaryAction={{
             text: '회원탈퇴',
-            onClick: () => {
-              closeAccountConfirm();
-              void deleteAccount().catch((error: unknown) => {
-                console.error('회원탈퇴에 실패했습니다.', error);
-              });
-            },
+            onClick: () => runAccountAction(deleteAccount, '회원탈퇴에 실패했습니다.'),
           }}
           onClose={closeAccountConfirm}
         />
