@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { WebIntro } from '@/components/common/WebIntro';
 import AppRouter from '@/routes/AppRouter';
 import GlobalBottomSheet from '@/components/common/Popup/GlobalBottomSheet';
+import GlobalSettings from '@/components/common/Popup/GlobalSettings';
 import { FloatingButtonsContext } from '@/hooks/useFloatingButtons';
 import { useAppBootstrap } from '@/hooks/useAppBootstrap';
 import SplashScreen from '@/pages/Splash/SplashScreen';
@@ -50,6 +51,7 @@ function App() {
 
           {/* 전역 바텀시트: 어느 화면에서 열든 여기 한 곳에서만 렌더링된다.
               이 앱 프레임 안에 둬야 fixed inset-0이 전체 화면이 아닌 프레임 기준으로 잡힌다 */}
+          <GlobalSettings />
           <GlobalBottomSheet />
         </FloatingButtonsContext.Provider>
       </div>

@@ -14,17 +14,14 @@ import SearchOverlay from '@/features/calendar/components/SearchOverlay';
 import LabelListSheet from '@/components/common/Popup/BottomSheet/Label/LabelListSheet';
 import LabelEditSheet from '@/components/common/Popup/BottomSheet/Label/LabelEditSheet';
 import LabelCreateSheet from '@/components/common/Popup/BottomSheet/Label/LabelCreateSheet';
-import Setting from '@/components/common/Popup/BottomSheet/Setting';
-import QuickModal from '@/components/common/Popup/QuickModal';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useAutoSyncExternalCalendar } from '@/hooks/queries/useExternalCalendar';
-import { useAccountActions } from '@/hooks/useAccountActions';
-import { useAuthStore } from '@/stores/authStore';
 import { generateDailyPath, generateEventPath, PATH } from '@/routes/paths';
 import type {
   EventViewNavigationState,
   YearCalendarNavigationState,
 } from '@/routes/navigationState';
+import { useUIStore } from '@/stores/uiStore';
 
 import './HomePage.css';
 
@@ -44,15 +41,8 @@ function HomePage() {
   const goToToday = useCalendarStore((s) => s.goToToday);
   const currentYear = useCalendarStore((s) => s.currentYear);
   const currentMonth = useCalendarStore((s) => s.currentMonth);
-  const { logout, deleteAccount, isPending: isAccountActionPending } = useAccountActions();
-  // 비회원은 로그아웃·회원탈퇴 대상이 아니다. 비회원 계정은 기기에 저장된 deviceId로만
-  // 되찾을 수 있어서, 로그아웃하면 그동안 만든 일정에 다시 접근할 방법이 사라진다.
-  // 항목 자체를 숨길지는 논의 후 정하기로 해서, 지금은 눌러도 동작하지 않게만 막아둔다.
-  const isMember = useAuthStore((s) => s.userRole) === 'USER';
+  const openSettings = useUIStore((state) => state.openSettings);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isSettingOpen, setIsSettingOpen] = useState(false);
-  // 계정 관리 확인 모달. 되돌릴 수 없거나 영향이 큰 동작이라 한 번 더 확인받는다.
-  const [accountConfirm, setAccountConfirm] = useState<'logout' | 'delete' | null>(null);
 
   const handleEventCreated = useCallback(
     (createdDate: string) => {
@@ -156,7 +146,7 @@ function HomePage() {
         }
         onSearchClick={() => setIsSearchOpen(true)}
         onViewToggleClick={openLabelList}
-        onSettingsClick={() => setIsSettingOpen(true)}
+        onSettingsClick={openSettings}
       />
 
       <MonthCalendarBody
@@ -217,51 +207,6 @@ function HomePage() {
         <LabelCreateSheet
           onClose={openLabelList}
           onComplete={openLabelList}
-        />
-      )}
-
-      {isSettingOpen && (
-        <Setting
-          isMember={isMember}
-          onClose={() => setIsSettingOpen(false)}
-          onOpenTerms={() => console.log('이용 약관(연동 예정)')}
-          onOpenPrivacy={() => console.log('개인정보 처리 방침(연동 예정)')}
-          onLogout={() => {
-            if (!isMember || isAccountActionPending) return;
-            setAccountConfirm('logout');
-          }}
-          onDeleteAccount={() => {
-            if (!isMember || isAccountActionPending) return;
-            setAccountConfirm('delete');
-          }}
-        />
-      )}
-
-      {accountConfirm === 'logout' && (
-        <QuickModal
-          message="로그아웃 하시겠습니까?"
-          primaryAction={{
-            text: '로그아웃',
-            onClick: () => {
-              setAccountConfirm(null);
-              void logout();
-            },
-          }}
-          onClose={() => setAccountConfirm(null)}
-        />
-      )}
-
-      {accountConfirm === 'delete' && (
-        <QuickModal
-          message="회원탈퇴 하시겠습니까?"
-          primaryAction={{
-            text: '회원탈퇴',
-            onClick: () => {
-              setAccountConfirm(null);
-              void deleteAccount();
-            },
-          }}
-          onClose={() => setAccountConfirm(null)}
         />
       )}
     </div>
