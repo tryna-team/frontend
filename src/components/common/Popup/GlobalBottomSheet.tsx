@@ -1,6 +1,7 @@
-import { useEffect, useId } from 'react';
+import { lazy, Suspense, useEffect, useId, useState, type ReactNode } from 'react';
 
 import Button from '@/components/common/Buttons/Button';
+import Header from '@/components/common/Header/Header';
 import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
 import Overlay from '@/components/common/Popup/Overlay';
 import ToastPopup from '@/components/common/Popup/ToastPopup';
@@ -24,13 +25,27 @@ import { useUIStore } from '@/stores/uiStore';
 
 const LOGO_DEFAULT_ICON = '/icon/logo/Logo_Default.svg';
 
+const LegalDocumentView = lazy(
+  () => import('@/features/legal/components/LegalDocumentView'),
+);
+
+type LoginLegalView = {
+  document: 'terms' | 'privacy';
+  variant: 'summary' | 'detail';
+};
+
+const LOGIN_LEGAL_TITLE: Record<LoginLegalView['document'], string> = {
+  terms: '서비스 이용약관',
+  privacy: '개인정보 처리방침',
+};
+
 interface SheetLayoutProps {
   title: string;
   description: string;
   confirmText: string;
-  /** 확인 버튼 텍스트 앞에 붙는 아이콘. public/icon 기준 상대 경로 (예: "google.svg") */
-  confirmIcon?: string;
+  confirmDisabled?: boolean;
   cancelText: string;
+  legalNotice?: ReactNode;
   onConfirm: () => void;
   onClose: () => void;
 }
@@ -39,8 +54,9 @@ function SheetLayout({
   title,
   description,
   confirmText,
-  confirmIcon,
+  confirmDisabled,
   cancelText,
+  legalNotice,
   onConfirm,
   onClose,
 }: SheetLayoutProps) {
@@ -77,18 +93,75 @@ function SheetLayout({
           >
             {description}
           </p>
+          {legalNotice}
         </div>
 
         <div className="flex w-full shrink-0 flex-col items-center justify-center gap-3">
-          <Button variant="LargeDefaultRegular" className="w-full gap-small" onClick={onConfirm}>
-            {/* 제공자 로고는 장식용이라 alt를 비운다 (버튼 텍스트가 이미 이름을 제공) */}
-            {confirmIcon && <img src={`/icon/${confirmIcon}`} alt="" className="size-5 shrink-0" />}
+          <Button
+            variant="LargeDefaultRegular"
+            className="w-full gap-small"
+            disabled={confirmDisabled}
+            onClick={onConfirm}
+          >
             {confirmText}
           </Button>
           <Button variant="Small" onClick={onClose}>
             {cancelText}
           </Button>
         </div>
+      </Frame>
+    </Overlay>
+  );
+}
+
+interface LoginLegalSheetProps {
+  view: LoginLegalView;
+  onBack: () => void;
+  onClose: () => void;
+  onShowDetail: () => void;
+}
+
+function LoginLegalSheet({ view, onBack, onClose, onShowDetail }: LoginLegalSheetProps) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <Overlay className="flex items-end justify-center" onClick={onClose}>
+      <Frame className="h-[92dvh] gap-4 p-4">
+        <Header
+          variant="modal"
+          title={LOGIN_LEGAL_TITLE[view.document]}
+          leading={{ type: 'icon', onClick: onBack }}
+          trailing={{ type: 'text', text: '닫기', onClick: onClose }}
+        />
+
+        {view.variant === 'summary' && (
+          <div className="flex w-full shrink-0 justify-end px-1">
+            <Button variant="Small" onClick={onShowDetail}>
+              전문 보기
+            </Button>
+          </div>
+        )}
+
+        <Suspense
+          fallback={
+            <div className="flex min-h-0 w-full flex-1 items-center justify-center default-body-medium text-text-additional">
+              문서를 불러오는 중...
+            </div>
+          }
+        >
+          <LegalDocumentView
+            document={view.document}
+            variant={view.variant}
+            layout="sheet"
+          />
+        </Suspense>
       </Frame>
     </Overlay>
   );
@@ -114,10 +187,12 @@ export default function GlobalBottomSheet() {
   const showToast = useUIStore((state) => state.showToast);
   const toast = useUIStore((state) => state.toast);
   const clearToast = useUIStore((state) => state.clearToast);
+  const [loginLegalView, setLoginLegalView] = useState<LoginLegalView | null>(null);
 
   const { login, isPending } = useSocialLogin();
 
   const closeLoginFlow = () => {
+    setLoginLegalView(null);
     closeBottomSheet();
   };
 
@@ -146,13 +221,58 @@ export default function GlobalBottomSheet() {
   // 이 시트의 문구는 서버 안내가 아니라 화면 고정 문구라 여기서 정의한다.
   const renderSheet = () => {
     if (activeBottomSheet === 'login') {
+      if (loginLegalView) {
+        return (
+          <LoginLegalSheet
+            view={loginLegalView}
+            onBack={() => {
+              if (loginLegalView.variant === 'detail') {
+                setLoginLegalView({ ...loginLegalView, variant: 'summary' });
+                return;
+              }
+
+              setLoginLegalView(null);
+            }}
+            onClose={closeLoginFlow}
+            onShowDetail={() =>
+              setLoginLegalView({ ...loginLegalView, variant: 'detail' })
+            }
+          />
+        );
+      }
+
       return (
         <SheetLayout
           title="로그인"
           description="구글 계정으로 로그인하세요."
-          confirmText={isPending ? '로그인 중...' : 'Google로 시작하기'}
-          confirmIcon="google.svg"
-          cancelText="다음에 하기"
+          confirmText={isPending ? '진행 중...' : '동의하고 계속하기'}
+          confirmDisabled={isPending}
+          cancelText="나중에"
+          legalNotice={
+            <p className="w-full max-w-[320px] default-caption-large text-left text-text-additional">
+              동의하고 계속하기를 누르면{' '}
+              <button
+                type="button"
+                className="underline underline-offset-2"
+                onClick={() =>
+                  setLoginLegalView({ document: 'terms', variant: 'summary' })
+                }
+              >
+                서비스 이용약관
+              </button>{' '}
+              및{' '}
+              <button
+                type="button"
+                className="underline underline-offset-2"
+                onClick={() =>
+                  setLoginLegalView({ document: 'privacy', variant: 'summary' })
+                }
+              >
+                개인정보 처리방침
+              </button>
+              에 동의한 것으로 간주됩니다.
+            </p>
+          }
           onConfirm={() => void runLogin()}
           onClose={closeLoginFlow}
         />
@@ -175,7 +295,10 @@ export default function GlobalBottomSheet() {
         confirmText="로그인"
         cancelText="다음에 하기"
         // 4-1 → 4-1-1로 전환. 로그인 시트는 고정 문구라 context를 넘기지 않아도 된다.
-        onConfirm={() => openBottomSheet('login')}
+        onConfirm={() => {
+          setLoginLegalView(null);
+          openBottomSheet('login');
+        }}
         onClose={closeBottomSheet}
       />
     );

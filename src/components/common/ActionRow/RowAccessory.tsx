@@ -15,6 +15,7 @@ type ColorAccessoryProps = {
 type ToggleAccessoryProps = {
   type: 'toggle';
   checked: boolean;
+  disabled?: boolean;
   ariaLabel?: string;
   onClick?: () => void;
 };
@@ -79,7 +80,8 @@ export default function RowAccessory(
         aria-checked={props.checked}
         aria-label={props.ariaLabel ?? '설정 전환'}
         onClick={handleClick}
-        className="border-0 bg-transparent p-0"
+        disabled={props.disabled}
+        className="border-0 bg-transparent p-0 disabled:opacity-30"
       >
         <img
           src={
