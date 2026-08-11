@@ -15,7 +15,6 @@ import LabelListSheet from '@/components/common/Popup/BottomSheet/Label/LabelLis
 import LabelEditSheet from '@/components/common/Popup/BottomSheet/Label/LabelEditSheet';
 import LabelCreateSheet from '@/components/common/Popup/BottomSheet/Label/LabelCreateSheet';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
-import { useAutoSyncExternalCalendar } from '@/hooks/queries/useExternalCalendar';
 import { generateDailyPath, generateEventPath, PATH } from '@/routes/paths';
 import type {
   EventViewNavigationState,
@@ -80,9 +79,9 @@ function HomePage() {
     completeScroll: completeCalendarScroll,
   } = useCalendarScrollRequest<{ date: string }>();
 
-  // 외부 캘린더가 연동돼 있으면 홈에 들어올 때와 연도를 옮길 때 구글 일정을 적재한다.
-  // 동기화된 일정은 별도 조회 없이 B101 응답에 sourceType: EXTERNAL_CALENDAR로 섞여 온다.
-  useAutoSyncExternalCalendar(currentYear);
+  // 외부 캘린더 자동 동기화는 App으로 옮겼다 — 백그라운드 복귀 시점에 어느 화면에 있든
+  // 동작해야 하기 때문이다. 동기화된 일정은 별도 조회 없이 B101 응답에
+  // sourceType: EXTERNAL_CALENDAR로 섞여 온다.
 
   const { eventsByMonth } = useCalendarMonthEvents({
     centerYear: currentYear,
