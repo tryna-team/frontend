@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import {
   Navigate,
   Route,
@@ -11,6 +12,8 @@ import SplashPage from '@/pages/Splash/SplashPage';
 import YearCalendarPage from '@/pages/YearCalendar/YearCalendarPage';
 
 import { PATH } from './paths';
+
+const LegalPage = lazy(() => import('@/pages/Legal/LegalPage'));
 
 export default function AppRouter() {
   return (
@@ -34,6 +37,22 @@ export default function AppRouter() {
       <Route
         path={PATH.YEAR_CALENDAR}
         element={<YearCalendarPage />}
+      />
+      <Route
+        path={PATH.TERMS}
+        element={
+          <Suspense fallback={<div className="min-h-[100dvh] bg-background-white" />}>
+            <LegalPage document="terms" />
+          </Suspense>
+        }
+      />
+      <Route
+        path={PATH.PRIVACY}
+        element={
+          <Suspense fallback={<div className="min-h-[100dvh] bg-background-white" />}>
+            <LegalPage document="privacy" />
+          </Suspense>
+        }
       />
       <Route
         path="*"
