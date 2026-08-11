@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { format } from 'date-fns';
@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { eventService } from '@/apis/services/eventService';
 import { queryClient } from '@/apis/queryClient';
 import Button from '@/components/common/Buttons/Button';
-import Checklist, { type ChecklistItemData } from '@/components/common/Checklist/Checklist';
+import Checklist from '@/components/common/Checklist/Checklist';
 import LabelModal from '@/components/common/LabelModal/LabelModal';
 import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
 import Overlay from '@/components/common/Popup/Overlay';
@@ -19,12 +19,8 @@ import {
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { useEventCreationStore } from '@/stores';
 
+import { COLOR_ICON } from './constants';
 import {
-  ADD_CHECKLIST_ITEM_ID,
-  COLOR_ICON,
-} from './constants';
-import {
-  formatChecklistDate,
   formatTime,
   getCurrentTime,
 } from './utils/dateTime';
@@ -34,20 +30,13 @@ import type { CreateModalProps } from './types';
 import { useCreateModalFocus } from './hooks/useFocus';
 import { useCreateModalLabels } from './hooks/useLabels';
 import { useCreateModalParsing } from './hooks/useParsing';
+import { useRecommendationChecklistItems } from './hooks/useRecommendationChecklistItems';
 import { useCreateModalRecommendations } from './hooks/useRecommendations';
 import { useRecommendationEdit } from './hooks/useRecommendationEdit';
 import { useCreateModalScheduleText } from './hooks/useScheduleText';
 import { useCreateModalViewport } from './hooks/useViewport';
 
-// 직접 추가 항목에 사용하는 임시 전용 ID
-// 실제 체크리스트 ID와 겹치지 않도록 접두사를 사용
-const createManualCandidateId = () =>
-  `manual-${
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random()}`
-  }`;
-
+// 서버 tempEventId가 없을 때 작성 세션에서 재사용하는 임시 ID
 const createFallbackTempEventId = () =>
   `fallback-${
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -245,6 +234,24 @@ export default function CreateModal({
     editCandidate,
   });
 
+  const {
+    renderedChecklistItems,
+    directAddChecklistItem,
+    handleChecklistClick,
+  } = useRecommendationChecklistItems({
+    checklistItems,
+    recommendationCandidates,
+    startDate,
+    isSaving,
+    hideRecommendationUnavailable,
+    addManualCandidate,
+    editCandidate,
+    toggleCandidateSelected,
+    handleOpenRecommendationEdit,
+    onAddChecklist,
+    onToggleChecklist,
+  });
+
   const handleExitConfirm = () => {
     // 확인한 경우에만 작성 중인 입력과 생성 후보를 삭제한다.
     onInputChange?.('');
@@ -285,132 +292,8 @@ export default function CreateModal({
     };
   }, []);
 
-  // CreateModal에서 전달받은 기존 체크리스트 데이터를 공용 Checklist 컴포넌트의 데이터 형식으로 변환
-  const renderedChecklistItems = useMemo<ChecklistItemData[]>(() => {
-    const hasRecommendationCandidates = recommendationCandidates.length > 0;
-    const effectiveChecklistItems = hasRecommendationCandidates
-      ? recommendationCandidates.map((candidate, index) => ({
-          id: index + 1,
-          label: candidate.title,
-          status: candidate.selected ? ('add' as const) : ('done' as const),
-          itemType: candidate.itemType,
-          date: candidate.displayDate ?? undefined,
-        }))
-      : checklistItems;
-
-    const recommendedItems = effectiveChecklistItems.map((item, index) => {
-      const status = item.status ?? 'add';
-      const hasDateTrailing = status === 'add' || status === 'done';
-      const candidate = hasRecommendationCandidates ? recommendationCandidates[index] : undefined;
-      const trailingText =
-        item.itemType === 'TIMED_ACTION'
-          ? formatChecklistDate(item.date, candidate?.displayEndDate, startDate)
-          : '당일';
-
-      return {
-        id: item.id,
-        label: item.label,
-        labelContent: candidate ? (
-          <input
-            data-recommendation-title-input="true"
-            aria-label={`${candidate.title || '추천 항목'} 제목 수정`}
-            value={candidate.title}
-            placeholder={candidate.createdBy === 'USER' ? '하위 목록을 작성하세요' : undefined}
-            disabled={isSaving || !candidate.selected}
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => event.stopPropagation()}
-            onChange={(event) =>
-              editCandidate(candidate.candidateId, {
-                title: event.target.value,
-              })
-            }
-            className="min-w-0 w-full bg-transparent text-left text-text-default outline-none disabled:cursor-default disabled:text-text-disable default-body-large"
-          />
-        ) : undefined,
-        status,
-        trailing: hasDateTrailing
-          ? {
-              type: 'date' as const,
-              text: trailingText,
-              onClick:
-                candidate?.selected && !isSaving
-                  ? () => handleOpenRecommendationEdit(candidate)
-                  : undefined,
-            }
-          : {
-              type: 'none' as const,
-            },
-      };
-    });
-
-    return recommendedItems;
-  }, [
-    checklistItems,
-    editCandidate,
-    handleOpenRecommendationEdit,
-    isSaving,
-    recommendationCandidates,
-    startDate,
-  ]);
-
-  const directAddChecklistItem = useMemo<ChecklistItemData[]>(
-    () => [
-      {
-        id: ADD_CHECKLIST_ITEM_ID,
-        label: '직접 추가',
-        status: 'plus',
-        trailing: {
-          type: 'none',
-        },
-      },
-    ],
-    [],
-  );
-
   // 항목이 늘어나면 모달이 위로 확장되고, 남은 공간부터 목록만 스크롤한다.
   const checklistScrollMaxHeight = Math.max(52, Math.min(312, visualViewportRect.height - 188));
-
-  const handleChecklistClick = (id: number) => {
-    if (isSaving) {
-      return;
-    }
-
-    if (id === ADD_CHECKLIST_ITEM_ID) {
-      // 직접 추가 항목이 생기면 모달 확장 공간을 위해 오류 안내를 닫는다.
-      hideRecommendationUnavailable();
-      addManualCandidate({
-        candidateId: createManualCandidateId(),
-        title: '',
-        createdBy: 'USER',
-        itemType: 'CHECKLIST',
-        apiItemType: 'UNTIMED_PREP',
-        sourceTemplateId: null,
-        offsetDays: null,
-        originalTitle: '',
-        displayDate: null,
-        displayEndDate: null,
-        displayTime: null,
-        selected: true,
-        edited: false,
-      });
-      onAddChecklist?.();
-      return;
-    }
-
-    if (recommendationCandidates.length > 0) {
-      const candidate = recommendationCandidates[id - 1];
-
-      if (candidate) {
-        toggleCandidateSelected(candidate.candidateId);
-      }
-
-      return;
-    }
-
-    onToggleChecklist?.(id);
-  };
-
   const handleLabelClick = () => {
     if (isSaving) {
       return;
