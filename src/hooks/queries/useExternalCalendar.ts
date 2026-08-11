@@ -24,7 +24,7 @@ const SYNC_POLL_TIMEOUT_MS = 30_000;
  *
  * 두 API 모두 정식 회원만 호출할 수 있어 비회원일 때는 조회 자체를 하지 않는다.
  */
-export function useExternalCalendar() {
+export function useExternalCalendar(enabled = true) {
   const queryClient = useQueryClient();
   const isMember = useAuthStore((state) => state.userRole) === 'USER';
 
@@ -38,7 +38,7 @@ export function useExternalCalendar() {
   const connectionQuery = useQuery({
     queryKey: queryKeys.externalCalendar.connection(),
     queryFn: externalCalendarService.getConnection,
-    enabled: isMember,
+    enabled: enabled && isMember,
     refetchInterval: (query) => {
       const syncStatus = query.state.data?.syncStatus;
 
@@ -138,27 +138,32 @@ export function useExternalCalendar() {
  *
  * 연동되지 않았거나 이미 동기화 중이면 아무것도 하지 않는다.
  */
-export function useAutoSyncExternalCalendar(viewingYear: number) {
-  const { isConnected, isSyncing, sync } = useExternalCalendar();
+export function useAutoSyncExternalCalendar(viewingYear: number, enabled = true) {
+  const { isConnected, isSyncing, sync } = useExternalCalendar(enabled);
 
   /** 이번 세션에서 이미 동기화한 연도. 화면을 오갈 때마다 같은 해를 다시 부르지 않기 위함 */
   const syncedYearsRef = useRef(new Set<number>());
 
   useEffect(() => {
+    if (!enabled) {
+      syncedYearsRef.current.clear();
+      return;
+    }
+
     if (!isConnected || isSyncing || syncedYearsRef.current.has(viewingYear)) {
       return;
     }
 
     syncedYearsRef.current.add(viewingYear);
     sync(viewingYear);
-  }, [isConnected, isSyncing, viewingYear, sync]);
+  }, [enabled, isConnected, isSyncing, viewingYear, sync]);
 
   // 최신 값을 리스너 안에서 읽기 위한 창구. 값이 바뀔 때마다 리스너를 다시 등록하면
   // 동기화가 시작돼 isSyncing이 바뀌는 순간 해제·재등록이 반복된다.
-  const latestRef = useRef({ isConnected, isSyncing, sync, viewingYear });
+  const latestRef = useRef({ enabled, isConnected, isSyncing, sync, viewingYear });
 
   useEffect(() => {
-    latestRef.current = { isConnected, isSyncing, sync, viewingYear };
+    latestRef.current = { enabled, isConnected, isSyncing, sync, viewingYear };
   });
 
   useEffect(() => {
@@ -167,10 +172,10 @@ export function useAutoSyncExternalCalendar(viewingYear: number) {
         return;
       }
 
-      const { isConnected, isSyncing, sync, viewingYear } = latestRef.current;
+      const { enabled, isConnected, isSyncing, sync, viewingYear } = latestRef.current;
 
       // 복귀 시에는 이미 적재한 해여도 다시 부른다 — 그 사이 바뀐 일정을 가져와야 한다
-      if (!isConnected || isSyncing) {
+      if (!enabled || !isConnected || isSyncing) {
         return;
       }
 

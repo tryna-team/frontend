@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
 
-import Setting from '@/components/common/Popup/BottomSheet/Setting';
 import QuickModal from '@/components/common/Popup/QuickModal';
+import SettingsSheet from '@/features/settings/components/SettingsSheet';
 import { useAccountActions } from '@/hooks/useAccountActions';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -54,7 +54,7 @@ function GlobalSettings() {
 
   return (
     <>
-      <Setting
+      <SettingsSheet
         isMember={isMember}
         onClose={closeSettings}
         onLogout={() => {

@@ -4,6 +4,8 @@ export const PATH = {
   DAILY: '/daily/:date',
   EVENT_VIEW: '/event/:eventId',
   YEAR_CALENDAR: '/calendar/year', // 연간 캘린더
+  TERMS: '/terms',
+  PRIVACY: '/privacy',
 } as const;
 
 export const generateDailyPath = (date: string) => `/daily/${date}`;

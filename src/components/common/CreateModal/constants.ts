@@ -1,7 +1,7 @@
 import type { EventRecurrenceType } from '@/apis/types/event';
 import type { RepeatOption } from '@/features/event/components/create';
 
-import type { LabelColor } from './CreateModal.types';
+import type { LabelColor } from './types';
 
 export const COLOR_ICON: Record<LabelColor, string> = {
   apricot: '/icon/color_picker/apricot_small.svg',
