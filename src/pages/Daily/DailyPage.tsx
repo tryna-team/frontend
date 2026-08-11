@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { useSwipeable } from 'react-swipeable';
-import { useCanGoBack } from '@/hooks/useCanGoBack';
 
 import { useCalendarStore } from '@/stores';
 import Button from '@/components/common/Buttons/Button';
 import CreateModal from '@/components/common/CreateModal/CreateModal';
 import LabelCreateSheet from '@/components/common/Popup/BottomSheet/Label/LabelCreateSheet';
-import Header from '@/components/common/Header/Header';
-import WeekStrip from '@/features/calendar/components/WeekStrip';
+import CalendarHeader from '@/features/calendar/components/CalendarHeader';
 import ScheduleCard from '@/features/calendar/components/ScheduleCard';
+import useHorizontalPager, {
+  type HorizontalPagerDirection,
+} from '@/features/calendar/hooks/useHorizontalPager';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import type { CategoryColor } from '@/features/calendar/types';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
@@ -120,7 +120,6 @@ function DailyPage() {
   // Daily 경로의 날짜를 화면 기준값으로 사용
   const { date: routeDate } = useParams<{ date: string }>();
   const navigate = useNavigate();
-  const canGoBack = useCanGoBack();
 
   const calendarSelectedDate = useCalendarStore((s) => s.selectedDate);
   const selectDate = useCalendarStore((s) => s.selectDate);
@@ -150,10 +149,24 @@ function DailyPage() {
     }
   }, [calendarSelectedDate, isValidRouteDate, navigate, routeDate, selectDate]);
 
+  const panelDates = useMemo<[string, string, string]>(
+    () => [addDays(selectedDate, -1), selectedDate, addDays(selectedDate, 1)],
+    [selectedDate],
+  );
+
   // B103 날짜별 일정 목록 조회 — mock(MOCK_SCHEDULES) 대신 실 서버 데이터 사용
   const { data, isPending, isError } = useQuery({
     queryKey: queryKeys.calendars.dateEvents(selectedDate),
     queryFn: () => calendarService.getDateEvents(selectedDate),
+  });
+
+  // 드래그 중 옆 날짜의 기본 일정이 바로 보이도록 이전·다음 날짜만 미리 조회한다.
+  // 현재 날짜의 상세 데이터 흐름은 아래 dev 구현을 그대로 사용한다.
+  const adjacentDateQueries = useQueries({
+    queries: [panelDates[0], panelDates[2]].map((date) => ({
+      queryKey: queryKeys.calendars.dateEvents(date),
+      queryFn: () => calendarService.getDateEvents(date),
+    })),
   });
 
   // F104: 선택 날짜에 실행할 시간형 항목만 조회한다.
@@ -278,26 +291,13 @@ function DailyPage() {
     promptIfGuest();
   };
 
-  // 렌더링마다 최신 selectedDate를 담아두는 ref.
-  // useSwipeable 핸들러가 클로저의 오래된 selectedDate를 참조하면, 연속으로 빠르게
-  // 스와이프할 때 리렌더링 타이밍에 따라 "한 번은 되는데 계속 반복은 안 되는" 증상이
-  // 생길 수 있어서, 핸들러 내부에서는 항상 이 ref를 통해 최신 값을 읽는다.
-  const selectedDateRef = useRef(selectedDate);
-  useEffect(() => {
-    selectedDateRef.current = selectedDate;
-  }, [selectedDate]);
+  const handlePageChange = (direction: HorizontalPagerDirection) => {
+    handleSelectDate(addDays(selectedDate, direction === 'next' ? 1 : -1));
+  };
 
-  // 콘텐츠 영역(배너+일정 목록) 좌우 스와이프 -> 전날/다음날 이동
-  // WeekStrip 자체의 스와이프(주 단위 이동)는 건드리지 않음 — 별개 영역에만 적용
-  const contentSwipeHandlers = useSwipeable({
-    onSwipedLeft: () => {
-      handleSelectDate(addDays(selectedDateRef.current, 1)); // 다음 날
-    },
-    onSwipedRight: () => {
-      handleSelectDate(addDays(selectedDateRef.current, -1)); // 전날
-    },
-    preventScrollOnSwipe: true,
-    trackMouse: true,
+  const { viewportProps, trackProps } = useHorizontalPager({
+    resetKey: selectedDate,
+    onPageChange: handlePageChange,
   });
 
   const floatingButtonsContent = useMemo(
@@ -320,24 +320,16 @@ function DailyPage() {
   );
   useFloatingButtons(floatingButtonsContent);
 
-  // Header: chevron -> 직전 화면 이동
-  // window.history.state.idx는 React Router 내부 비공개 값이라 버전에 따라 깨질 수 있음
-  // (CodeRabbit 리뷰 반영) — EventViewPage에서 이미 쓰던 공개 API 기반 useCanGoBack으로 통일
+  // 캘린더 계층의 상위 화면인 월간 캘린더로 이동한다.
   const handleBack = () => {
-    if (canGoBack) {
-      navigate(-1);
-      return;
-    }
-
-    // 방문 기록 X -> Home으로 이동
     navigate(PATH.HOME, {
       replace: true,
     });
   };
 
   // 일정 카드 -> EventView 이동
-  const handleScheduleClick = (eventId: string) => {
-    navigate(generateEventPath.view(eventId, selectedDate));
+  const handleScheduleClick = (eventId: string, occurrenceDate = selectedDate) => {
+    navigate(generateEventPath.view(eventId, occurrenceDate));
   };
 
   // Header: 선택된 날짜 표시
@@ -350,67 +342,125 @@ function DailyPage() {
   );
   const todayBanners = banners.filter((b) => b.date === selectedDate);
 
+  // 옆 패널은 드래그 중 보일 기본 일정만 준비한다. 페이지 전환이 끝나 선택 날짜가
+  // 바뀌면 위의 dev 데이터 흐름이 그대로 실행돼 하위 항목과 연결 일정까지 채워진다.
+  const adjacentPanels = ([0, 2] as const).map((panelIndex, queryIndex) => {
+    const date = panelDates[panelIndex];
+    const query = adjacentDateQueries[queryIndex];
+    const events = query.data?.events ?? [];
+
+    return {
+      date,
+      banners: events
+        .filter((event) => event.isAllDay)
+        .map<BannerItem>((event) => ({
+          id: String(event.eventId),
+          categoryColor: getLabelColor(event.labelId),
+          title: event.title,
+          dateText: formatBannerDateText(event.startDate, event.endDate, date),
+          date,
+        })),
+      schedules: events.map<ScheduleItem>((event) => ({
+        id: String(event.eventId),
+        eventId: String(event.eventId),
+        categoryColor: getLabelColor(event.labelId),
+        title: event.title,
+        location: event.location ?? '',
+        startTime: event.startTime ?? '',
+        endTime: event.endTime ?? '',
+        date,
+      })),
+      isPending: query.isPending,
+      isError: query.isError,
+    };
+  });
+
+  const dailyPanels = [
+    adjacentPanels[0],
+    {
+      date: selectedDate,
+      banners: todayBanners,
+      schedules: todaySchedules,
+      isPending:
+        isPending ||
+        isTimedActionItemPending ||
+        eventActionItemQueries.some((query) => query.isPending) ||
+        timedParentEventQueries.some((query) => query.isPending),
+      isError:
+        isError ||
+        isTimedActionItemError ||
+        eventActionItemQueries.some((query) => query.isError),
+    },
+    adjacentPanels[1],
+  ];
+
   return (
     <div className="daily-page">
-      <Header
+      <CalendarHeader
         variant="daily"
         title={titleText}
-        leading={{
-          type: 'icon-text',
-          text: monthText,
-          onClick: handleBack,
-        }}
-        trailing={{ type: 'none' }}
+        backLabel={monthText}
+        onBack={handleBack}
+        selectedDate={selectedDate}
+        onSelectDate={handleSelectDate}
       />
 
-      <WeekStrip selectedDate={selectedDate} onSelectDate={handleSelectDate} />
+      <div className="daily-page-pager" {...viewportProps}>
+        <div className="daily-page-track" {...trackProps}>
+          {dailyPanels.map((panel, index) => (
+            <section
+              key={panel.date}
+              className="daily-page-panel"
+              data-position={
+                index === 0 ? 'previous' : index === 1 ? 'current' : 'next'
+              }
+              aria-hidden={index !== 1}
+              inert={index !== 1}
+            >
+              {panel.banners.length > 0 && (
+                <div className="daily-page-banners">
+                  {panel.banners.map((banner) => (
+                    <ScheduleBanner
+                      key={banner.id}
+                      categoryColor={banner.categoryColor}
+                      title={banner.title}
+                      dateText={banner.dateText}
+                      onClick={() => handleScheduleClick(banner.id, panel.date)}
+                    />
+                  ))}
+                </div>
+              )}
 
-      {/* 스와이프 핸들러는 여기(배너+콘텐츠 영역)에만 적용 — WeekStrip 스와이프와 분리 */}
-      <div {...contentSwipeHandlers}>
-        {todayBanners.length > 0 && (
-          <div className="daily-page-banners">
-            {todayBanners.map((banner) => (
-              <ScheduleBanner
-                key={banner.id}
-                categoryColor={banner.categoryColor}
-                title={banner.title}
-                dateText={banner.dateText}
-                onClick={() => handleScheduleClick(banner.id)}
-              />
-            ))}
-          </div>
-        )}
-
-        <div className="daily-page-content">
-          {isPending ||
-          isTimedActionItemPending ||
-          eventActionItemQueries.some((query) => query.isPending) ||
-          timedParentEventQueries.some((query) => query.isPending) ? (
-            <p className="daily-page-empty">불러오는 중...</p>
-          ) : isError ||
-            isTimedActionItemError ||
-            eventActionItemQueries.some((query) => query.isError) ? (
-            <p className="daily-page-empty">일정을 불러오지 못했어요</p>
-          ) : todaySchedules.length === 0 ? (
-            <p className="daily-page-empty">일정이 없어요</p>
-          ) : (
-            todaySchedules.map((schedule) => (
-              <ScheduleCard
-                key={schedule.id}
-                categoryColor={schedule.categoryColor}
-                title={schedule.title}
-                location={schedule.location}
-                startTime={schedule.startTime}
-                endTime={schedule.endTime}
-                checklist={schedule.checklist}
-                onScheduleClick={() => handleScheduleClick(schedule.eventId)}
-                linkedSchedule={schedule.linkedSchedule}
-                onLinkedScheduleClick={
-                  schedule.linkedSchedule ? () => handleScheduleClick(schedule.eventId) : undefined
-                }
-              />
-            ))
-          )}
+              <div className="daily-page-content">
+                {panel.isPending ? (
+                  <p className="daily-page-empty">불러오는 중...</p>
+                ) : panel.isError ? (
+                  <p className="daily-page-empty">일정을 불러오지 못했어요</p>
+                ) : panel.schedules.length === 0 ? (
+                  <p className="daily-page-empty">일정이 없어요</p>
+                ) : (
+                  panel.schedules.map((schedule) => (
+                    <ScheduleCard
+                      key={schedule.id}
+                      categoryColor={schedule.categoryColor}
+                      title={schedule.title}
+                      location={schedule.location}
+                      startTime={schedule.startTime}
+                      endTime={schedule.endTime}
+                      checklist={schedule.checklist}
+                      onScheduleClick={() => handleScheduleClick(schedule.eventId, panel.date)}
+                      linkedSchedule={schedule.linkedSchedule}
+                      onLinkedScheduleClick={
+                        schedule.linkedSchedule
+                          ? () => handleScheduleClick(schedule.eventId, panel.date)
+                          : undefined
+                      }
+                    />
+                  ))
+                )}
+              </div>
+            </section>
+          ))}
         </div>
       </div>
 

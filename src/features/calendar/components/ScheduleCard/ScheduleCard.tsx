@@ -2,6 +2,7 @@ import type { KeyboardEvent } from 'react';
 
 import type { CategoryColor } from '@/features/calendar/types';
 import Checklist from '@/components/common/Checklist/Checklist';
+
 import './ScheduleCard.css';
 
 interface ChecklistItemData {

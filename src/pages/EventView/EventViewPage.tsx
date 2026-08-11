@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, isValid, parseISO } from 'date-fns';
 
@@ -19,9 +19,8 @@ import EventEditBottomSheet, {
 } from '@/features/event/components/edit/EventEditBottomSheet';
 import type { RepeatOption } from '@/features/event/components/create/EventScheduleRow';
 import type { CategoryColor } from '@/features/calendar/types';
-import { PATH } from '@/routes/paths';
+import { generateDailyPath, PATH } from '@/routes/paths';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
-import { useCanGoBack } from '@/hooks/useCanGoBack';
 import { useCalendarStore } from '@/stores';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { eventDetailService } from '@/apis/services/eventDetailService';
@@ -34,6 +33,7 @@ import type {
   RecurrenceType,
   DeleteScope,
 } from '@/apis/types/eventDetail';
+import type { EventViewNavigationState } from '@/routes/navigationState';
 
 import './EventViewPage.css';
 
@@ -56,6 +56,21 @@ const RECURRENCE_TYPE_TO_REPEAT_OPTION: Partial<Record<RecurrenceType, RepeatOpt
 function formatDateLabel(dateStr: string): string {
   const date = new Date(`${dateStr}T00:00:00`);
   return `${date.getMonth() + 1}월 ${date.getDate()}일`;
+}
+
+function isValidDateParam(value: string | null | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(`${value}T00:00:00`);
+
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() + 1 === month &&
+    date.getDate() === day
+  );
 }
 
 const RECURRENCE_DAY_LABEL: Record<RecurrenceDayOfWeek, string> = {
@@ -94,13 +109,14 @@ function formatRecurrenceText(eventDetail: EventDetailResponseData): string | un
 
 function EventViewPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
 
   // URL에서 조회할 일정 ID를 읽음
   const { eventId } = useParams<{ eventId: string }>();
   const [searchParams] = useSearchParams();
   const occurrenceDate = searchParams.get('occurrenceDate');
-  const canGoBack = useCanGoBack();
+  const navigationState = location.state as EventViewNavigationState | null;
   const labels = useCalendarStore((s) => s.labels);
   const setLabels = useCalendarStore((s) => s.setLabels);
 
@@ -209,18 +225,24 @@ function EventViewPage() {
         이벤트 삭제
       </Button>
     ),
-    [],
+    [setIsDeleteModalOpen],
   );
   useFloatingButtons(floatingButtonsContent);
 
-  // Header: chevron -> 직전 화면 이동
+  const fromDate = isValidDateParam(navigationState?.fromDate)
+    ? navigationState.fromDate
+    : undefined;
+  const validOccurrenceDate = isValidDateParam(occurrenceDate) ? occurrenceDate : undefined;
+  const parentDate = fromDate ?? validOccurrenceDate ?? eventDetail?.startDate;
+
+  // 캘린더 계층의 상위 화면인 데일리 뷰로 이동
   const handleBack = () => {
-    if (canGoBack) {
-      navigate(-1);
-    } else {
-      // 방문 기록이 없으면 Home으로 이동한다.
+    if (!parentDate) {
       navigate(PATH.HOME, { replace: true });
+      return;
     }
+
+    navigate(generateDailyPath(parentDate), { replace: true });
   };
 
   // E106 요청 전후의 캐시와 체크 상태를 동기화한다.
@@ -394,7 +416,7 @@ function EventViewPage() {
         variant="daily"
         leading={{
           type: 'icon-text',
-          text: formatDateLabel(eventDetail.startDate),
+          text: formatDateLabel(parentDate ?? eventDetail.startDate),
           onClick: handleBack,
         }}
         trailing={{ type: 'text', text: '수정', onClick: () => setIsEditOpen(true) }}
