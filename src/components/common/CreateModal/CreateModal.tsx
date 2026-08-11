@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { FocusEvent, KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 
-import { format, isSameDay, isToday, isValid, parseISO } from 'date-fns';
+import { format, isSameDay, isValid, parseISO } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 
 import { eventService } from '@/apis/services/eventService';
@@ -23,7 +23,6 @@ import {
   type ActionItemScheduleValue,
   type RepeatOption,
 } from '@/features/event/components/create';
-import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { useEventCreationStore } from '@/stores';
 import type { ParsedEventCandidate, RecommendationCandidate } from '@/stores/types';
@@ -36,6 +35,16 @@ import {
   RECOMMENDATION_DEBOUNCE_DELAY,
   RECURRENCE_TYPE,
 } from './CreateModal.constants';
+import {
+  formatActionItemDisplayTime,
+  formatApiTimeForPicker,
+  formatChecklistDate,
+  formatTime,
+  formatTriggerDate,
+  formatTriggerTime,
+  getCurrentTime,
+  normalizeTime,
+} from './CreateModal.dateTime';
 import CreateModalSkeleton from './CreateModalSkeleton';
 import type { CreateModalProps, LabelColor, RecommendationEditDraft } from './CreateModal.types';
 
@@ -54,21 +63,6 @@ const createFallbackTempEventId = () =>
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random()}`
   }`;
-
-const formatChecklistDate = (
-  date: string | null | undefined,
-  endDate: string | null | undefined,
-  fallbackDate: Date,
-) => {
-  const parsedDate = date ? parseISO(date) : fallbackDate;
-  const validStartDate = isValid(parsedDate) ? parsedDate : fallbackDate;
-  const parsedEndDate = endDate ? parseISO(endDate) : null;
-  const startText = format(validStartDate, 'MM. dd.');
-
-  return parsedEndDate && isValid(parsedEndDate) && !isSameDay(validStartDate, parsedEndDate)
-    ? `${startText} - ${format(parsedEndDate, 'MM. dd.')}`
-    : startText;
-};
 
 // 실제 API 연결 시 내부만 파싱 요청으로 교체한다.
 const mapParseResponse = (
@@ -148,61 +142,6 @@ const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: RepeatOption)
     // 반복 종료일 설정 UI가 추가되기 전까지 무기한 반복으로 저장한다.
     recurrenceEndDate: null,
   };
-};
-
-const normalizeTime = (time: string) => {
-  const apiTime = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(time);
-
-  if (apiTime) {
-    return `${apiTime[1]}:${apiTime[2]}:${apiTime[3] ?? '00'}`;
-  }
-
-  const displayTime = /^(\d{1,2}):(\d{2})\s(AM|PM)$/.exec(time);
-
-  if (!displayTime) {
-    return null;
-  }
-
-  const hour = (Number(displayTime[1]) % 12) + (displayTime[3] === 'PM' ? 12 : 0);
-
-  return `${String(hour).padStart(2, '0')}:${displayTime[2]}:00`;
-};
-
-const formatActionItemDisplayTime = (
-  displayDate: string | null | undefined,
-  displayTime: string | null | undefined,
-) => {
-  if (!displayDate || !displayTime) {
-    return null;
-  }
-
-  const time = displayTime.includes('T') ? displayTime.split('T')[1] : displayTime;
-  const normalizedTime = normalizeTime(time);
-
-  return normalizedTime ? `${displayDate}T${normalizedTime}` : null;
-};
-
-const formatTime = ({ meridiem, hour, minute }: TimePickerValue) =>
-  `${hour}:${String(minute).padStart(2, '0')} ${meridiem}`;
-
-const formatTriggerDate = (date: Date) => (isToday(date) ? '오늘' : format(date, 'MM.dd'));
-
-const formatTriggerTime = (time: string) => normalizeTime(time)?.slice(0, 5) ?? time;
-
-const getCurrentTime = () => format(new Date(), 'h:mm a').toUpperCase();
-
-const formatApiTimeForPicker = (time: string | null | undefined) => {
-  const normalizedTime = time ? normalizeTime(time) : null;
-
-  if (!normalizedTime) {
-    return getCurrentTime();
-  }
-
-  const [hourText, minute] = normalizedTime.split(':');
-  const hour = Number(hourText);
-  const meridiem = hour >= 12 ? 'PM' : 'AM';
-
-  return `${hour % 12 || 12}:${minute} ${meridiem}`;
 };
 
 export default function CreateModal({
