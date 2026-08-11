@@ -1,7 +1,9 @@
 .year-calendar-page {
+  position: relative;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: calc(100dvh - 82px);
   min-height: 0;
   overflow: hidden;
