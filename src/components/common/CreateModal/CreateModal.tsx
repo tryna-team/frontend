@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom';
 import { format, isSameDay, isValid, parseISO } from 'date-fns';
 
 import { eventService } from '@/apis/services/eventService';
-import { recommendationService } from '@/apis/services/recommendationService';
 import { queryClient } from '@/apis/queryClient';
 import Button from '@/components/common/Buttons/Button';
 import Checklist, { type ChecklistItemData } from '@/components/common/Checklist/Checklist';
@@ -25,7 +24,6 @@ import type { RecommendationCandidate } from '@/stores/types';
 import {
   ADD_CHECKLIST_ITEM_ID,
   COLOR_ICON,
-  RECOMMENDATION_DEBOUNCE_DELAY,
 } from './CreateModal.constants';
 import {
   formatApiTimeForPicker,
@@ -34,16 +32,13 @@ import {
   getCurrentTime,
   normalizeTime,
 } from './CreateModal.dateTime';
-import {
-  hasRecommendationFailed,
-  mapRecommendationCandidate,
-} from './CreateModal.mappers';
 import CreateModalSkeleton from './CreateModalSkeleton';
 import { buildCreateEventRequest, getTimedActionDates } from './CreateModal.submit';
 import type { CreateModalProps, RecommendationEditDraft } from './CreateModal.types';
 import { useCreateModalFocus } from './useCreateModalFocus';
 import { useCreateModalLabels } from './useCreateModalLabels';
 import { useCreateModalParsing } from './useCreateModalParsing';
+import { useCreateModalRecommendations } from './useCreateModalRecommendations';
 import { useCreateModalScheduleText } from './useCreateModalScheduleText';
 import { useCreateModalViewport } from './useCreateModalViewport';
 
@@ -90,15 +85,9 @@ export default function CreateModal({
   const inputRef = useRef<HTMLInputElement>(null);
   const labelButtonRef = useRef<HTMLButtonElement>(null);
   const inputRevisionRef = useRef(0);
-  const recommendationDraftRevisionRef = useRef(0);
-  const recommendationAbortControllerRef = useRef<AbortController | null>(null);
   const createAbortControllerRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
-  const lastInputChangedAtRef = useRef<number | null>(null);
-  const hasRecommendedRef = useRef(mode === 'recommend');
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
-  const [hasRecommended, setHasRecommended] = useState(false);
-  const [recommendedTitle, setRecommendedTitle] = useState('');
   const [startDate, setStartDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
   const [endDate, setEndDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
   // 진입 경로의 날짜를 C103 파싱 기준일로 고정한다.
@@ -116,25 +105,14 @@ export default function CreateModal({
   const [hasEndTimeChanged, setHasEndTimeChanged] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
-  const [isRecommendationUnavailable, setIsRecommendationUnavailable] = useState(false);
-  const [hasRecommendationResponse, setHasRecommendationResponse] = useState(false);
   const [recommendationEditDraft, setRecommendationEditDraft] =
     useState<RecommendationEditDraft | null>(null);
   const [hasInputInteractionStarted, setHasInputInteractionStarted] = useState(false);
-  const startDateRef = useRef(startDate);
   const { visualViewportRect, appFrameRect } = useCreateModalViewport();
   const isRecommendationLoading = useEventCreationStore((state) => state.isLoadingRecommendations);
   const recommendationCandidates = useEventCreationStore((state) => state.recommendationCandidates);
   const parsedCandidate = useEventCreationStore((state) => state.parsedCandidate);
   const setRawInput = useEventCreationStore((state) => state.setRawInput);
-  const setTempEventId = useEventCreationStore((state) => state.setTempEventId);
-  const setStep = useEventCreationStore((state) => state.setStep);
-  const setLoadingRecommendations = useEventCreationStore(
-    (state) => state.setLoadingRecommendations,
-  );
-  const setRecommendationCandidates = useEventCreationStore(
-    (state) => state.setRecommendationCandidates,
-  );
   const toggleCandidateSelected = useEventCreationStore((state) => state.toggleCandidateSelected);
   const editCandidate = useEventCreationStore((state) => state.editCandidate);
   const addManualCandidate = useEventCreationStore((state) => state.addManualCandidate);
@@ -157,6 +135,22 @@ export default function CreateModal({
   });
 
   const trimmedInput = inputValue.trim();
+  const {
+    hasRecommended,
+    recommendedTitle,
+    isRecommendationUnavailable,
+    hasRecommendationResponse,
+    hasRecommendedRef,
+    handleRecommendationInputChange,
+    hideRecommendationUnavailable,
+  } = useCreateModalRecommendations({
+    mode,
+    inputValue,
+    trimmedInput,
+    inputRevisionRef,
+    startDate,
+    createFallbackTempEventId,
+  });
   const isRecommendMode = mode === 'recommend' || hasRecommended;
   const hasEmptySelectedRecommendationTitle =
     isRecommendMode &&
@@ -254,10 +248,6 @@ export default function CreateModal({
   };
 
   useEffect(() => {
-    startDateRef.current = startDate;
-  }, [startDate]);
-
-  useEffect(() => {
     isMountedRef.current = true;
 
     return () => {
@@ -266,140 +256,6 @@ export default function CreateModal({
       resetCreation();
     };
   }, [resetCreation]);
-
-  // recommend 진입 전에는 마지막 입력 1초 후 추천 요청을 시작한다.
-  useEffect(() => {
-    if (mode === 'recommend' || hasRecommended || !trimmedInput) {
-      return;
-    }
-
-    // 공백과 Backspace를 포함한 실제 마지막 입력을 기준으로 대기 시간을 계산한다.
-    const request = {
-      input: inputValue,
-      inputRevision: inputRevisionRef.current,
-    };
-    const remainingDelay = lastInputChangedAtRef.current
-      ? Math.max(0, RECOMMENDATION_DEBOUNCE_DELAY - (Date.now() - lastInputChangedAtRef.current))
-      : RECOMMENDATION_DEBOUNCE_DELAY;
-
-    const timerId = window.setTimeout(async () => {
-      const latestParsedCandidate = useEventCreationStore.getState().parsedCandidate;
-
-      // 최신 입력의 파싱 결과가 준비된 뒤에만 추천을 요청한다.
-      if (
-        request.inputRevision !== inputRevisionRef.current ||
-        latestParsedCandidate?.sourceText !== request.input
-      ) {
-        return;
-      }
-
-      recommendationAbortControllerRef.current?.abort();
-      const controller = new AbortController();
-      recommendationAbortControllerRef.current = controller;
-      const draftRevision = recommendationDraftRevisionRef.current;
-      recommendationDraftRevisionRef.current += 1;
-      const currentTempEventId = useEventCreationStore.getState().tempEventId;
-      const recommendationTempEventId =
-        latestParsedCandidate.tempEventId ?? currentTempEventId ?? createFallbackTempEventId();
-      setTempEventId(recommendationTempEventId);
-      setLoadingRecommendations(true);
-      setIsRecommendationUnavailable(false);
-
-      const showRecommendationUnavailable = () => {
-        setRecommendationCandidates([]);
-        setRecommendedTitle(latestParsedCandidate.titleCandidate ?? request.input);
-        setIsRecommendationUnavailable(true);
-        setHasRecommendationResponse(false);
-        hasRecommendedRef.current = true;
-        setHasRecommended(true);
-        setStep('recommendation');
-      };
-
-      try {
-        const response = await recommendationService.getRecommendations(
-          {
-            tempEventId: recommendationTempEventId,
-            draftRevision,
-            eventTitle: latestParsedCandidate.titleCandidate ?? request.input,
-            sourceType: 'USER_NATURAL_LANGUAGE',
-            startDateCandidate:
-              latestParsedCandidate.dateCandidate ?? format(startDateRef.current, 'yyyy-MM-dd'),
-            startTimeCandidate: latestParsedCandidate.timeCandidate,
-            endDateCandidate: latestParsedCandidate.endDateCandidate,
-            endTimeCandidate: latestParsedCandidate.endTimeCandidate,
-            ...(latestParsedCandidate.dateSource
-              ? { startDateSource: latestParsedCandidate.dateSource }
-              : {}),
-            placeCandidate: latestParsedCandidate.placeCandidate,
-            description: null,
-            embeddingWords: latestParsedCandidate.embeddingWords ?? [],
-          },
-          controller.signal,
-        );
-
-        if (
-          controller.signal.aborted ||
-          request.inputRevision !== inputRevisionRef.current ||
-          (response.draftRevision !== undefined && response.draftRevision !== draftRevision) ||
-          (response.tempEventId !== undefined && response.tempEventId !== recommendationTempEventId)
-        ) {
-          return;
-        }
-
-        if (hasRecommendationFailed(response) || !response.suggestions?.length) {
-          showRecommendationUnavailable();
-          return;
-        }
-
-        const candidates = response.suggestions
-          .map(mapRecommendationCandidate)
-          .filter((candidate) => candidate.title.length > 0);
-
-        if (candidates.length === 0) {
-          showRecommendationUnavailable();
-          return;
-        }
-
-        setRecommendationCandidates(candidates);
-        setIsRecommendationUnavailable(false);
-        setHasRecommendationResponse(true);
-        setRecommendedTitle(latestParsedCandidate.titleCandidate ?? request.input);
-        hasRecommendedRef.current = true;
-        setHasRecommended(true);
-        setStep('recommendation');
-      } catch {
-        if (!controller.signal.aborted && request.inputRevision === inputRevisionRef.current) {
-          showRecommendationUnavailable();
-        }
-      } finally {
-        if (request.inputRevision === inputRevisionRef.current) {
-          setLoadingRecommendations(false);
-        }
-      }
-    }, remainingDelay);
-
-    return () => {
-      window.clearTimeout(timerId);
-    };
-  }, [
-    hasRecommended,
-    mode,
-    parsedCandidate,
-    setLoadingRecommendations,
-    setRecommendationCandidates,
-    setTempEventId,
-    setStep,
-    inputValue,
-    trimmedInput,
-  ]);
-
-  useEffect(
-    () => () => {
-      recommendationAbortControllerRef.current?.abort();
-      setLoadingRecommendations(false);
-    },
-    [setLoadingRecommendations],
-  );
 
   // 모달이 열려 있는 동안 배경 페이지의 스크롤을 잠근다.
   useEffect(() => {
@@ -596,7 +452,7 @@ export default function CreateModal({
 
     if (id === ADD_CHECKLIST_ITEM_ID) {
       // 직접 추가 항목이 생기면 모달 확장 공간을 위해 오류 안내를 닫는다.
-      setIsRecommendationUnavailable(false);
+      hideRecommendationUnavailable();
       addManualCandidate({
         candidateId: createManualCandidateId(),
         title: '',
@@ -667,11 +523,8 @@ export default function CreateModal({
 
     // revision을 올려 이전 파싱·추천 응답을 무효화한다.
     inputRevisionRef.current += 1;
-    lastInputChangedAtRef.current = Date.now();
-    recommendationAbortControllerRef.current?.abort();
+    handleRecommendationInputChange();
     setRawInput(value);
-    setLoadingRecommendations(false);
-    setStep(hasRecommendedRef.current ? 'recommendation' : 'input');
     onInputChange?.(value);
   };
 
