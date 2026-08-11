@@ -3,8 +3,6 @@ import { createPortal } from 'react-dom';
 
 import { format } from 'date-fns';
 
-import { eventService } from '@/apis/services/eventService';
-import { queryClient } from '@/apis/queryClient';
 import Button from '@/components/common/Buttons/Button';
 import Checklist from '@/components/common/Checklist/Checklist';
 import LabelModal from '@/components/common/LabelModal/LabelModal';
@@ -16,7 +14,6 @@ import {
   RepeatScheduleBottomSheet,
   type RepeatOption,
 } from '@/features/event/components/create';
-import { queryKeys } from '@/hooks/queries/queryKeys';
 import { useEventCreationStore } from '@/stores';
 
 import { COLOR_ICON } from './constants';
@@ -25,8 +22,8 @@ import {
   getCurrentTime,
 } from './utils/dateTime';
 import CreateModalSkeleton from './CreateModalSkeleton';
-import { buildCreateEventRequest, getTimedActionDates } from './utils/submit';
 import type { CreateModalProps } from './types';
+import { useCreateEventSubmit } from './hooks/useCreateEventSubmit';
 import { useCreateModalFocus } from './hooks/useFocus';
 import { useCreateModalLabels } from './hooks/useLabels';
 import { useCreateModalParsing } from './hooks/useParsing';
@@ -71,8 +68,6 @@ export default function CreateModal({
   const inputRef = useRef<HTMLInputElement>(null);
   const labelButtonRef = useRef<HTMLButtonElement>(null);
   const inputRevisionRef = useRef(0);
-  const createAbortControllerRef = useRef<AbortController | null>(null);
-  const isMountedRef = useRef(true);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [startDate, setStartDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
   const [endDate, setEndDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
@@ -252,6 +247,27 @@ export default function CreateModal({
     onToggleChecklist,
   });
 
+  const { handleCreate } = useCreateEventSubmit({
+    trimmedInput,
+    selectedLabelId,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    hasStartTimeChanged,
+    hasEndTimeChanged,
+    hasEndDateChanged,
+    hasRepeatChanged,
+    repeat,
+    parsedCandidate,
+    recommendationCandidates,
+    inputRevisionRef,
+    isSaving,
+    setIsSaving,
+    resetCreation,
+    onCreate,
+  });
+
   const handleExitConfirm = () => {
     // 확인한 경우에만 작성 중인 입력과 생성 후보를 삭제한다.
     onInputChange?.('');
@@ -259,16 +275,6 @@ export default function CreateModal({
     setIsExitConfirmOpen(false);
     onClose?.();
   };
-
-  useEffect(() => {
-    isMountedRef.current = true;
-
-    return () => {
-      isMountedRef.current = false;
-      createAbortControllerRef.current?.abort();
-      resetCreation();
-    };
-  }, [resetCreation]);
 
   // 모달이 열려 있는 동안 배경 페이지의 스크롤을 잠근다.
   useEffect(() => {
@@ -351,88 +357,6 @@ export default function CreateModal({
     window.requestAnimationFrame(() => {
       inputRef.current?.focus();
     });
-  };
-
-  const handleCreate = async () => {
-    if (isSaving || !trimmedInput) {
-      return;
-    }
-
-    const createRevision = inputRevisionRef.current;
-    const selectedCandidates = recommendationCandidates.filter((candidate) => candidate.selected);
-    if (selectedCandidates.some((candidate) => !candidate.title.trim())) {
-      window.alert('추천 항목의 제목을 입력해주세요.');
-      return;
-    }
-    const controller = new AbortController();
-    createAbortControllerRef.current = controller;
-    const createRequest = buildCreateEventRequest({
-      trimmedInput,
-      selectedLabelId,
-      startDate,
-      endDate,
-      startTime,
-      endTime,
-      hasStartTimeChanged,
-      hasEndTimeChanged,
-      hasEndDateChanged,
-      hasRepeatChanged,
-      repeat,
-      parsedCandidate,
-      recommendationCandidates,
-    });
-    setIsSaving(true);
-
-    try {
-      const createResponse = await eventService.create(createRequest, controller.signal);
-
-      const timedActionDates = getTimedActionDates(createResponse);
-
-      // 생성된 일정과 시간형 항목을 각 화면에서 다시 조회한다.
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.events.all }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.calendars.all }),
-        ...(createResponse.eventId !== undefined
-          ? [
-              queryClient.invalidateQueries({
-                queryKey: queryKeys.actionItems.byEvent(createResponse.eventId),
-              }),
-            ]
-          : []),
-        ...timedActionDates.map((date) =>
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.actionItems.calendarTimed(date),
-          }),
-        ),
-      ]);
-
-      // 이전 초안의 완료 응답은 현재 생성 세션을 변경하지 않는다.
-      if (!isMountedRef.current || createRevision !== inputRevisionRef.current) {
-        return;
-      }
-
-      resetCreation();
-      onCreate?.(format(startDate, 'yyyy-MM-dd'));
-    } catch {
-      if (
-        controller.signal.aborted ||
-        !isMountedRef.current ||
-        createRevision !== inputRevisionRef.current
-      ) {
-        return;
-      }
-
-      // TODO: 공통 일정 저장 오류 UI가 준비되면 alert을 교체한다.
-      window.alert('일정을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.');
-    } finally {
-      if (createAbortControllerRef.current === controller) {
-        createAbortControllerRef.current = null;
-      }
-
-      if (isMountedRef.current) {
-        setIsSaving(false);
-      }
-    }
   };
 
   return (
