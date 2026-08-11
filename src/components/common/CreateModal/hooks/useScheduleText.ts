@@ -2,8 +2,8 @@ import { format, isSameDay } from 'date-fns';
 
 import type { ParsedEventCandidate } from '@/stores/types';
 
-import { formatTriggerDate, formatTriggerTime } from './CreateModal.dateTime';
-import type { CalendarStatus } from './CreateModal.types';
+import { formatTriggerDate, formatTriggerTime } from '../utils/dateTime';
+import type { CalendarStatus } from '../types';
 import type { RepeatOption } from '@/features/event/components/create';
 
 type UseCreateModalScheduleTextParams = {
