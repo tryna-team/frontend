@@ -16,7 +16,6 @@ import QuickModal from '@/components/common/Popup/QuickModal';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useGuestConversionPrompt } from '@/hooks/useGuestConversionPrompt';
 import { useLabelColors } from '@/hooks/queries/useLabelColors';
-import { useAutoSyncExternalCalendar } from '@/hooks/queries/useExternalCalendar';
 import { useAccountActions } from '@/hooks/useAccountActions';
 import { useAuthStore } from '@/stores/authStore';
 import { queryKeys } from '@/hooks/queries/queryKeys';
@@ -149,9 +148,9 @@ function HomePage() {
     })),
   });
 
-  // 외부 캘린더가 연동돼 있으면 홈에 들어올 때와 연도를 옮길 때 구글 일정을 적재한다.
-  // 동기화된 일정은 별도 조회 없이 B101 응답에 sourceType: EXTERNAL_CALENDAR로 섞여 온다.
-  useAutoSyncExternalCalendar(currentYear);
+  // 외부 캘린더 자동 동기화는 App으로 옮겼다 — 백그라운드 복귀 시점에 어느 화면에 있든
+  // 동작해야 하기 때문이다. 동기화된 일정은 별도 조회 없이 B101 응답에
+  // sourceType: EXTERNAL_CALENDAR로 섞여 온다.
 
   // B101 하나로 그 달 전체의 날짜별 일정을 받는다.
   // 예전에는 B102(월간)로 "일정 있는 날짜"를 받고 날짜마다 B103을 또 호출했는데,
