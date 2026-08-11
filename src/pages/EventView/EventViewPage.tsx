@@ -41,9 +41,10 @@ import './EventViewPage.css';
 // 매칭 실패 등)의 폴백 색상.
 const DEFAULT_CATEGORY_COLOR: CategoryColor = 'green';
 
-// EventEditBottomSheet가 다루는 반복 옵션은 한글 4종(매일/매주/매월/매년)만 지원 —
-// NONE/CUSTOM은 매핑이 없어 매일로 기본 대체한다.
+// EventEditBottomSheet가 다루는 반복 옵션 — NONE은 "반복 없음", CUSTOM은 매핑이 없어
+// 아래 eventEditInitialValue 계산에서 "반복 없음"으로 기본 대체한다.
 const RECURRENCE_TYPE_TO_REPEAT_OPTION: Partial<Record<RecurrenceType, RepeatOption>> = {
+  NONE: '반복 없음',
   DAILY: '매일',
   WEEKLY: '매주',
   MONTHLY: '매월',
@@ -405,7 +406,11 @@ function EventViewPage() {
     endDate: eventDetail.endDate ? new Date(`${eventDetail.endDate}T00:00:00`) : null,
     startTime: eventDetail.startTime,
     endTime: eventDetail.endTime,
-    repeat: RECURRENCE_TYPE_TO_REPEAT_OPTION[eventDetail.recurrenceType] ?? '매일',
+    repeat: RECURRENCE_TYPE_TO_REPEAT_OPTION[eventDetail.recurrenceType] ?? '반복 없음',
+    // 이 화면엔 간격/종료일 편집 UI가 없어 원래 값을 그대로 들고 있다가 "완료" 시
+    // 되돌려 보내기만 한다.
+    recurrenceInterval: eventDetail.recurrenceInterval,
+    recurrenceEndDate: eventDetail.recurrenceEndDate,
     location: eventDetail.location,
     labelId: eventDetail.labelId,
   };
@@ -490,6 +495,7 @@ function EventViewPage() {
           isRecurring={eventDetail.isRecurring}
           initialValue={eventEditInitialValue}
           actionItems={actionItemEditItems}
+          actionItemsFull={actionItemsData?.items ?? []}
           labels={labelItems}
           onClose={() => setIsEditOpen(false)}
           onToggleActionItem={(id) => handleToggleItem(String(id))}

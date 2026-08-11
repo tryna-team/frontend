@@ -28,6 +28,8 @@ export type ChecklistProps = {
   iconSize?: ChecklistIconSize;
   onLeadingClick?: (id: number) => void;
   onDelete?: (id: number) => void;
+  // 전달하면 라벨 텍스트 클릭을 감지한다(전달하지 않으면 기존과 동일하게 정적 텍스트).
+  onLabelClick?: (id: number) => void;
   showDivider?: boolean;
 
   // 전달하지 않으면 기존 Checklist UI를 사용
@@ -194,9 +196,10 @@ function VariantChecklist({
   radioVariant,
   onLeadingClick,
   onDelete,
+  onLabelClick,
   showDivider = true,
 }: Required<Pick<ChecklistProps, 'items' | 'radioVariant'>> &
-  Pick<ChecklistProps, 'onLeadingClick' | 'onDelete' | 'showDivider'>) {
+  Pick<ChecklistProps, 'onLeadingClick' | 'onDelete' | 'onLabelClick' | 'showDivider'>) {
   const layout = getVariantChecklistLayout(radioVariant);
   const shouldRenderDivider = radioVariant === 'create' && showDivider;
 
@@ -227,6 +230,11 @@ function VariantChecklist({
                 onLeadingClick={() => {
                   onLeadingClick?.(item.id);
                 }}
+                onLabelClick={
+                  onLabelClick
+                    ? () => onLabelClick(item.id)
+                    : undefined
+                }
               />
             </div>
           </Fragment>
@@ -257,6 +265,7 @@ export default function Checklist({
   iconSize = 'medium',
   onLeadingClick,
   onDelete,
+  onLabelClick,
   showDivider,
   radioVariant,
 }: ChecklistProps) {
@@ -278,6 +287,7 @@ export default function Checklist({
       radioVariant={radioVariant}
       onLeadingClick={onLeadingClick}
       onDelete={onDelete}
+      onLabelClick={onLabelClick}
       showDivider={showDivider}
     />
   );

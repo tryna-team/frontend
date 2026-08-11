@@ -49,7 +49,7 @@ export default function ActionRow({
       return (
         <span
           // tone === 'danger'일 때 text-danger-200 적용 (기존엔 text-text-default 고정)
-          className={`min-w-0 truncate default-body-large ${
+          className={`min-w-0 truncate default-body-medium ${
             leading.tone === 'danger' ? 'text-danger-200' : 'text-text-default'
           }`}
         >
@@ -96,7 +96,7 @@ export default function ActionRow({
 
         {/* 숨김 라벨은 이름도 disable 톤(피그마: rgba(28,22,48,0.3))으로 흐리게 표시 */}
         <span
-          className={`min-w-0 truncate default-body-large ${
+          className={`min-w-0 truncate default-body-medium ${
             leading.dimmed ? 'text-text-disable' : 'text-text-default'
           }`}
         >

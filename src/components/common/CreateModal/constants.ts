@@ -18,6 +18,7 @@ export const PARSING_THROTTLE_DELAY = 300;
 export const RECOMMENDATION_DEBOUNCE_DELAY = 1000;
 
 export const RECURRENCE_TYPE: Record<RepeatOption, EventRecurrenceType> = {
+  '반복 없음': 'NONE',
   매일: 'DAILY',
   매주: 'WEEKLY',
   매월: 'MONTHLY',

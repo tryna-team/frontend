@@ -9,6 +9,7 @@ export type LabelColor =
 
 // 반복 설정 타입
 export type RepeatType =
+  | 'none'
   | 'daily'
   | 'weekly'
   | 'monthly'

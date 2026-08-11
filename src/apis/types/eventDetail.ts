@@ -1,6 +1,11 @@
 /**
  * 이벤트(일정) 도메인 타입 (event-controller API 명세서 기준)
  */
+import type {
+  ActionItemCreatedBy,
+  ActionItemStatus,
+  ActionItemType,
+} from './actionItem';
 
 export type EventSourceType =
   | 'USER_NATURAL_LANGUAGE'
@@ -75,9 +80,39 @@ export interface EventDeleteResponseData {
 export type UpdateScope = DeleteScope;
 
 /**
- * C107 일정 수정 요청 (라이브 Swagger 확인, 08/08).
- * recurrenceType 등 반복 관련 필드가 없음 — 반복 설정은 이 API로 수정할 수 없다
- * (생성 시 C104에서만 정할 수 있음).
+ * C107 일정 수정 요청 중 준비/실행 항목 배치 upsert/삭제 — 백엔드 EventUpdateRequest.Item
+ * 레코드 기준(08/10, 라이브 스웨거엔 아직 반영 안 됨 — 백엔드 소스 코드로 직접 확인).
+ * actionItemId가 있으면 기존 항목 수정, 없으면(null) 신규 추가로 추정(E105의
+ * ActionItemSaveRequest.Item과 필드 구성이 같음 — 미확정, 서버 응답으로 검증 필요).
+ */
+export interface EventUpdateActionItemRequestItem {
+  actionItemId: number | null;
+  title: string;
+  itemType: ActionItemType;
+  // 반복 일정에서 이 항목이 속한 특정 회차. 대부분의 항목은 특정 회차에 묶이지 않아
+  // null로 보낸다(백엔드 문서에 이 필드의 정확한 용도 설명이 없어 보수적으로 처리).
+  occurrenceDate: string | null;
+  displayDate: string | null;
+  displayTime: string | null;
+  offsetDays: number | null;
+  actionItemStatus: ActionItemStatus;
+  createdBy: ActionItemCreatedBy;
+  sourceTemplateId: string | null;
+}
+
+export interface EventUpdateActionItemsRequest {
+  // E105(ActionItemSaveRequest)와 동일하게 "최종 저장할 목록" 의미로 보고, 바뀐
+  // 항목뿐 아니라 안 바뀐 기존 항목도 원래 값 그대로 전부 포함해서 보낸다 — 일부만
+  // 보내면 누락된 항목이 삭제로 처리될 위험을 피하기 위한 보수적 선택(미확정).
+  items: EventUpdateActionItemRequestItem[];
+  deletedActionItemIds: number[];
+}
+
+/**
+ * C107 일정 수정 요청 — 08/08 라이브 스웨거 확인 당시엔 반복/체크리스트 필드가 없었으나,
+ * 08/10 백엔드 EventUpdateRequest 소스 코드 기준으로는 아래 필드들이 추가돼 있다.
+ * ⚠️ 아직 배포된 서버(라이브 스웨거)에 반영됐는지 확인되지 않은 상태 — 실제 동작은
+ * 이 필드들을 실어 보낸 뒤 응답으로 확인 필요.
  */
 export interface EventUpdateRequest {
   eventTitle: string;
@@ -89,14 +124,19 @@ export interface EventUpdateRequest {
   isAllDay: boolean;
   location?: string | null;
   labelId: number;
+  isRecurring?: boolean | null;
+  recurrenceType?: RecurrenceType | null;
+  recurrenceInterval?: number | null;
+  recurrenceEndDate?: string | null;
   // 반복 일정 중 지금 수정 중인 회차의 날짜. SINGLE/THIS_AND_FUTURE로 "어느 회차"를
   // 적용할지 서버가 판단하는 데 필요(라이브 스웨거 설명문 기준) — 삭제(C106)의
   // EventDeleteRequestBody.occurrenceDate와 동일한 역할.
   occurrenceDate: string | null;
   updateScope: UpdateScope;
+  actionItems?: EventUpdateActionItemsRequest | null;
 }
 
-/** C107 일정 수정 응답. updateStatus의 실제 enum 값은 스웨거 예시에 없어 EventStatus로 추정. */
+/** C107 일정 수정 응답 — 08/10 백엔드 EventUpdateResponse 소스 코드 기준으로 반복 필드 추가. */
 export interface EventUpdateResponseData {
   eventId: number;
   updateScope: UpdateScope;
@@ -104,6 +144,12 @@ export interface EventUpdateResponseData {
   affectedEventCount: number;
   adjustedActionItemCount: number;
   requiresActionItemReview: boolean;
+  isRecurring: boolean;
+  recurrenceType: RecurrenceType;
+  recurrenceInterval: number;
+  recurrenceDayOfWeek: RecurrenceDayOfWeek;
+  recurrenceDayOfMonth: number;
+  recurrenceEndDate: string;
   labelId: number;
   updatedAt: string;
 }
