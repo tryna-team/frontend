@@ -28,7 +28,8 @@ export type ButtonType =
   | "Icon"
   | IconTextButtonType
   | "MainCTAButton"
-  | "CheckCTAButton";
+  | "CheckCTAButton"
+  | "Chip";
 
 interface TextButtonConfig {
   size: ButtonSize;

@@ -84,6 +84,11 @@ export const gapClassNames = {
 export const mainCTAButtonClassNames =
   "size-16 rounded-medium p-1.5 bg-transparent hover:bg-transparent border-none shadow-none active:translate-y-0";
 
+// 날짜/짧은 라벨을 보여주는 칩 배지. Figma ChipButton(node 3794:45506 Default / 4046:47941 Disable) 기준.
+// 배경(grey-opacity-100)은 Default/Disable 공통이고, 텍스트 색만 달라진다(disabled:text-text-disable).
+export const chipButtonClassNames =
+  "h-auto w-14 shrink-0 rounded-small border-none bg-grey-opacity-100 px-2 py-0.5 shadow-none hover:bg-grey-opacity-100 active:translate-y-0 default-label-medium text-text-additional disabled:text-text-disable disabled:opacity-100";
+
 // Icon/IconText 전용: 아이콘(혹은 아이콘+텍스트) 크기와 무관하게 버튼의 절대적인 터치 영역을 지정.
 export const hitAreaPresetPx = {
   small: 24,
