@@ -255,13 +255,20 @@ export default function EventEditBottomSheet({
         },
       });
     },
-    onSuccess: () => {
-      // 삭제 플로우와 동일하게 events.all을 무효화 — 홈/데일리 화면의 캘린더 목록
-      // 캐시도 같이 갱신돼야 제목/시간 변경이 바로 반영된다.
-      queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
-      // 체크리스트도 이 PATCH로 함께 저장되므로, EventViewPage의 체크리스트가 새
-      // 제목/신규 항목을 반영하도록 F103 캐시도 함께 무효화한다.
-      queryClient.invalidateQueries({ queryKey: queryKeys.actionItems.byEvent(eventId) });
+    onSuccess: async () => {
+      // events.all(이벤트 상세)과 calendars.all(홈/데일리 캘린더 목록)은 서로 완전히
+      // 분리된 쿼리키 네임스페이스라(queryKeys.ts), events.all만 무효화해선 홈/데일리
+      // 캐시가 안 갱신된다 — 하루종일 해제처럼 목록에 바로 보이는 값이 저장 직후
+      // 반영 안 되는 문제의 원인. 시작/종료일이 바뀌었을 수도 있어 특정 날짜 캐시만
+      // 무효화하지 않고 calendars.all 전체를 무효화한다.
+      // 체크리스트도 이 PATCH로 함께 저장되므로 actionItems.byEvent(F103)도 함께
+      // 무효화한다. 세 무효화가 다 끝난 뒤에 닫아야 바텀시트가 닫히자마자 보이는
+      // 화면(EventViewPage/홈/데일리)이 새 값으로 리페치를 시작한 상태가 된다.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.events.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.calendars.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.actionItems.byEvent(eventId) }),
+      ]);
       // TODO: 응답의 requiresActionItemReview(체크리스트 항목 날짜를 서버가 자동으로
       // 못 맞춰서 사용자 확인이 필요한 경우 true)를 아직 처리하지 않는다. UX가 정해지면
       // 여기서 안내를 띄워야 한다 — memory: project_eventedit_requires_action_item_review.md
