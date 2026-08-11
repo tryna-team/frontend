@@ -31,10 +31,8 @@ import {
   FOCUSABLE_SELECTOR,
   PARSING_THROTTLE_DELAY,
   RECOMMENDATION_DEBOUNCE_DELAY,
-  RECURRENCE_TYPE,
 } from './CreateModal.constants';
 import {
-  formatActionItemDisplayTime,
   formatApiTimeForPicker,
   formatChecklistDate,
   formatTime,
@@ -50,6 +48,7 @@ import {
   mapRecommendationCandidate,
 } from './CreateModal.mappers';
 import CreateModalSkeleton from './CreateModalSkeleton';
+import { buildCreateEventRequest, getTimedActionDates } from './CreateModal.submit';
 import type { CreateModalProps, LabelColor, RecommendationEditDraft } from './CreateModal.types';
 
 // 직접 추가 항목에 사용하는 임시 전용 ID
@@ -68,25 +67,6 @@ const createFallbackTempEventId = () =>
       : `${Date.now()}-${Math.random()}`
   }`;
 
-
-const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: RepeatOption) => {
-  if (!hasRepeatChanged) {
-    return {
-      isRecurring: false,
-      recurrenceType: 'NONE' as const,
-      recurrenceInterval: null,
-      recurrenceEndDate: null,
-    };
-  }
-
-  return {
-    isRecurring: true,
-    recurrenceType: RECURRENCE_TYPE[repeat],
-    recurrenceInterval: 1,
-    // 반복 종료일 설정 UI가 추가되기 전까지 무기한 반복으로 저장한다.
-    recurrenceEndDate: null,
-  };
-};
 
 export default function CreateModal({
   mode = 'default',
@@ -1028,95 +1008,27 @@ export default function CreateModal({
     }
     const controller = new AbortController();
     createAbortControllerRef.current = controller;
-    const hasParsedStartTime = Boolean(parsedCandidate?.timeCandidate);
-    const hasParsedEndTime = Boolean(parsedCandidate?.endTimeCandidate);
-    const startTimeValue =
-      hasStartTimeChanged || hasParsedStartTime ? normalizeTime(startTime) : null;
-    const endTimeValue = hasEndTimeChanged || hasParsedEndTime ? normalizeTime(endTime) : null;
-    // 종료 시간이 있으면 단일 날짜 일정도 종료 날짜를 함께 저장한다.
-    const shouldSaveEndDate =
-      Boolean(endTimeValue) ||
-      hasEndDateChanged ||
-      Boolean(parsedCandidate?.endDateCandidate) ||
-      !isSameDay(startDate, endDate);
-    // 주간 요일과 월간·연간 기준일은 서버가 시작 날짜에서 계산한다.
-    const recurrencePayload = buildRecurrencePayload(hasRepeatChanged, repeat);
-
+    const createRequest = buildCreateEventRequest({
+      trimmedInput,
+      selectedLabelId,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      hasStartTimeChanged,
+      hasEndTimeChanged,
+      hasEndDateChanged,
+      hasRepeatChanged,
+      repeat,
+      parsedCandidate,
+      recommendationCandidates,
+    });
     setIsSaving(true);
 
     try {
-      const createResponse = await eventService.create(
-        {
-          eventTitle: trimmedInput,
-          // null이면 서버가 현재 사용자의 기본 라벨을 연결한다.
-          labelId: selectedLabelId,
-          description: null,
-          startDate: format(startDate, 'yyyy-MM-dd'),
-          startTime: startTimeValue,
-          endDate: shouldSaveEndDate ? format(endDate, 'yyyy-MM-dd') : null,
-          endTime: endTimeValue,
-          isAllDay: !startTimeValue && !endTimeValue,
-          location: parsedCandidate?.placeCandidate ?? null,
-          eventType: parsedCandidate?.eventTypeCandidate ?? null,
-          ...recurrencePayload,
-          actionItems:
-            recommendationCandidates.length > 0
-              ? {
-                  // 생성 모달의 add 상태인 항목만 최종 저장한다.
-                  items: selectedCandidates.map((candidate) => {
-                    const apiItemType =
-                      candidate.apiItemType ??
-                      (candidate.itemType === 'TIMED_ACTION' ? 'TIMED_ACTION' : 'UNTIMED_PREP');
+      const createResponse = await eventService.create(createRequest, controller.signal);
 
-                    return {
-                      title: candidate.title,
-                      itemType: apiItemType,
-                      createdBy:
-                        candidate.createdBy === 'USER'
-                          ? 'USER'
-                          : candidate.edited
-                            ? 'USER_EDITED'
-                            : 'SYSTEM',
-                      displayDate:
-                        apiItemType === 'TIMED_ACTION' ? (candidate.displayDate ?? null) : null,
-                      displayTime:
-                        apiItemType === 'TIMED_ACTION'
-                          ? formatActionItemDisplayTime(
-                              candidate.displayDate,
-                              candidate.displayTime,
-                            )
-                          : null,
-                      offsetDays: candidate.offsetDays ?? null,
-                      sourceTemplateId: candidate.sourceTemplateId ?? null,
-                    };
-                  }),
-                  // 제외·수정 여부도 추천 개선용 피드백으로 전달한다.
-                  feedbackLogs: recommendationCandidates
-                    .filter((candidate) => candidate.createdBy !== 'USER')
-                    .map((candidate) => ({
-                      actionType: candidate.selected
-                        ? candidate.edited
-                          ? 'EDITED'
-                          : 'SELECTED'
-                        : 'REJECTED',
-                      sourceTemplateId: candidate.sourceTemplateId ?? null,
-                      originalTitle: candidate.originalTitle ?? candidate.title,
-                      editedTitle: candidate.edited ? candidate.title : null,
-                      reason: null,
-                    })),
-                }
-              : null,
-        },
-        controller.signal,
-      );
-
-      const timedActionDates = [
-        ...new Set(
-          (createResponse.savedActionItems ?? [])
-            .filter((item) => item.itemType === 'TIMED_ACTION' && Boolean(item.displayDate))
-            .map((item) => item.displayDate as string),
-        ),
-      ];
+      const timedActionDates = getTimedActionDates(createResponse);
 
       // 생성된 일정과 시간형 항목을 각 화면에서 다시 조회한다.
       await Promise.all([
