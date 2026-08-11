@@ -59,6 +59,9 @@ export type ChecklistItemProps = {
   trailing?: ChecklistTrailing;
   disabled?: boolean;
   onLeadingClick?: () => void;
+  // 전달하면 라벨 텍스트를 버튼으로 렌더링해 클릭을 감지한다(전달하지 않으면 기존과
+  // 동일하게 정적 텍스트).
+  onLabelClick?: () => void;
 
   // 전달하지 않으면 기존 ChecklistItem UI를 사용
   radioVariant?: ChecklistRadioVariant;
@@ -410,6 +413,7 @@ function VariantChecklistItem({
   trailing,
   disabled,
   onLeadingClick,
+  onLabelClick,
 }: Required<
   Pick<
     ChecklistItemProps,
@@ -423,7 +427,7 @@ function VariantChecklistItem({
 > &
   Pick<
     ChecklistItemProps,
-    'onLeadingClick'
+    'onLeadingClick' | 'onLabelClick'
   >) {
   const size = resolveChecklistSize(
     status,
@@ -520,11 +524,21 @@ function VariantChecklistItem({
           />
         </button>
 
-        <span
-          className={`min-w-0 truncate text-left ${labelStyle} ${labelColor}`}
-        >
-          {label}
-        </span>
+        {onLabelClick ? (
+          <button
+            type="button"
+            onClick={onLabelClick}
+            className={`min-w-0 truncate bg-transparent p-0 text-left ${labelStyle} ${labelColor}`}
+          >
+            {label}
+          </button>
+        ) : (
+          <span
+            className={`min-w-0 truncate text-left ${labelStyle} ${labelColor}`}
+          >
+            {label}
+          </span>
+        )}
       </div>
 
       {/* create: 날짜를 공용 Button으로 표시 */}
@@ -545,16 +559,28 @@ function VariantChecklistItem({
           </Button>
         )}
 
-      {/* event, daily: 날짜를 텍스트로 표시 */}
+      {/* event, daily: 날짜를 텍스트로 표시 — onClick이 있으면(예: 일정 수정 화면의
+          날짜 편집) 버튼으로, 없으면(EventViewPage 등 읽기 전용) 기존처럼 정적 텍스트로 */}
       {trailing.type === 'date' &&
         radioVariant !==
-          'create' && (
+          'create' &&
+        (trailing.onClick ? (
+          <button
+            type="button"
+            onClick={trailing.onClick}
+            disabled={disabled}
+            aria-label={`${label} 날짜 ${trailing.text}`}
+            className={`ml-auto shrink-0 border-0 bg-transparent p-0 ${style.date} ${trailingTextColor}`}
+          >
+            {trailing.text}
+          </button>
+        ) : (
           <span
             className={`ml-auto shrink-0 ${style.date} ${trailingTextColor}`}
           >
             {trailing.text}
           </span>
-        )}
+        ))}
 
       {/* 이전 delete 타입 사용도 계속 지원 */}
       {trailing.type ===
@@ -590,6 +616,7 @@ export default function ChecklistItem({
   trailing = { type: 'none' },
   disabled = false,
   onLeadingClick,
+  onLabelClick,
   radioVariant,
 }: ChecklistItemProps) {
   if (!radioVariant) {
@@ -618,6 +645,7 @@ export default function ChecklistItem({
       onLeadingClick={
         onLeadingClick
       }
+      onLabelClick={onLabelClick}
     />
   );
 }

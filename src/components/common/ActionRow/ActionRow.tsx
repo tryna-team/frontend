@@ -43,7 +43,7 @@ export default function ActionRow({
       return (
         <span
           // tone === 'danger'일 때 text-danger-200 적용 (기존엔 text-text-default 고정)
-          className={`min-w-0 truncate default-body-large ${
+          className={`min-w-0 truncate default-body-medium ${
             leading.tone === 'danger' ? 'text-danger-200' : 'text-text-default'
           }`}
         >
@@ -63,7 +63,7 @@ export default function ActionRow({
           />
         </span>
 
-        <span className="min-w-0 truncate text-text-default default-body-large">
+        <span className="min-w-0 truncate text-text-default default-body-medium">
           {leading.text}
         </span>
       </div>

@@ -27,6 +27,8 @@ export type ChecklistProps = {
     id: number,
   ) => void;
   onDelete?: (id: number) => void;
+  // 전달하면 라벨 텍스트 클릭을 감지한다(전달하지 않으면 기존과 동일하게 정적 텍스트).
+  onLabelClick?: (id: number) => void;
 
   // 전달하지 않으면 기존 Checklist UI를 사용
   radioVariant?: ChecklistRadioVariant;
@@ -253,6 +255,7 @@ function VariantChecklist({
   radioVariant,
   onLeadingClick,
   onDelete,
+  onLabelClick,
 }: Required<
   Pick<
     ChecklistProps,
@@ -263,6 +266,7 @@ function VariantChecklist({
     ChecklistProps,
     | 'onLeadingClick'
     | 'onDelete'
+    | 'onLabelClick'
   >) {
   const layout =
     getVariantChecklistLayout(
@@ -319,6 +323,11 @@ function VariantChecklist({
                     item.id,
                   );
                 }}
+                onLabelClick={
+                  onLabelClick
+                    ? () => onLabelClick(item.id)
+                    : undefined
+                }
               />
             </div>
           </Fragment>
@@ -349,6 +358,7 @@ export default function Checklist({
   iconSize = 'medium',
   onLeadingClick,
   onDelete,
+  onLabelClick,
   radioVariant,
 }: ChecklistProps) {
   // radioVariant가 없으면 기존 코드와 완전히 동일한 방식으로 동작한다.
@@ -373,6 +383,7 @@ export default function Checklist({
         onLeadingClick
       }
       onDelete={onDelete}
+      onLabelClick={onLabelClick}
     />
   );
 }

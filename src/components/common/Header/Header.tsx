@@ -69,9 +69,11 @@ const HEADER_STYLE = {
   modal: {
     /*
      * Modal Header
-     * Modal 내부 콘텐츠 너비인 353px 사용
+     * Modal 내부 콘텐츠 너비인 353px 사용. 높이는 피그마 BottomSheetHeader(68px) 기준 —
+     * 명시하지 않으면 콘텐츠(아이콘/텍스트) 높이만큼만 차지해서, 그 아래 첫 콘텐츠박스와의
+     * 간격이 피그마보다 좁아 보인다.
      */
-    container: 'flex w-[353px] items-center justify-between',
+    container: 'flex h-[68px] w-[353px] items-center justify-between',
 
     // leading과 trailing 영역을 각각 74px로 고정해 title을 중앙에 배치
     leadingSlot: 'flex w-[74px] shrink-0 items-center gap-[10px]',

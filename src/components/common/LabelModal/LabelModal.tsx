@@ -67,6 +67,10 @@ function getRepeatItems(
 
   return [
     {
+      type: 'none',
+      label: '반복 없음',
+    },
+    {
       type: 'daily',
       label: '매일',
     },

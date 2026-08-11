@@ -203,6 +203,7 @@ const hasRecommendationFailed = (response: RecommendationResponse) =>
   response.suggestionStatus === 'ERROR' || response.suggestionStatus === 'EMPTY';
 
 const RECURRENCE_TYPE: Record<RepeatOption, EventRecurrenceType> = {
+  '반복 없음': 'NONE',
   매일: 'DAILY',
   매주: 'WEEKLY',
   매월: 'MONTHLY',
