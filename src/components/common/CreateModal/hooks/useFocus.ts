@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { Dispatch, FocusEvent, KeyboardEvent, RefObject, SetStateAction } from 'react';
 
-import { FOCUSABLE_SELECTOR } from './CreateModal.constants';
+import { FOCUSABLE_SELECTOR } from '../constants';
 
 type UseCreateModalFocusParams = {
   dialogRef: RefObject<HTMLDivElement | null>;

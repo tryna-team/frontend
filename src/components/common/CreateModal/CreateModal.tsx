@@ -24,23 +24,23 @@ import type { RecommendationCandidate } from '@/stores/types';
 import {
   ADD_CHECKLIST_ITEM_ID,
   COLOR_ICON,
-} from './CreateModal.constants';
+} from './constants';
 import {
   formatApiTimeForPicker,
   formatChecklistDate,
   formatTime,
   getCurrentTime,
   normalizeTime,
-} from './CreateModal.dateTime';
+} from './utils/dateTime';
 import CreateModalSkeleton from './CreateModalSkeleton';
-import { buildCreateEventRequest, getTimedActionDates } from './CreateModal.submit';
-import type { CreateModalProps, RecommendationEditDraft } from './CreateModal.types';
-import { useCreateModalFocus } from './useCreateModalFocus';
-import { useCreateModalLabels } from './useCreateModalLabels';
-import { useCreateModalParsing } from './useCreateModalParsing';
-import { useCreateModalRecommendations } from './useCreateModalRecommendations';
-import { useCreateModalScheduleText } from './useCreateModalScheduleText';
-import { useCreateModalViewport } from './useCreateModalViewport';
+import { buildCreateEventRequest, getTimedActionDates } from './utils/submit';
+import type { CreateModalProps, RecommendationEditDraft } from './types';
+import { useCreateModalFocus } from './hooks/useFocus';
+import { useCreateModalLabels } from './hooks/useLabels';
+import { useCreateModalParsing } from './hooks/useParsing';
+import { useCreateModalRecommendations } from './hooks/useRecommendations';
+import { useCreateModalScheduleText } from './hooks/useScheduleText';
+import { useCreateModalViewport } from './hooks/useViewport';
 
 // 직접 추가 항목에 사용하는 임시 전용 ID
 // 실제 체크리스트 ID와 겹치지 않도록 접두사를 사용

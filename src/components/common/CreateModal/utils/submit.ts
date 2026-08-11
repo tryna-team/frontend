@@ -5,8 +5,8 @@ import type { ActionItemSaveRequest, RecommendationFeedback } from '@/apis/types
 import type { RepeatOption } from '@/features/event/components/create';
 import type { RecommendationCandidate } from '@/stores/types';
 
-import { RECURRENCE_TYPE } from './CreateModal.constants';
-import { formatActionItemDisplayTime, normalizeTime } from './CreateModal.dateTime';
+import { RECURRENCE_TYPE } from '../constants';
+import { formatActionItemDisplayTime, normalizeTime } from './dateTime';
 
 export const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: RepeatOption) => {
   if (!hasRepeatChanged) {

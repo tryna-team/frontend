@@ -6,7 +6,7 @@ import { labelService } from '@/apis/services/labelService';
 import type { LabelItemData } from '@/components/common/LabelModal/LabelModal';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 
-import type { LabelColor, LabelStatus } from './CreateModal.types';
+import type { LabelColor, LabelStatus } from '../types';
 
 type UseCreateModalLabelsParams = {
   labels: LabelItemData[];

@@ -6,8 +6,8 @@ import { format } from 'date-fns';
 import { recommendationService } from '@/apis/services/recommendationService';
 import { useEventCreationStore } from '@/stores';
 
-import { RECOMMENDATION_DEBOUNCE_DELAY } from './CreateModal.constants';
-import { hasRecommendationFailed, mapRecommendationCandidate } from './CreateModal.mappers';
+import { RECOMMENDATION_DEBOUNCE_DELAY } from '../constants';
+import { hasRecommendationFailed, mapRecommendationCandidate } from '../utils/mappers';
 
 type UseCreateModalRecommendationsParams = {
   mode: 'default' | 'recommend';
