@@ -8,8 +8,6 @@ import { useQuery } from '@tanstack/react-query';
 import { eventService } from '@/apis/services/eventService';
 import { labelService } from '@/apis/services/labelService';
 import { recommendationService } from '@/apis/services/recommendationService';
-import type { EventParseResponse } from '@/apis/types/event';
-import type { RecommendationResponse, RecommendationSuggestion } from '@/apis/types/recommendation';
 import { queryClient } from '@/apis/queryClient';
 import Button from '@/components/common/Buttons/Button';
 import Checklist, { type ChecklistItemData } from '@/components/common/Checklist/Checklist';
@@ -25,7 +23,7 @@ import {
 } from '@/features/event/components/create';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { useEventCreationStore } from '@/stores';
-import type { ParsedEventCandidate, RecommendationCandidate } from '@/stores/types';
+import type { RecommendationCandidate } from '@/stores/types';
 
 import {
   ADD_CHECKLIST_ITEM_ID,
@@ -45,11 +43,17 @@ import {
   getCurrentTime,
   normalizeTime,
 } from './CreateModal.dateTime';
+import {
+  createParseFallback,
+  hasRecommendationFailed,
+  mapParseResponse,
+  mapRecommendationCandidate,
+} from './CreateModal.mappers';
 import CreateModalSkeleton from './CreateModalSkeleton';
 import type { CreateModalProps, LabelColor, RecommendationEditDraft } from './CreateModal.types';
 
-// 직접 추가 항목에 사용하는 내부 전용 ID
-// 실제 체크리스트 ID와 겹치지 않도록 음수를 사용
+// 직접 추가 항목에 사용하는 임시 전용 ID
+// 실제 체크리스트 ID와 겹치지 않도록 접두사를 사용
 const createManualCandidateId = () =>
   `manual-${
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -64,66 +68,6 @@ const createFallbackTempEventId = () =>
       : `${Date.now()}-${Math.random()}`
   }`;
 
-// 실제 API 연결 시 내부만 파싱 요청으로 교체한다.
-const mapParseResponse = (
-  input: string,
-  response: EventParseResponse,
-  tempEventId: string | null,
-): ParsedEventCandidate => ({
-  sourceText: input,
-  titleCandidate: response.eventTitle ?? input,
-  dateCandidate: response.startDate ?? null,
-  timeCandidate: response.startTime ?? null,
-  placeCandidate: response.placeCandidate ?? null,
-  eventTypeCandidate: null,
-  tempEventId,
-  dateSource: response.dateSource ?? null,
-  endDateCandidate: response.endDate ?? null,
-  endTimeCandidate: response.endTime ?? null,
-  embeddingWords: response.toEmbedding ?? [],
-  isAllDayCandidate: response.isAllDayCandidate ?? false,
-  needsConfirmation: response.needsConfirmation ?? false,
-  warnings: response.warnings ?? [],
-});
-
-const createParseFallback = (input: string, tempEventId: string | null): ParsedEventCandidate => ({
-  sourceText: input,
-  titleCandidate: input,
-  dateCandidate: null,
-  timeCandidate: null,
-  placeCandidate: null,
-  eventTypeCandidate: null,
-  tempEventId,
-  dateSource: null,
-  endDateCandidate: null,
-  endTimeCandidate: null,
-  embeddingWords: [],
-  isAllDayCandidate: true,
-  needsConfirmation: true,
-  warnings: [],
-});
-
-const mapRecommendationCandidate = (
-  suggestion: RecommendationSuggestion,
-  index: number,
-): RecommendationCandidate => ({
-  candidateId: suggestion.sourceCode ?? `recommendation-${index}`,
-  title: suggestion.displayText ?? suggestion.sourceCode ?? '',
-  // 공용 체크리스트에서는 비시간형 항목을 CHECKLIST로 표현한다.
-  itemType: suggestion.itemType === 'TIMED_ACTION' ? 'TIMED_ACTION' : 'CHECKLIST',
-  apiItemType: suggestion.itemType ?? 'UNRESOLVED',
-  sourceTemplateId: suggestion.sourceCode ?? null,
-  offsetDays: suggestion.offsetDays ?? null,
-  originalTitle: suggestion.displayText ?? suggestion.sourceCode ?? '',
-  displayDate: suggestion.displayDate ?? null,
-  displayTime: null,
-  // 추천 항목은 모두 저장 대상인 상태로 시작한다.
-  selected: true,
-  edited: false,
-});
-
-const hasRecommendationFailed = (response: RecommendationResponse) =>
-  response.suggestionStatus === 'ERROR' || response.suggestionStatus === 'EMPTY';
 
 const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: RepeatOption) => {
   if (!hasRepeatChanged) {
