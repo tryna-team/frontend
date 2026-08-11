@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { format, isSameDay, isValid, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 
 import { eventService } from '@/apis/services/eventService';
 import { queryClient } from '@/apis/queryClient';
@@ -14,31 +14,28 @@ import ToastPopup from '@/components/common/Popup/ToastPopup';
 import {
   ActionItemScheduleBottomSheet,
   RepeatScheduleBottomSheet,
-  type ActionItemScheduleValue,
   type RepeatOption,
 } from '@/features/event/components/create';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import { useEventCreationStore } from '@/stores';
-import type { RecommendationCandidate } from '@/stores/types';
 
 import {
   ADD_CHECKLIST_ITEM_ID,
   COLOR_ICON,
 } from './constants';
 import {
-  formatApiTimeForPicker,
   formatChecklistDate,
   formatTime,
   getCurrentTime,
-  normalizeTime,
 } from './utils/dateTime';
 import CreateModalSkeleton from './CreateModalSkeleton';
 import { buildCreateEventRequest, getTimedActionDates } from './utils/submit';
-import type { CreateModalProps, RecommendationEditDraft } from './types';
+import type { CreateModalProps } from './types';
 import { useCreateModalFocus } from './hooks/useFocus';
 import { useCreateModalLabels } from './hooks/useLabels';
 import { useCreateModalParsing } from './hooks/useParsing';
 import { useCreateModalRecommendations } from './hooks/useRecommendations';
+import { useRecommendationEdit } from './hooks/useRecommendationEdit';
 import { useCreateModalScheduleText } from './hooks/useScheduleText';
 import { useCreateModalViewport } from './hooks/useViewport';
 
@@ -105,8 +102,6 @@ export default function CreateModal({
   const [hasEndTimeChanged, setHasEndTimeChanged] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
-  const [recommendationEditDraft, setRecommendationEditDraft] =
-    useState<RecommendationEditDraft | null>(null);
   const [hasInputInteractionStarted, setHasInputInteractionStarted] = useState(false);
   const { visualViewportRect, appFrameRect } = useCreateModalViewport();
   const isRecommendationLoading = useEventCreationStore((state) => state.isLoadingRecommendations);
@@ -239,6 +234,17 @@ export default function CreateModal({
     handleExitConfirmClose,
   });
 
+  const {
+    recommendationEditDraft,
+    handleOpenRecommendationEdit,
+    handleChangeRecommendationEdit,
+    handleSaveRecommendationEdit,
+  } = useRecommendationEdit({
+    isSaving,
+    startDate,
+    editCandidate,
+  });
+
   const handleExitConfirm = () => {
     // 확인한 경우에만 작성 중인 입력과 생성 후보를 삭제한다.
     onInputChange?.('');
@@ -278,86 +284,6 @@ export default function CreateModal({
       window.scrollTo(0, scrollY);
     };
   }, []);
-
-  const handleOpenRecommendationEdit = useCallback(
-    (candidate: RecommendationCandidate) => {
-      if (isSaving || !candidate.selected) {
-        return;
-      }
-
-      const parsedDisplayDate = candidate.displayDate ? parseISO(candidate.displayDate) : startDate;
-      const initialDate = isValid(parsedDisplayDate) ? parsedDisplayDate : startDate;
-      const parsedDisplayEndDate = candidate.displayEndDate
-        ? parseISO(candidate.displayEndDate)
-        : initialDate;
-      const initialEndDate = isValid(parsedDisplayEndDate) ? parsedDisplayEndDate : initialDate;
-      const initialTime = formatApiTimeForPicker(candidate.displayTime);
-      const originalApiItemType =
-        candidate.apiItemType ??
-        (candidate.itemType === 'TIMED_ACTION' ? 'TIMED_ACTION' : 'UNTIMED_PREP');
-
-      setRecommendationEditDraft({
-        candidateId: candidate.candidateId,
-        title: candidate.title,
-        startDate: initialDate,
-        endDate: initialEndDate,
-        startTime: initialTime,
-        endTime: initialTime,
-        originalItemType: candidate.itemType,
-        originalApiItemType,
-        originalDisplayDate: candidate.displayDate ?? null,
-        originalDisplayEndDate: candidate.displayEndDate ?? null,
-        originalDisplayTime: candidate.displayTime ? normalizeTime(candidate.displayTime) : null,
-        hasTimeChanged: false,
-      });
-    },
-    [isSaving, startDate],
-  );
-
-  const handleSaveRecommendationEdit = () => {
-    if (!recommendationEditDraft) {
-      return;
-    }
-
-    const isDateRange = !isSameDay(
-      recommendationEditDraft.startDate,
-      recommendationEditDraft.endDate,
-    );
-    const isTimedAction = isDateRange || !isSameDay(recommendationEditDraft.startDate, startDate);
-
-    const nextItemType = isTimedAction ? 'TIMED_ACTION' : 'CHECKLIST';
-    const nextApiItemType = isTimedAction ? 'TIMED_ACTION' : 'UNTIMED_PREP';
-    const nextDisplayDate = isTimedAction
-      ? format(recommendationEditDraft.startDate, 'yyyy-MM-dd')
-      : null;
-    const nextDisplayEndDate =
-      isTimedAction && isDateRange ? format(recommendationEditDraft.endDate, 'yyyy-MM-dd') : null;
-    // 사용자가 시간을 직접 바꾸지 않았다면 기존 null 값을 유지한다.
-    const nextDisplayTime = isTimedAction
-      ? recommendationEditDraft.hasTimeChanged
-        ? normalizeTime(recommendationEditDraft.startTime)
-        : (recommendationEditDraft.originalDisplayTime ??
-          normalizeTime(recommendationEditDraft.startTime))
-      : null;
-    const hasScheduleChanged =
-      nextItemType !== recommendationEditDraft.originalItemType ||
-      nextApiItemType !== recommendationEditDraft.originalApiItemType ||
-      nextDisplayDate !== recommendationEditDraft.originalDisplayDate ||
-      nextDisplayEndDate !== recommendationEditDraft.originalDisplayEndDate ||
-      nextDisplayTime !== recommendationEditDraft.originalDisplayTime;
-
-    // 상위 일정과 다른 날짜 또는 날짜 범위는 시간형 항목으로 분류한다.
-    if (hasScheduleChanged) {
-      editCandidate(recommendationEditDraft.candidateId, {
-        itemType: nextItemType,
-        apiItemType: nextApiItemType,
-        displayDate: nextDisplayDate,
-        displayEndDate: nextDisplayEndDate,
-        displayTime: nextDisplayTime,
-      });
-    }
-    setRecommendationEditDraft(null);
-  };
 
   // CreateModal에서 전달받은 기존 체크리스트 데이터를 공용 Checklist 컴포넌트의 데이터 형식으로 변환
   const renderedChecklistItems = useMemo<ChecklistItemData[]>(() => {
@@ -838,20 +764,7 @@ export default function CreateModal({
           endDate={recommendationEditDraft.endDate}
           startTime={recommendationEditDraft.startTime}
           endTime={recommendationEditDraft.endTime}
-          onChange={(value: ActionItemScheduleValue) =>
-            setRecommendationEditDraft((current) =>
-              current
-                ? {
-                    ...current,
-                    ...value,
-                    hasTimeChanged:
-                      current.hasTimeChanged ||
-                      current.startTime !== value.startTime ||
-                      current.endTime !== value.endTime,
-                  }
-                : current,
-            )
-          }
+          onChange={handleChangeRecommendationEdit}
           onClose={handleSaveRecommendationEdit}
         />
       )}
