@@ -197,8 +197,15 @@ function EventViewPage() {
           ? (occurrenceDate ?? eventDetail.startDate ?? null)
           : null,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+    onSuccess: async () => {
+      // events.all만 무효화하면 calendars.all(홈/데일리가 읽는 캐시)은 그대로 남아,
+      // 삭제 직후 홈으로 리디렉션돼도 삭제되기 전 캘린더 데이터가 계속 보인다 —
+      // EventEditBottomSheet의 캐시 무효화 gap과 동일한 원인. 재조회가 끝난 뒤에
+      // navigate해야 홈에 도착했을 때 이미 최신 상태다.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.events.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.calendars.all }),
+      ]);
       navigate(PATH.HOME, { replace: true });
     },
     onError: () => {
