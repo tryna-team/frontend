@@ -51,7 +51,6 @@ export interface ActionItemSaveItem {
   title: string;
   itemType: RecommendationItemType;
   createdBy: ActionItemCreatedBy;
-  occurrenceDate?: string | null;
   displayDate?: string | null;
   displayTime?: string | null;
   offsetDays?: number | null;

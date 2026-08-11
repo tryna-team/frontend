@@ -1,0 +1,166 @@
+.month-calendar-body-viewport {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.month-calendar-body-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.month-calendar-body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: #fff;
+}
+
+.calendar-month {
+  --calendar-day-row-height: 180px;
+  width: 100%;
+  background: #fff;
+  touch-action: pan-y pinch-zoom;
+}
+
+.calendar-month__heading {
+  padding: 24px var(--Spacing-Semantic-Page-Padding-Large, 20px) 12px;
+  margin: 0;
+  color: var(--Semantic-Text-Default, #1c1630);
+  background: #fff;
+}
+
+.calendar-month .fc,
+.calendar-month .fc * {
+  touch-action: pan-y pinch-zoom;
+}
+
+.calendar-month .fc-scrollgrid,
+.calendar-month .fc-scrollgrid table,
+.calendar-month .fc-daygrid-body {
+  width: 100% !important;
+}
+
+.calendar-month .fc-theme-standard td,
+.calendar-month .fc-theme-standard th {
+  padding: 0 !important;
+  border: none !important;
+}
+
+.calendar-month .fc-theme-standard .fc-scrollgrid {
+  border: none !important;
+}
+
+.calendar-month .fc-day-other,
+.calendar-month .fc-day-disabled {
+  background: #fff !important;
+}
+
+.calendar-month .fc-daygrid-body tr {
+  height: var(--calendar-day-row-height);
+}
+
+.calendar-month .fc-daygrid-day-frame {
+  box-sizing: border-box;
+  height: var(--calendar-day-row-height);
+  max-height: var(--calendar-day-row-height);
+  padding: 2px 0;
+  /* 여러 날 일정은 시작 셀에서 옆 셀까지 이어지므로 프레임에서 자르지 않는다. */
+  overflow: visible;
+  border-bottom: 1px solid #ededf2 !important;
+}
+
+.calendar-month .fc-daygrid-day-top {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+}
+
+.calendar-month .fc-daygrid-day-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 2px;
+  color: var(--color-grey-900);
+  font-family: var(--font-default);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.15px;
+  border-radius: 50%;
+}
+
+.calendar-month .fc-day-sat .fc-daygrid-day-number {
+  color: var(--color-grey-opacity-300);
+}
+.calendar-month .fc-day-sun .fc-daygrid-day-number {
+  color: var(--color-grey-opacity-300);
+}
+
+.calendar-month .fc-daygrid-event-harness {
+  margin-right: 1px !important;
+  margin-bottom: 4px !important;
+  margin-left: 1px !important;
+}
+
+.calendar-month .fc-event {
+  display: flex !important;
+  align-items: center !important;
+  height: 15px !important;
+  padding: 0 1px !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  gap: 1px;
+  font-family: var(--font-default);
+  font-size: 11px !important;
+  font-weight: 400;
+  line-height: 15px !important;
+  letter-spacing: -0.11px;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  border-radius: 4px !important;
+}
+
+.calendar-month .fc-daygrid-more-link {
+  padding: 0 2px !important;
+  margin: 0 1px !important;
+  color: var(--color-grey-opacity-600) !important;
+  font-family: var(--font-default);
+  font-size: 11px !important;
+  font-weight: 400;
+  line-height: 15px;
+  letter-spacing: -0.11px;
+}
+
+.calendar-month .fc-day-today {
+  background-color: transparent !important;
+}
+
+.calendar-month .fc-day-today .fc-daygrid-day-number,
+.calendar-month .calendar-month__selected-date .fc-daygrid-day-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 26px;
+  margin: 2px 0;
+  color: var(--color-grey-900) !important;
+  background-color: var(--color-grey-opacity-100);
+  border-radius: 999px;
+}
+
+.calendar-month--has-selection
+  .fc-day-today:not(.calendar-month__selected-date)
+  .fc-daygrid-day-number {
+  width: 22px;
+  height: 22px;
+  margin: 2px;
+  background-color: transparent;
+  border-radius: 50%;
+}

@@ -20,7 +20,7 @@
 | 이름 | 담당 페이지 | 담당 공용 컴포넌트 |
 |------|------------|------------------|
 | 스카 (박남은) | 이벤트 뷰 (생성, 삭제, 편집) | FloatingButton, Button |
-| 유요미 (최유연) | 스플래시, 홈, 데일리 | CalendarGrid |
+| 유요미 (최유연) | 스플래시, 홈, 데일리 | CalendarHeader, CalendarBody |
 | 갱 (유경민) | 이벤트 생성 | Header, Checklist, CreateModal |
 
 ---
@@ -47,14 +47,13 @@ src/
 │   ├── ui/                  # shadcn/ui 컴포넌트
 │   └── common/              # Tryna 공용 컴포넌트
 │       ├── Header/
-│       ├── CalendarGrid/
 │       ├── Buttons/
 │       ├── Checklist/
 │       └── CreateModal/
 ├── features/
 │   ├── splash/              # O. 스플래시
 │   ├── calendar/            # A. 홈 (월간)
-│   │   ├── components/
+│   │   ├── components/     # CalendarHeader, CalendarBody 등
 │   │   ├── hooks/           # useCalendar, useMonthDates
 │   │   └── utils/           # 날짜 그리드 계산
 │   └── event/               # B. 생성 + C. 상세

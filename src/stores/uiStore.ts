@@ -25,14 +25,22 @@ export type ToastType =
   | 'eventLoadFailed' // 5-5
   | null;
 
+export type SettingsAccountConfirm = 'logout' | 'delete' | null;
+
 interface UIState {
   activeBottomSheet: BottomSheetType;
   bottomSheetContext?: Record<string, unknown>; // 삭제 대상 eventId 등 부가 데이터
   toast: ToastType;
   isGlobalLoading: boolean;
+  isSettingsOpen: boolean;
+  settingsAccountConfirm: SettingsAccountConfirm;
 
   openBottomSheet: (type: BottomSheetType, context?: Record<string, unknown>) => void;
   closeBottomSheet: () => void;
+  openSettings: () => void;
+  closeSettings: () => void;
+  requestSettingsAccountConfirm: (confirm: Exclude<SettingsAccountConfirm, null>) => void;
+  closeSettingsAccountConfirm: () => void;
   showToast: (type: ToastType) => void;
   clearToast: () => void;
   setGlobalLoading: (loading: boolean) => void;
@@ -43,9 +51,39 @@ export const useUIStore = create<UIState>((set) => ({
   bottomSheetContext: undefined,
   toast: null,
   isGlobalLoading: false,
+  isSettingsOpen: false,
+  settingsAccountConfirm: null,
 
-  openBottomSheet: (type, context) => set({ activeBottomSheet: type, bottomSheetContext: context }),
-  closeBottomSheet: () => set({ activeBottomSheet: null, bottomSheetContext: undefined }),
+  openBottomSheet: (type, context) =>
+    set({
+      activeBottomSheet: type,
+      bottomSheetContext: context,
+      settingsAccountConfirm: null,
+    }),
+  closeBottomSheet: () =>
+    set({
+      activeBottomSheet: null,
+      bottomSheetContext: undefined,
+      settingsAccountConfirm: null,
+    }),
+  openSettings: () =>
+    set({
+      isSettingsOpen: true,
+      activeBottomSheet: null,
+      bottomSheetContext: undefined,
+      settingsAccountConfirm: null,
+    }),
+  closeSettings: () =>
+    set((state) => ({
+      isSettingsOpen: false,
+      // 설정에서 연 로그인 시트까지 떠 있다면 라우트 전환 시 함께 정리한다.
+      activeBottomSheet: state.activeBottomSheet === 'login' ? null : state.activeBottomSheet,
+      bottomSheetContext:
+        state.activeBottomSheet === 'login' ? undefined : state.bottomSheetContext,
+      settingsAccountConfirm: null,
+    })),
+  requestSettingsAccountConfirm: (settingsAccountConfirm) => set({ settingsAccountConfirm }),
+  closeSettingsAccountConfirm: () => set({ settingsAccountConfirm: null }),
   showToast: (type) => set({ toast: type }),
   clearToast: () => set({ toast: null }),
   setGlobalLoading: (loading) => set({ isGlobalLoading: loading }),

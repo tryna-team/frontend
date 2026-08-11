@@ -10,8 +10,6 @@ import { useUIStore } from '@/stores/uiStore';
 
 type SettingProps = {
   onClose: () => void;
-  onOpenTerms: () => void;
-  onOpenPrivacy: () => void;
   onLogout: () => void;
   onDeleteAccount: () => void;
   // 비회원이면 "계정 관리" 영역이 로그아웃/회원탈퇴 대신 "Google로 시작하기" 버튼으로 바뀐다
@@ -23,19 +21,10 @@ type SettingProps = {
 const INITIAL_NOTIFICATION_ENABLED = true;
 
 // 피그마 "1-10. 설정"
-export default function Setting({
-  onClose,
-  onOpenTerms,
-  onOpenPrivacy,
-  onLogout,
-  onDeleteAccount,
-  isMember,
-}: SettingProps) {
+export default function Setting({ onClose, onLogout, onDeleteAccount, isMember }: SettingProps) {
   // "접근 > 알림" 토글 — 연결할 설정 상태/API가 아직 없어 이번엔 UI만 구현한다
   // (값을 바꿔도 저장되지 않고, 시트를 다시 열면 기본값으로 초기화됨).
-  const [isNotificationEnabled, setIsNotificationEnabled] = useState(
-    INITIAL_NOTIFICATION_ENABLED,
-  );
+  const [isNotificationEnabled, setIsNotificationEnabled] = useState(INITIAL_NOTIFICATION_ENABLED);
   const isDirty = isNotificationEnabled !== INITIAL_NOTIFICATION_ENABLED;
 
   // 이미 구축된 전역 로그인 흐름(GlobalBottomSheet의 4-1-1)을 그대로 연다 — uiStore 설계
@@ -70,27 +59,11 @@ export default function Setting({
           />
         </ContentBox>
 
-        <ContentBox title="이용 약관" variant="default">
-          <ActionRow
-            leading={{ type: 'text', text: '서비스 이용 약관' }}
-            accessory={{ type: 'chevron' }}
-            onClick={onOpenTerms}
-          />
-          <ActionRow
-            leading={{ type: 'text', text: '개인정보 처리 방침' }}
-            accessory={{ type: 'chevron' }}
-            onClick={onOpenPrivacy}
-          />
-        </ContentBox>
-
         <ContentBox title="계정 관리" variant="bottom">
           {isMember ? (
             // 피그마상 오른쪽 chevron 없음 → accessory 생략
             <>
-              <ActionRow
-                leading={{ type: 'text', text: '로그아웃' }}
-                onClick={onLogout}
-              />
+              <ActionRow leading={{ type: 'text', text: '로그아웃' }} onClick={onLogout} />
               <ActionRow
                 leading={{ type: 'text', text: '회원탈퇴', tone: 'danger' }}
                 onClick={onDeleteAccount}
