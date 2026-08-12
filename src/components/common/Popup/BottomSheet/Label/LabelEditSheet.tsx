@@ -46,9 +46,11 @@ export default function LabelEditSheet({
 
   const upsertLabel = useCalendarStore((s) => s.upsertLabel);
   const removeLabel = useCalendarStore((s) => s.removeLabel);
-  const otherLabels = useCalendarStore((s) =>
-    s.labels.filter((l) => l.labelId !== label.labelId),
-  );
+  // ⚠️ 버그였던 지점: 셀렉터에서 .filter()로 매 렌더 새 배열을 반환하면, zustand가
+  // 참조가 바뀌었다고 보고 다시 렌더 → 셀렉터 재실행 → 또 새 배열... 무한 루프에 빠져
+  // "Maximum update depth exceeded"로 앱 전체가 크래시한다. 원본 배열(참조가 실제로
+  // 바뀔 때만 갱신됨)만 구독하고, 제외 필터링은 아래 isDuplicateName 계산 안에서 한다.
+  const labels = useCalendarStore((s) => s.labels);
   const queryClient = useQueryClient();
 
   // 라벨_정책서 §5.2/§6: 이름의 앞뒤 공백을 제거하고, 공백만 있는 이름과 동일 사용자 내
@@ -56,7 +58,9 @@ export default function LabelEditSheet({
   // 외부 라벨은 이름을 수정하지 않으므로 이 검증 자체가 필요 없다.
   const trimmedName = name.trim();
   const isNameEmpty = trimmedName.length === 0;
-  const isDuplicateName = otherLabels.some((l) => l.name.trim() === trimmedName);
+  const isDuplicateName = labels.some(
+    (l) => l.labelId !== label.labelId && l.name.trim() === trimmedName,
+  );
   const nameError = isExternal
     ? null
     : isNameEmpty
@@ -106,8 +110,21 @@ export default function LabelEditSheet({
     mutationFn: () => labelService.deleteLabel(label.labelId),
     onSuccess: () => {
       removeLabel(label.labelId);
-      // 삭제 응답엔 갱신된 전체 목록이 없어(deletedLabelId 등 요약 정보만) 캐시는
-      // setQueryData로 직접 패치하지 않고 무효화해서 다음 조회 때 서버 값을 다시 받는다.
+
+      // 버그였던 지점: invalidateQueries만 쓰면 캐시는 "오래됨" 표시만 되고 즉시 갱신되지
+      // 않는다. onBack() 직후 LabelListSheet가 곧바로 다시 마운트되면서, 아직 갱신 안 된
+      // (삭제된 라벨이 남아있는) 옛 캐시를 그대로 읽어 setLabels에 넘겨버려서, 위
+      // removeLabel이 스토어에서 이미 지운 걸 다시 덮어썼다 — 삭제됐는데 화면엔 남아있는
+      // 것처럼 보인 원인. updateMutation처럼 캐시를 즉시(동기) 패치해서 이 경쟁을 없앤다.
+      queryClient.setQueryData<LabelListResponseData>(
+        queryKeys.labels.list(),
+        (old) =>
+          old && {
+            labels: old.labels.filter((l) => l.labelId !== label.labelId),
+          },
+      );
+      // 기본 라벨 재지정 등 남은 라벨들의 세부 필드까지 서버 기준으로 맞추기 위해
+      // 위 동기 패치와 별개로 백그라운드 재조회도 함께 트리거해둔다.
       queryClient.invalidateQueries({ queryKey: queryKeys.labels.list() });
       setIsDeleteConfirmOpen(false);
       onBack();

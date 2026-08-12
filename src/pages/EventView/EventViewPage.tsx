@@ -417,11 +417,15 @@ function EventViewPage() {
 
   // EventEditBottomSheet/ActionItemEditBottomSheet에 넘길 라벨 목록 — CalendarLabel과
   // LabelItemData의 color 타입이 동일(LabelModal/LabelItem 기준)해 별도 변환 없이 매핑된다.
-  const labelItems: LabelItemData[] = labels.map((label) => ({
-    id: label.labelId,
-    label: label.name,
-    color: label.color,
-  }));
+  // SYSTEM(예: "대한민국 공휴일", labelId: -1)은 서버가 항상 끼워 보내는 가상 라벨로 실제
+  // 라벨 테이블에 없어, 선택 가능한 목록에 포함하면 안 된다(선택 시 일정 저장이 400으로 실패함).
+  const labelItems: LabelItemData[] = labels
+    .filter((label) => label.labelType !== 'SYSTEM')
+    .map((label) => ({
+      id: label.labelId,
+      label: label.name,
+      color: label.color,
+    }));
 
   // todoItems.id는 이미 실제 actionItemId를 문자열로 담고 있어(String(item.actionItemId)),
   // 숫자로 되돌리기만 하면 된다 — 별도 mock id가 필요 없다.
