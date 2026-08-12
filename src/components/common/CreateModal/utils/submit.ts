@@ -1,6 +1,10 @@
 import { differenceInCalendarDays, format, isSameDay, isValid, parseISO } from 'date-fns';
 
-import type { EventCreateRequest, EventCreateResponse, EventRecurrenceType } from '@/apis/types/event';
+import type {
+  EventCreateRequest,
+  EventCreateResponse,
+  EventRecurrenceType,
+} from '@/apis/types/event';
 import type { ActionItemSaveRequest, RecommendationFeedback } from '@/apis/types/recommendation';
 import type { RepeatOption } from '@/features/event/components/create';
 import type { RecommendationCandidate } from '@/stores/types';
@@ -107,6 +111,7 @@ type BuildCreateEventRequestParams = {
     eventTypeCandidate?: string | null;
   } | null;
   recommendationCandidates: RecommendationCandidate[];
+  isScheduleAllDay?: boolean;
 };
 
 export const buildCreateEventRequest = ({
@@ -123,11 +128,20 @@ export const buildCreateEventRequest = ({
   repeat,
   parsedCandidate,
   recommendationCandidates,
+  isScheduleAllDay = false,
 }: BuildCreateEventRequestParams): EventCreateRequest => {
   const hasParsedStartTime = Boolean(parsedCandidate?.timeCandidate);
   const hasParsedEndTime = Boolean(parsedCandidate?.endTimeCandidate);
-  const startTimeValue = hasStartTimeChanged || hasParsedStartTime ? normalizeTime(startTime) : null;
-  const endTimeValue = hasEndTimeChanged || hasParsedEndTime ? normalizeTime(endTime) : null;
+  const startTimeValue = isScheduleAllDay
+    ? null
+    : hasStartTimeChanged || hasParsedStartTime
+      ? normalizeTime(startTime)
+      : null;
+  const endTimeValue = isScheduleAllDay
+    ? null
+    : hasEndTimeChanged || hasParsedEndTime
+      ? normalizeTime(endTime)
+      : null;
   const recurrencePayload = buildRecurrencePayload(hasRepeatChanged, repeat);
   const shouldSaveEndDate =
     Boolean(endTimeValue) ||
@@ -144,7 +158,7 @@ export const buildCreateEventRequest = ({
     startTime: startTimeValue,
     endDate: shouldSaveEndDate ? format(endDate, 'yyyy-MM-dd') : null,
     endTime: endTimeValue,
-    isAllDay: !startTimeValue && !endTimeValue,
+    isAllDay: isScheduleAllDay || (!startTimeValue && !endTimeValue),
     location: parsedCandidate?.placeCandidate ?? null,
     eventType: parsedCandidate?.eventTypeCandidate ?? null,
     ...recurrencePayload,

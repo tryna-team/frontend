@@ -30,6 +30,7 @@ type UseCreateEventSubmitParams = {
   setIsSaving: Dispatch<SetStateAction<boolean>>;
   resetCreation: () => void;
   onCreate?: (createdDate: string) => void;
+  isScheduleAllDay?: boolean;
 };
 
 export function useCreateEventSubmit({
@@ -51,6 +52,7 @@ export function useCreateEventSubmit({
   setIsSaving,
   resetCreation,
   onCreate,
+  isScheduleAllDay,
 }: UseCreateEventSubmitParams) {
   const createAbortControllerRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
@@ -93,6 +95,7 @@ export function useCreateEventSubmit({
       repeat,
       parsedCandidate,
       recommendationCandidates,
+      isScheduleAllDay,
     });
     setIsSaving(true);
 
@@ -161,6 +164,7 @@ export function useCreateEventSubmit({
     startTime,
     setIsSaving,
     trimmedInput,
+    isScheduleAllDay,
   ]);
 
   return {

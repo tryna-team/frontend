@@ -256,6 +256,7 @@ export default function CreateModal({
     setIsSaving,
     resetCreation,
     onCreate,
+    isScheduleAllDay,
   });
 
   const handleExitConfirm = () => {
