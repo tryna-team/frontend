@@ -147,22 +147,14 @@ function EventViewPage() {
     enabled: !!eventId,
   });
 
-  // 비반복 일정은 "회차"라는 개념이 없어 체크리스트가 이벤트 전체에 하나뿐이다(며칠째를
-  // 보든 동일). 그래서 실제 클릭한 날짜 대신 이벤트 시작일로 고정해서 조회해야, 시작일이
-  // 아닌 날짜(2일차 이후)에서도 저장된 체크리스트를 정상적으로 찾을 수 있다. 반복 일정은
-  // 회차별로 항목이 다를 수 있어 실제 occurrenceDate를 그대로 쓴다. eventDetail이 아직
-  // 로딩 전이면 아래 actionItems 쿼리가 enabled로 대기하므로 이 값은 그때는 안 쓰인다.
-  const actionItemsOccurrenceDate =
-    eventDetail && !eventDetail.isRecurring ? eventDetail.startDate : occurrenceDate;
-
   const {
     data: actionItemsData,
     isPending: isActionItemsPending,
     isError: isActionItemsError,
   } = useQuery({
-    queryKey: queryKeys.actionItems.byEvent(eventId ?? '', actionItemsOccurrenceDate ?? undefined),
-    queryFn: () => actionItemService.getByEvent(eventId as string, actionItemsOccurrenceDate ?? undefined),
-    enabled: !!eventId && !!eventDetail,
+    queryKey: queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
+    queryFn: () => actionItemService.getByEvent(eventId as string, occurrenceDate ?? undefined),
+    enabled: !!eventId,
   });
 
   // F103 응답을 일정 상세 카드에서 사용하는 형태로 변환한다.
@@ -284,7 +276,7 @@ function EventViewPage() {
     onMutate: async ({ actionItemId, status }) => {
       const eventItemsQueryKey = queryKeys.actionItems.byEvent(
         eventId ?? '',
-        actionItemsOccurrenceDate ?? undefined,
+        occurrenceDate ?? undefined,
       );
 
       pendingActionItemIdsRef.current.add(actionItemId);
@@ -314,7 +306,7 @@ function EventViewPage() {
 
       if (previousStatus) {
         queryClient.setQueryData<EventActionItemResponse>(
-          queryKeys.actionItems.byEvent(eventId ?? '', actionItemsOccurrenceDate ?? undefined),
+          queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
           (current) =>
             current
               ? {
@@ -338,7 +330,7 @@ function EventViewPage() {
 
       const invalidations = [
         queryClient.invalidateQueries({
-          queryKey: queryKeys.actionItems.byEvent(eventId ?? '', actionItemsOccurrenceDate ?? undefined),
+          queryKey: queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
         }),
       ];
 
