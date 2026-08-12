@@ -1,6 +1,10 @@
 import { differenceInCalendarDays, format, isSameDay, isValid, parseISO } from 'date-fns';
 
-import type { EventCreateRequest, EventCreateResponse, EventRecurrenceType } from '@/apis/types/event';
+import type {
+  EventCreateRequest,
+  EventCreateResponse,
+  EventRecurrenceType,
+} from '@/apis/types/event';
 import type { ActionItemSaveRequest, RecommendationFeedback } from '@/apis/types/recommendation';
 import type { RepeatOption } from '@/features/event/components/create';
 import type { RecommendationCandidate } from '@/stores/types';
@@ -9,7 +13,9 @@ import { RECURRENCE_TYPE } from '../constants';
 import { formatActionItemDisplayTime, normalizeTime } from './dateTime';
 
 export const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: RepeatOption) => {
-  if (!hasRepeatChanged) {
+  const recurrenceType = hasRepeatChanged ? (RECURRENCE_TYPE[repeat] ?? 'NONE') : 'NONE';
+
+  if (recurrenceType === 'NONE') {
     return {
       isRecurring: false,
       recurrenceType: 'NONE' as EventRecurrenceType,
@@ -20,7 +26,7 @@ export const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: Repeat
 
   return {
     isRecurring: true,
-    recurrenceType: RECURRENCE_TYPE[repeat],
+    recurrenceType,
     recurrenceInterval: 1,
     // 반복 종료일 설정 UI가 추가되기 전까지 무기한 반복으로 저장한다.
     recurrenceEndDate: null,
@@ -105,6 +111,7 @@ type BuildCreateEventRequestParams = {
     eventTypeCandidate?: string | null;
   } | null;
   recommendationCandidates: RecommendationCandidate[];
+  isScheduleAllDay?: boolean;
 };
 
 export const buildCreateEventRequest = ({
@@ -121,11 +128,21 @@ export const buildCreateEventRequest = ({
   repeat,
   parsedCandidate,
   recommendationCandidates,
+  isScheduleAllDay = false,
 }: BuildCreateEventRequestParams): EventCreateRequest => {
   const hasParsedStartTime = Boolean(parsedCandidate?.timeCandidate);
   const hasParsedEndTime = Boolean(parsedCandidate?.endTimeCandidate);
-  const startTimeValue = hasStartTimeChanged || hasParsedStartTime ? normalizeTime(startTime) : null;
-  const endTimeValue = hasEndTimeChanged || hasParsedEndTime ? normalizeTime(endTime) : null;
+  const startTimeValue = isScheduleAllDay
+    ? null
+    : hasStartTimeChanged || hasParsedStartTime
+      ? normalizeTime(startTime)
+      : null;
+  const endTimeValue = isScheduleAllDay
+    ? null
+    : hasEndTimeChanged || hasParsedEndTime
+      ? normalizeTime(endTime)
+      : null;
+  const recurrencePayload = buildRecurrencePayload(hasRepeatChanged, repeat);
   const shouldSaveEndDate =
     Boolean(endTimeValue) ||
     hasEndDateChanged ||
@@ -141,11 +158,15 @@ export const buildCreateEventRequest = ({
     startTime: startTimeValue,
     endDate: shouldSaveEndDate ? format(endDate, 'yyyy-MM-dd') : null,
     endTime: endTimeValue,
-    isAllDay: !startTimeValue && !endTimeValue,
+    isAllDay: isScheduleAllDay || (!startTimeValue && !endTimeValue),
     location: parsedCandidate?.placeCandidate ?? null,
     eventType: parsedCandidate?.eventTypeCandidate ?? null,
-    ...buildRecurrencePayload(hasRepeatChanged, repeat),
-    actionItems: buildActionItemsPayload(recommendationCandidates, startDate, hasRepeatChanged),
+    ...recurrencePayload,
+    actionItems: buildActionItemsPayload(
+      recommendationCandidates,
+      startDate,
+      recurrencePayload.isRecurring,
+    ),
   };
 };
 

@@ -1,17 +1,13 @@
 import Button from '@/components/common/Buttons/Button';
 
-export type RepeatOption =
-  | '반복 없음'
-  | '매일'
-  | '매주'
-  | '매월'
-  | '매년';
+export type RepeatOption = '반복 없음' | '매일' | '매주' | '매월' | '매년';
 
 type DateTimeRowProps = {
   type: 'date-time';
   leading: '시작' | '종료';
   date: string;
   time: string;
+  hideTime?: boolean;
   onDateClick?: () => void;
   onTimeClick?: () => void;
 };
@@ -23,22 +19,15 @@ type RepeatRowProps = {
   onRepeatClick?: () => void;
 };
 
-// 시작,종료 행 / 반복 행의 trailing 구분
-export type EventScheduleRowProps =
-  | DateTimeRowProps
-  | RepeatRowProps;
+// 시작, 종료 행 / 반복 행의 trailing 구분
+export type EventScheduleRowProps = DateTimeRowProps | RepeatRowProps;
 
-const CHEVRON_ICON =
-  '/icon/chevron/left_xsmall.svg';
+const CHEVRON_ICON = '/icon/chevron/left_xsmall.svg';
 
-export default function EventScheduleRow(
-  props: EventScheduleRowProps,
-) {
+export default function EventScheduleRow(props: EventScheduleRowProps) {
   return (
     <div className="box-content flex h-[52px] w-[329px] items-center justify-between bg-transparent pr-padding-xsmall pl-padding-medium">
-      <span className="shrink-0 text-text-default default-body-medium">
-        {props.leading}
-      </span>
+      <span className="shrink-0 text-text-default default-body-medium">{props.leading}</span>
 
       {/* 시작/종료: 날짜 버튼 + 시간 버튼 */}
       {props.type === 'date-time' ? (
@@ -51,13 +40,15 @@ export default function EventScheduleRow(
             {props.date}
           </Button>
 
-          <Button
-            variant="MediumDefaultFit"
-            onClick={props.onTimeClick}
-            aria-label={`${props.leading} 시간 ${props.time}`}
-          >
-            {props.time}
-          </Button>
+          {!props.hideTime && (
+            <Button
+              variant="MediumDefaultFit"
+              onClick={props.onTimeClick}
+              aria-label={`${props.leading} 시간 ${props.time}`}
+            >
+              {props.time}
+            </Button>
+          )}
         </div>
       ) : (
         // '반복' + chevron
@@ -69,21 +60,10 @@ export default function EventScheduleRow(
         >
           <span>{props.repeat}</span>
 
-          <span
-            className="flex flex-col items-center"
-            aria-hidden="true"
-          >
+          <span className="flex flex-col items-center" aria-hidden="true">
             {/* left 아이콘을 회전해 위아래 chevron 구성 */}
-            <img
-              src={CHEVRON_ICON}
-              alt=""
-              className="block size-3 rotate-90 opacity-30"
-            />
-            <img
-              src={CHEVRON_ICON}
-              alt=""
-              className="-mt-0.5 block size-3 -rotate-90 opacity-30"
-            />
+            <img src={CHEVRON_ICON} alt="" className="block size-3 rotate-90 opacity-30" />
+            <img src={CHEVRON_ICON} alt="" className="-mt-0.5 block size-3 -rotate-90 opacity-30" />
           </span>
         </button>
       )}

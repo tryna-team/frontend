@@ -24,10 +24,7 @@ import {
 import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial.types';
 import QuickModal from '@/components/common/Popup/QuickModal';
 import { eventDetailService } from '@/apis/services/eventDetailService';
-import type {
-  EventUpdateActionItemRequestItem,
-  UpdateScope,
-} from '@/apis/types/eventDetail';
+import type { EventUpdateActionItemRequestItem, UpdateScope } from '@/apis/types/eventDetail';
 import type { EventActionItem } from '@/apis/types/actionItem';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 
@@ -527,6 +524,8 @@ export default function EventEditBottomSheet({
           startTime={startTime}
           endTime={endTime ?? startTime}
           repeat={repeat}
+          isAllDay={isAllDay}
+          onAllDayChange={setIsAllDay}
           onStartDateChange={setStartDate}
           onEndDateChange={setEndDate}
           onStartTimeChange={(value) => setStartTime(toApiTime(value))}
