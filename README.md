@@ -19,9 +19,9 @@
 
 | 이름 | 담당 페이지 | 담당 공용 컴포넌트 |
 |------|------------|------------------|
-| 스카 (박남은) | 이벤트 뷰 (생성, 삭제, 편집) | Popup (BottomSheet · QuickModal · ToastPopup) |
+| 스카 (박남은) | 이벤트 뷰 (생성, 삭제, 편집) | Buttons, Popup (BottomSheet · QuickModal · ToastPopup) |
 | 유요미 (최유연) | 스플래시, 홈, 데일리, 연간 캘린더 | ScheduleBanner |
-| 갱 (유경민) | 이벤트 생성 | Checklist |
+| 갱 (유경민) | 이벤트 생성 | Header, Checklist, CreateModal |
 
 ---
 
