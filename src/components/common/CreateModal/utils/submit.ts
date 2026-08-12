@@ -1,4 +1,4 @@
-import { format, isSameDay } from 'date-fns';
+import { differenceInCalendarDays, format, isSameDay, isValid, parseISO } from 'date-fns';
 
 import type { EventCreateRequest, EventCreateResponse, EventRecurrenceType } from '@/apis/types/event';
 import type { ActionItemSaveRequest, RecommendationFeedback } from '@/apis/types/recommendation';
@@ -42,6 +42,8 @@ export const buildFeedbackLogs = (
 
 export const buildActionItemsPayload = (
   recommendationCandidates: RecommendationCandidate[],
+  eventStartDate: Date,
+  isRecurring: boolean,
 ): ActionItemSaveRequest | null => {
   if (recommendationCandidates.length === 0) {
     return null;
@@ -55,18 +57,26 @@ export const buildActionItemsPayload = (
       const apiItemType =
         candidate.apiItemType ??
         (candidate.itemType === 'TIMED_ACTION' ? 'TIMED_ACTION' : 'UNTIMED_PREP');
+      const displayDate = apiItemType === 'TIMED_ACTION' ? (candidate.displayDate ?? null) : null;
+      const parsedDisplayDate = displayDate ? parseISO(displayDate) : null;
+      const offsetDays =
+        apiItemType !== 'TIMED_ACTION'
+          ? 0
+          : isRecurring && parsedDisplayDate && isValid(parsedDisplayDate)
+            ? differenceInCalendarDays(parsedDisplayDate, eventStartDate)
+            : (candidate.offsetDays ?? null);
 
       return {
         title: candidate.title,
         itemType: apiItemType,
         createdBy:
           candidate.createdBy === 'USER' ? 'USER' : candidate.edited ? 'USER_EDITED' : 'SYSTEM',
-        displayDate: apiItemType === 'TIMED_ACTION' ? (candidate.displayDate ?? null) : null,
+        displayDate,
         displayTime:
           apiItemType === 'TIMED_ACTION'
             ? formatActionItemDisplayTime(candidate.displayDate, candidate.displayTime)
             : null,
-        offsetDays: candidate.offsetDays ?? null,
+        offsetDays,
         sourceTemplateId: candidate.sourceTemplateId ?? null,
       };
     }),
@@ -135,7 +145,7 @@ export const buildCreateEventRequest = ({
     location: parsedCandidate?.placeCandidate ?? null,
     eventType: parsedCandidate?.eventTypeCandidate ?? null,
     ...buildRecurrencePayload(hasRepeatChanged, repeat),
-    actionItems: buildActionItemsPayload(recommendationCandidates),
+    actionItems: buildActionItemsPayload(recommendationCandidates, startDate, hasRepeatChanged),
   };
 };
 

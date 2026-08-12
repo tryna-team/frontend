@@ -24,6 +24,7 @@ export type ActionItemCreatedBy = 'SYSTEM' | 'USER' | 'USER_EDITED';
 
 /** E106 준비/실행 항목 상태 변경 요청 */
 export interface ActionItemStatusUpdateRequest {
+  occurrenceDate: string;
   actionItemStatus: ActionItemCompletionStatus;
 }
 
@@ -62,8 +63,11 @@ export interface TimedActionItem {
   parentEventTitle: string;
   title: string;
   itemType: ActionItemType;
+  occurrenceDate?: string | null;
+  parentOccurrenceDate?: string | null;
   displayDate: string;
   displayTime: string | null;
+  offsetDays?: number | string | null;
   actionItemStatus: ActionItemStatus;
   createdBy: ActionItemCreatedBy;
   completedAt: string | null;

@@ -14,7 +14,7 @@ import TimePickerDial, { type TimePickerValue } from './TimePickerDial';
 type ActiveField = 'start' | 'end';
 
 const CONTENT_BOX_LAYOUT_CLASS =
-  'w-full [&>div]:overflow-hidden [&>div>div:first-child]:hidden [&>div>div:last-child]:items-center [&>div>div:last-child]:px-0';
+  'w-full [&>div]:overflow-hidden [&>div>div:last-child]:items-center [&>div>div:last-child]:px-0';
 
 export type ActionItemScheduleValue = {
   startDate: Date;

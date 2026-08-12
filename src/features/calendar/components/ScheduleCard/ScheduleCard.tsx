@@ -43,6 +43,10 @@ function ScheduleCard({
   linkedSchedule,
   onLinkedScheduleClick,
 }: ScheduleCardProps) {
+  const linkedScheduleText = linkedSchedule
+    ? [linkedSchedule.date, linkedSchedule.time, linkedSchedule.title].filter(Boolean).join(' ')
+    : '';
+
   // 카드 어디를 눌러도 상세로 간다. 제목 줄에만 걸어두면 시간·장소·체크리스트 영역과
   // 빈 공간이 눌리지 않아 터치 대상이 지나치게 좁다.
   // 체크리스트는 데일리에서 읽기 전용이라(onToggleItem 미전달, 아이콘 disabled)
@@ -126,16 +130,12 @@ function ScheduleCard({
             }}
           >
             <img src="/icon/icons/linked_small.svg" alt="" className="schedule-card-linked-icon" />
-            <span className="schedule-card-linked-text">
-              {linkedSchedule.date} {linkedSchedule.time} {linkedSchedule.title}
-            </span>
+            <span className="schedule-card-linked-text">{linkedScheduleText}</span>
           </button>
         ) : (
           <div className="schedule-card-linked">
             <img src="/icon/icons/linked_small.svg" alt="" className="schedule-card-linked-icon" />
-            <span className="schedule-card-linked-text">
-              {linkedSchedule.date} {linkedSchedule.time} {linkedSchedule.title}
-            </span>
+            <span className="schedule-card-linked-text">{linkedScheduleText}</span>
           </div>
         ))}
 
