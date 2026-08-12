@@ -53,6 +53,20 @@ function addDays(dateStr: string, delta: number): string {
   return `${y}-${m}-${day}`;
 }
 
+function parseOffsetDays(offsetDays: number | string | null | undefined) {
+  if (typeof offsetDays === 'number') {
+    return Number.isFinite(offsetDays) ? offsetDays : null;
+  }
+
+  if (typeof offsetDays === 'string') {
+    const parsedOffsetDays = Number(offsetDays);
+
+    return Number.isFinite(parsedOffsetDays) ? parsedOffsetDays : null;
+  }
+
+  return null;
+}
+
 interface ScheduleItem {
   id: string;
   eventId: string;
@@ -245,10 +259,11 @@ function DailyPage() {
   // 실행 날짜에는 시간형 항목을 독립 카드로 표시하고 원래 일정과 연결한다.
   const linkedTimedSchedules: ScheduleItem[] = timedActionItems.map((item) => {
     const parentEvent = timedParentEvents.get(String(item.parentEventId));
+    const offsetDays = parseOffsetDays(item.offsetDays);
     const parentOccurrenceDate =
-      typeof item.offsetDays === 'number'
-        ? addDays(item.displayDate, -item.offsetDays)
-        : undefined;
+      item.parentOccurrenceDate ?? item.occurrenceDate ?? (
+        offsetDays !== null ? addDays(item.displayDate, -offsetDays) : undefined
+      );
     const linkedDate =
       parentOccurrenceDate ??
       (parentEvent && !parentEvent.isRecurring ? parentEvent.startDate : selectedDate);
@@ -336,7 +351,7 @@ function DailyPage() {
   };
 
   // 일정 카드 -> EventView 이동
-  const handleScheduleClick = (eventId: string, occurrenceDate = selectedDate) => {
+  const handleScheduleClick = (eventId: string, occurrenceDate?: string) => {
     navigate(generateEventPath.view(eventId, occurrenceDate));
   };
 
@@ -447,30 +462,31 @@ function DailyPage() {
                 ) : panel.schedules.length === 0 ? (
                   <p className="daily-page-empty">일정이 없어요</p>
                 ) : (
-                  panel.schedules.map((schedule) => (
-                    <ScheduleCard
-                      key={schedule.id}
-                      categoryColor={schedule.categoryColor}
-                      title={schedule.title}
-                      location={schedule.location}
-                      startTime={schedule.startTime}
-                      endTime={schedule.endTime}
-                      checklist={schedule.checklist}
-                      onScheduleClick={() =>
-                        handleScheduleClick(schedule.eventId, schedule.occurrenceDate ?? panel.date)
-                      }
-                      linkedSchedule={schedule.linkedSchedule}
-                      onLinkedScheduleClick={
-                        schedule.linkedSchedule
-                          ? () =>
-                              handleScheduleClick(
-                                schedule.eventId,
-                                schedule.occurrenceDate ?? panel.date,
-                              )
-                          : undefined
-                      }
-                    />
-                  ))
+                  panel.schedules.map((schedule) => {
+                    const scheduleOccurrenceDate =
+                      schedule.occurrenceDate ?? (schedule.linkedSchedule ? undefined : panel.date);
+
+                    return (
+                      <ScheduleCard
+                        key={schedule.id}
+                        categoryColor={schedule.categoryColor}
+                        title={schedule.title}
+                        location={schedule.location}
+                        startTime={schedule.startTime}
+                        endTime={schedule.endTime}
+                        checklist={schedule.checklist}
+                        onScheduleClick={() =>
+                          handleScheduleClick(schedule.eventId, scheduleOccurrenceDate)
+                        }
+                        linkedSchedule={schedule.linkedSchedule}
+                        onLinkedScheduleClick={
+                          schedule.linkedSchedule
+                            ? () => handleScheduleClick(schedule.eventId, scheduleOccurrenceDate)
+                            : undefined
+                        }
+                      />
+                    );
+                  })
                 )}
               </div>
             </section>

@@ -63,9 +63,11 @@ export interface TimedActionItem {
   parentEventTitle: string;
   title: string;
   itemType: ActionItemType;
+  occurrenceDate?: string | null;
+  parentOccurrenceDate?: string | null;
   displayDate: string;
   displayTime: string | null;
-  offsetDays?: number | null;
+  offsetDays?: number | string | null;
   actionItemStatus: ActionItemStatus;
   createdBy: ActionItemCreatedBy;
   completedAt: string | null;
