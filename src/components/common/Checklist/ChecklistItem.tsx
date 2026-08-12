@@ -570,9 +570,10 @@ function VariantChecklistItem({
             variant="MediumStrongFit"
             type="button"
             disabled={disabled}
-            onClick={
-              trailing.onClick
-            }
+            onClick={(event) => {
+              event.stopPropagation();
+              trailing.onClick?.();
+            }}
             aria-label={`${label} 날짜 ${trailing.text}`}
             className="ml-auto shrink-0"
           >
@@ -593,7 +594,10 @@ function VariantChecklistItem({
         (trailing.onClick ? (
           <Button
             variant="Chip"
-            onClick={trailing.onClick}
+            onClick={(event) => {
+              event.stopPropagation();
+              trailing.onClick?.();
+            }}
             disabled={isMutedLabel}
             aria-label={`${label} 날짜 ${trailing.text}`}
             className="ml-auto shrink-0"
