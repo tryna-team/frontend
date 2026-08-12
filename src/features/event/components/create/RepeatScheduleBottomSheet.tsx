@@ -11,14 +11,18 @@ import Overlay from '@/components/common/Popup/Overlay';
 
 import DatePickerCalendar from './DatePickerCalendar';
 import EventScheduleRow, { type RepeatOption } from './EventScheduleRow';
+import { REPEAT_OPTION } from './repeatOption';
 import TimePickerDial, { type TimePickerValue } from './TimePickerDial';
 
 type ActiveDateField = 'start' | 'end';
 type ActiveTimeField = 'start' | 'end';
 
-// 공용 ContentBox를 일정 아이템 박스로 사용한다.
+// 공용 ContentBox를 일정 아이템 박스로 사용한다. title을 안 넘기면(모든 사용처가
+// title="") ContentBox가 제목 줄 자체를 렌더링하지 않으므로, 예전에 그 빈 줄을
+// 숨기던 [&>div>div:first-child]:hidden은 더 이상 필요 없다 — 지금 두면 오히려
+// 실제 콘텐츠(첫 번째이자 유일한 자식)를 가려버린다.
 const CONTENT_BOX_LAYOUT_CLASS =
-  'w-full [&>div]:overflow-hidden [&>div>div:first-child]:hidden [&>div>div:last-child]:items-center [&>div>div:last-child]:px-0';
+  'w-full [&>div]:overflow-hidden [&>div>div:last-child]:items-center [&>div>div:last-child]:px-0';
 
 export type RepeatScheduleBottomSheetProps = {
   startDate: Date;
@@ -77,13 +81,6 @@ const toMinutes = ({ meridiem, hour, minute }: TimePickerValue) => {
   const hour24 = (hour % 12) + (meridiem === 'PM' ? 12 : 0);
 
   return hour24 * 60 + minute;
-};
-
-const REPEAT_OPTION: Record<RepeatType, RepeatOption> = {
-  daily: '매일',
-  weekly: '매주',
-  monthly: '매월',
-  yearly: '매년',
 };
 
 export default function RepeatScheduleBottomSheet({
@@ -218,6 +215,10 @@ export default function RepeatScheduleBottomSheet({
     onRepeatChange?.(nextRepeat);
   };
 
+  // 시간 다이얼이 열려있을 때 바깥(날짜/시간 모달 안쪽이든, 그 바깥 dim 영역이든 전부)을
+  // 누르면 다이얼만 닫히고, 날짜/시간 모달 자체는 안 닫혀야 한다. 화면 전체를 덮는
+  // backdrop을 다이얼 바로 아래(z-20)에 깔아서, 다이얼(z-30) 외의 모든 클릭을 여기서
+  // 가로챈다 — 값은 이미 onChange로 매 조작마다 즉시 반영되고 있어서 닫기만 하면 된다.
   const startRow = (
     <div className="relative">
       <EventScheduleRow
@@ -234,9 +235,18 @@ export default function RepeatScheduleBottomSheet({
       />
 
       {activeTimeField === 'start' && (
-        <div className="absolute right-padding-xsmall bottom-full z-20">
-          <TimePickerDial value={startTimeValue} onChange={handleStartTimeChange} />
-        </div>
+        <>
+          <div
+            className="fixed inset-0 z-20"
+            onClick={(event) => {
+              event.stopPropagation();
+              setActiveTimeField(null);
+            }}
+          />
+          <div className="absolute right-padding-xsmall bottom-full z-30">
+            <TimePickerDial value={startTimeValue} onChange={handleStartTimeChange} />
+          </div>
+        </>
       )}
     </div>
   );
@@ -257,9 +267,18 @@ export default function RepeatScheduleBottomSheet({
       />
 
       {activeTimeField === 'end' && (
-        <div className="absolute right-padding-xsmall bottom-full z-20">
-          <TimePickerDial value={endTimeValue} onChange={handleEndTimeChange} />
-        </div>
+        <>
+          <div
+            className="fixed inset-0 z-20"
+            onClick={(event) => {
+              event.stopPropagation();
+              setActiveTimeField(null);
+            }}
+          />
+          <div className="absolute right-padding-xsmall bottom-full z-30">
+            <TimePickerDial value={endTimeValue} onChange={handleEndTimeChange} />
+          </div>
+        </>
       )}
     </div>
   );
@@ -285,13 +304,23 @@ export default function RepeatScheduleBottomSheet({
         />
 
         {isRepeatOpen && (
-          <div className="absolute right-padding-xsmall bottom-[47px] z-30">
-            <LabelModal
-              type="repeat"
-              selectedDate={startDate}
-              onSelectRepeat={handleRepeatSelect}
+          <>
+            {/* 시간 다이얼과 동일하게, 바깥 클릭은 이 팝업만 닫는다(전체 모달은 유지). */}
+            <div
+              className="fixed inset-0 z-20"
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsRepeatOpen(false);
+              }}
             />
-          </div>
+            <div className="absolute right-padding-xsmall bottom-[47px] z-30">
+              <LabelModal
+                type="repeat"
+                selectedDate={startDate}
+                onSelectRepeat={handleRepeatSelect}
+              />
+            </div>
+          </>
         )}
       </div>
 

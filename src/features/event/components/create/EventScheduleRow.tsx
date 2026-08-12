@@ -1,6 +1,7 @@
 import Button from '@/components/common/Buttons/Button';
 
 export type RepeatOption =
+  | '반복 없음'
   | '매일'
   | '매주'
   | '매월'
@@ -35,7 +36,7 @@ export default function EventScheduleRow(
 ) {
   return (
     <div className="box-content flex h-[52px] w-[329px] items-center justify-between bg-transparent pr-padding-xsmall pl-padding-medium">
-      <span className="shrink-0 text-text-default default-body-large">
+      <span className="shrink-0 text-text-default default-body-medium">
         {props.leading}
       </span>
 
@@ -64,7 +65,7 @@ export default function EventScheduleRow(
           type="button"
           onClick={props.onRepeatClick}
           aria-label={`반복 주기 ${props.repeat}`}
-          className="flex shrink-0 items-center gap-2 border-0 bg-transparent p-0 text-text-default default-body-large"
+          className="flex shrink-0 items-center gap-2 border-0 bg-transparent p-0 text-text-default default-body-medium"
         >
           <span>{props.repeat}</span>
 

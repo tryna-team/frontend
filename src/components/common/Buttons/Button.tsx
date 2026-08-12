@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
+import { format } from "date-fns";
 import { Plus } from "lucide-react";
 
 import { ShadcnButton } from "@/components/ui/shadcnButton";
 import { cn } from "@/lib/utils";
 import {
   buttonVariants,
+  chipButtonClassNames,
   gapClassNames,
   iconButtonClassNames,
   iconTextButtonClassNames,
@@ -24,6 +26,26 @@ import {
 } from "./ButtonType";
 
 type ButtonBaseProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">;
+
+// 칩에 표시할 날짜. actionItem API의 EventActionItem.displayDate/TimedActionItem.displayDate
+// ('YYYY-MM-DD' 문자열 | null)를 가공 없이 그대로 넘길 수 있도록 string | Date | null을 모두 허용.
+export type ChipButtonDate = Date | string | null;
+
+const CHIP_DATE_FORMAT = "MM. dd.";
+
+// ActionItemChecklistSection.formatEventDate와 동일한 방식으로 'YYYY-MM-DD' 문자열을
+// 로컬 자정 기준으로 파싱한다 — new Date('YYYY-MM-DD')는 UTC 자정으로 해석되어
+// 음수 UTC 오프셋 시간대에서 하루 밀리는 문제가 있다.
+function parseChipDate(date?: ChipButtonDate): Date | null {
+  if (!date) return null;
+  const parsed =
+    date instanceof Date
+      ? date
+      : /^\d{4}-\d{2}-\d{2}$/.test(date)
+        ? new Date(`${date}T00:00:00`)
+        : new Date(date);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
 
 type TextButtonRenderProps = ButtonBaseProps & {
   variant: TextButtonType;
@@ -82,13 +104,26 @@ type CheckCTAButtonRenderProps = ButtonBaseProps & {
   size?: never;
 };
 
+type ChipButtonRenderProps = ButtonBaseProps & {
+  variant: "Chip";
+  /** 칩에 표시할 텍스트를 직접 입력(예: "당일"). date를 지정하면 무시됩니다. */
+  children?: ReactNode;
+  /** actionItem API의 displayDate 등 'YYYY-MM-DD' 문자열 | Date | null을 그대로 전달 가능.
+   *  지정하면 "MM. dd." 형식으로 자동 포맷되어 children보다 우선 표시됩니다. */
+  date?: ChipButtonDate;
+  icon?: never;
+  alt?: never;
+  size?: never;
+};
+
 export type ButtonProps =
   | TextButtonRenderProps
   | IconButtonRenderProps
   | IconTextButtonRenderProps<"IconTextSmall">
   | IconTextButtonRenderProps<"IconTextDefault">
   | MainCTAButtonRenderProps
-  | CheckCTAButtonRenderProps;
+  | CheckCTAButtonRenderProps
+  | ChipButtonRenderProps;
 
 function renderIconTextButton(props: IconTextButtonRenderProps) {
   // variant는 ShadcnButton의 자체 variant prop과 이름이 겹쳐 spread에서 제외(config 조회엔 사용)
@@ -184,6 +219,21 @@ export default function Button(props: ButtonProps) {
             mask: "url('/icon/icons/check_medium.svg') center / contain no-repeat",
           }}
         />
+      </ShadcnButton>
+    );
+  }
+
+  if (props.variant === "Chip") {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- ShadcnButton에 전달하지 않는 전용 prop 제외
+    const { variant, children, date, className, type, ...buttonProps } = props;
+    const parsedDate = parseChipDate(date);
+    return (
+      <ShadcnButton
+        type={type ?? "button"}
+        className={cn(chipButtonClassNames, className)}
+        {...buttonProps}
+      >
+        {parsedDate ? format(parsedDate, CHIP_DATE_FORMAT) : children}
       </ShadcnButton>
     );
   }

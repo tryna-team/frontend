@@ -62,6 +62,9 @@ export type ChecklistItemProps = {
   trailing?: ChecklistTrailing;
   disabled?: boolean;
   onLeadingClick?: () => void;
+  // 전달하면 라벨 텍스트를 버튼으로 렌더링해 클릭을 감지한다(전달하지 않으면 기존과
+  // 동일하게 정적 텍스트).
+  onLabelClick?: () => void;
 
   // 전달하지 않으면 기존 ChecklistItem UI를 사용
   radioVariant?: ChecklistRadioVariant;
@@ -423,6 +426,7 @@ function VariantChecklistItem({
   trailing,
   disabled,
   onLeadingClick,
+  onLabelClick,
 }: Required<
   Pick<
     ChecklistItemProps,
@@ -436,7 +440,7 @@ function VariantChecklistItem({
 > &
   Pick<
     ChecklistItemProps,
-    'labelContent' | 'onLeadingClick'
+    'labelContent' | 'onLeadingClick' | 'onLabelClick'
   >) {
   const size = resolveChecklistSize(
     status,
@@ -541,11 +545,21 @@ function VariantChecklistItem({
           className="shrink-0 disabled:cursor-default"
         />
 
-        <span
-          className={`min-w-0 flex-1 truncate text-left ${labelStyle} ${labelColor}`}
-        >
-          {labelContent ?? label}
-        </span>
+        {onLabelClick ? (
+          <button
+            type="button"
+            onClick={onLabelClick}
+            className={`min-w-0 flex-1 truncate bg-transparent p-0 text-left ${labelStyle} ${labelColor}`}
+          >
+            {label}
+          </button>
+        ) : (
+          <span
+            className={`min-w-0 flex-1 truncate text-left ${labelStyle} ${labelColor}`}
+          >
+            {labelContent ?? label}
+          </span>
+        )}
       </div>
 
       {/* create: 날짜를 공용 Button으로 표시 */}
@@ -566,16 +580,33 @@ function VariantChecklistItem({
           </Button>
         )}
 
-      {/* event, daily: 날짜를 텍스트로 표시 */}
+      {/* event, daily: 날짜를 텍스트로 표시 — onClick이 있으면(예: 일정 수정 화면의
+          날짜 편집) Chip 버튼으로, 없으면(EventViewPage 등 읽기 전용) 기존처럼 정적 텍스트로.
+          현재는 ActionItemChecklistSection(일정 수정 모달)만 onClick을 넘겨 Chip이 나타나고,
+          DailyScheduleCard(EventViewPage 읽기 전용)는 onClick을 넘기지 않아 그대로 span 유지.
+          disabled는 isMutedLabel(= 항목 자체 disabled || 완료 상태)로 넘겨, 완료된 항목은
+          기존과 동일하게 흐리게 표시하되(B안) 날짜 재수정은 막는다 — 필요해지면 disabled 대신
+          별도 prop으로 "흐리지만 클릭 가능"하게 분리할 수 있다. */}
       {trailing.type === 'date' &&
         radioVariant !==
-          'create' && (
+          'create' &&
+        (trailing.onClick ? (
+          <Button
+            variant="Chip"
+            onClick={trailing.onClick}
+            disabled={isMutedLabel}
+            aria-label={`${label} 날짜 ${trailing.text}`}
+            className="ml-auto shrink-0"
+          >
+            {trailing.text}
+          </Button>
+        ) : (
           <span
             className={`ml-auto shrink-0 ${style.date} ${trailingTextColor}`}
           >
             {trailing.text}
           </span>
-        )}
+        ))}
 
       {/* 이전 delete 타입 사용도 계속 지원 */}
       {trailing.type ===
@@ -612,6 +643,7 @@ export default function ChecklistItem({
   trailing = { type: 'none' },
   disabled = false,
   onLeadingClick,
+  onLabelClick,
   radioVariant,
 }: ChecklistItemProps) {
   if (!radioVariant) {
@@ -642,6 +674,7 @@ export default function ChecklistItem({
       onLeadingClick={
         onLeadingClick
       }
+      onLabelClick={onLabelClick}
     />
   );
 }

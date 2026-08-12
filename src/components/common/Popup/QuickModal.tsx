@@ -37,7 +37,7 @@ export default function QuickModal({
 
   return (
     <>
-      {/* 위치 고정 */}
+      {/* 공용 Overlay(z-50) 위에서 바깥 클릭을 정상적으로 가로챈다. */}
       <div className="fixed inset-0 z-60" onClick={onClose} />
       {/* 코드래빗 적용_role/aria-modal/aria-labelledby로 다이얼로그임을 스크린 리더에 안내 */}
       {/*
