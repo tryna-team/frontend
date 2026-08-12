@@ -56,6 +56,7 @@ function addDays(dateStr: string, delta: number): string {
 interface ScheduleItem {
   id: string;
   eventId: string;
+  occurrenceDate?: string;
   categoryColor: CategoryColor;
   title: string;
   location: string;
@@ -244,10 +245,18 @@ function DailyPage() {
   // 실행 날짜에는 시간형 항목을 독립 카드로 표시하고 원래 일정과 연결한다.
   const linkedTimedSchedules: ScheduleItem[] = timedActionItems.map((item) => {
     const parentEvent = timedParentEvents.get(String(item.parentEventId));
+    const parentOccurrenceDate =
+      typeof item.offsetDays === 'number'
+        ? addDays(item.displayDate, -item.offsetDays)
+        : undefined;
+    const linkedDate =
+      parentOccurrenceDate ??
+      (parentEvent && !parentEvent.isRecurring ? parentEvent.startDate : selectedDate);
 
     return {
       id: `action-item-${item.actionItemId}`,
       eventId: String(item.parentEventId),
+      occurrenceDate: parentOccurrenceDate,
       // 항목 자체에는 라벨이 없으므로 소속된 일정의 라벨 색을 따른다
       categoryColor: getLabelColor(parentEvent?.labelId),
       title: item.title,
@@ -257,8 +266,7 @@ function DailyPage() {
       date: item.displayDate,
       checklist: undefined,
       linkedSchedule: {
-        date:
-          parentEvent?.startDate === selectedDate ? '오늘' : formatMonthDay(parentEvent?.startDate),
+        date: linkedDate === selectedDate ? '오늘' : formatMonthDay(linkedDate),
         time: formatTime(parentEvent?.startTime),
         title: parentEvent?.eventTitle ?? item.parentEventTitle,
       },
@@ -448,11 +456,17 @@ function DailyPage() {
                       startTime={schedule.startTime}
                       endTime={schedule.endTime}
                       checklist={schedule.checklist}
-                      onScheduleClick={() => handleScheduleClick(schedule.eventId, panel.date)}
+                      onScheduleClick={() =>
+                        handleScheduleClick(schedule.eventId, schedule.occurrenceDate ?? panel.date)
+                      }
                       linkedSchedule={schedule.linkedSchedule}
                       onLinkedScheduleClick={
                         schedule.linkedSchedule
-                          ? () => handleScheduleClick(schedule.eventId, panel.date)
+                          ? () =>
+                              handleScheduleClick(
+                                schedule.eventId,
+                                schedule.occurrenceDate ?? panel.date,
+                              )
                           : undefined
                       }
                     />
