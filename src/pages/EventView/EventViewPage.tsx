@@ -198,8 +198,15 @@ function EventViewPage() {
           ? (viewDate ?? eventDetail.startDate ?? null)
           : null,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+    onSuccess: async () => {
+      // events.all만 무효화하면 calendars.all(홈/데일리가 읽는 캐시)은 그대로 남아,
+      // 삭제 직후 홈으로 리디렉션돼도 삭제되기 전 캘린더 데이터가 계속 보인다 —
+      // EventEditBottomSheet의 캐시 무효화 gap과 동일한 원인. 재조회가 끝난 뒤에
+      // navigate해야 홈에 도착했을 때 이미 최신 상태다.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.events.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.calendars.all }),
+      ]);
       navigate(PATH.HOME, { replace: true });
     },
     onError: () => {
@@ -221,13 +228,22 @@ function EventViewPage() {
   const pendingActionItemIdsRef = useRef(new Set<number>());
   const [pendingActionItemIds, setPendingActionItemIds] = useState<Set<number>>(() => new Set());
 
+  // 외부 캘린더(구글/카카오/애플) 연동 일정은 백엔드가 수정/삭제 요청 자체를 거부한다
+  // (EventUpdateService/EventDeletionService의 validateInternalOwnerEvent, sourceType ===
+  // EXTERNAL_CALENDAR면 400) — 프론트에서도 수정/삭제 버튼을 아예 노출하지 않는다.
+  // eventDetail 로딩 전(undefined)엔 "수정 가능"으로 잘못 새지 않도록 false를 기본값으로
+  // 둔다 — useFloatingButtons는 아래 로딩 가드(return null)보다 먼저 실행되기 때문에,
+  // 로딩 중 기본값이 true였다면 외부 캘린더 일정에서도 삭제 버튼이 잠깐 보일 수 있었다.
+  const canModifyEvent = !!eventDetail && eventDetail.sourceType !== 'EXTERNAL_CALENDAR';
+
   const floatingButtonsContent = useMemo(
-    () => (
-      <Button variant="LargeWarningFit" onClick={() => setIsDeleteModalOpen(true)}>
-        이벤트 삭제
-      </Button>
-    ),
-    [setIsDeleteModalOpen],
+    () =>
+      !canModifyEvent ? null : (
+        <Button variant="LargeWarningFit" onClick={() => setIsDeleteModalOpen(true)}>
+          이벤트 삭제
+        </Button>
+      ),
+    [canModifyEvent, setIsDeleteModalOpen],
   );
   useFloatingButtons(floatingButtonsContent);
 
@@ -446,7 +462,11 @@ function EventViewPage() {
           text: formatDateLabel(parentDate ?? eventDetail.startDate),
           onClick: handleBack,
         }}
-        trailing={{ type: 'text', text: '수정', onClick: () => setIsEditOpen(true) }}
+        trailing={
+          !canModifyEvent
+            ? { type: 'none' }
+            : { type: 'text', text: '수정', onClick: () => setIsEditOpen(true) }
+        }
       />
 
       <div className="event-view-page-content">
@@ -474,8 +494,6 @@ function EventViewPage() {
               준비 항목이 없어요.
             </p>
           ) : (
-            // "직접 추가" 버튼(onAddClick)은 의도적으로 연결하지 않음 — 관련 기능인
-            // ActionItemEditBottomSheet를 제거하면서 함께 비활성화했다.
             <DailyScheduleCard
               items={todoItems}
               onToggleItem={handleToggleItem}
