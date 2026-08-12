@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { format } from 'date-fns';
@@ -75,7 +75,7 @@ export default function CreateModal({
   const [endTime, setEndTime] = useState('');
   const [isScheduleAllDay, setIsScheduleAllDay] = useState(false);
   const [scheduleOpenedAtTime, setScheduleOpenedAtTime] = useState('');
-  const [repeat, setRepeat] = useState<RepeatOption>('매주');
+  const [repeat, setRepeat] = useState<RepeatOption>('반복 없음');
   const [hasScheduleChanged, setHasScheduleChanged] = useState(false);
   const [hasRepeatChanged, setHasRepeatChanged] = useState(false);
   const [hasEndDateChanged, setHasEndDateChanged] = useState(false);
@@ -557,10 +557,7 @@ export default function CreateModal({
           title={recommendationEditDraft.title}
           parentEventStartDate={startDate}
           parentEventEndDate={endDate}
-          startDate={recommendationEditDraft.startDate}
-          endDate={recommendationEditDraft.endDate}
-          startTime={recommendationEditDraft.startTime}
-          endTime={recommendationEditDraft.endTime}
+          date={recommendationEditDraft.date}
           onChange={handleChangeRecommendationEdit}
           onClose={handleSaveRecommendationEdit}
         />
