@@ -254,7 +254,7 @@ export default function RepeatScheduleBottomSheet({
               setActiveTimeField(null);
             }}
           />
-          <div className="absolute right-padding-xsmall bottom-full z-50">
+          <div className="absolute top-[calc(100%+8px)] right-padding-xsmall z-50">
             <TimePickerDial value={startTimeValue} onChange={handleStartTimeChange} />
           </div>
         </>
@@ -287,7 +287,7 @@ export default function RepeatScheduleBottomSheet({
               setActiveTimeField(null);
             }}
           />
-          <div className="absolute right-padding-xsmall bottom-full z-50">
+          <div className="absolute top-[calc(100%+8px)] right-padding-xsmall z-50">
             <TimePickerDial value={endTimeValue} onChange={handleEndTimeChange} />
           </div>
         </>

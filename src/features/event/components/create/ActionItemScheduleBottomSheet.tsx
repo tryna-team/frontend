@@ -1,7 +1,5 @@
 import { useId } from 'react';
 
-import { isAfter } from 'date-fns';
-
 import Button from '@/components/common/Buttons/Button';
 import ContentBox from '@/components/common/Popup/BottomSheet/Layout/ContentBox';
 import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
@@ -13,10 +11,7 @@ const CONTENT_BOX_LAYOUT_CLASS =
   'w-full [&>div]:overflow-hidden [&>div>div:last-child]:items-center [&>div>div:last-child]:px-0';
 
 export type ActionItemScheduleValue = {
-  startDate: Date;
-  endDate: Date;
-  startTime: string;
-  endTime: string;
+  date: Date;
 };
 
 export type ActionItemScheduleBottomSheetProps = ActionItemScheduleValue & {
@@ -31,21 +26,15 @@ export default function ActionItemScheduleBottomSheet({
   title,
   parentEventStartDate,
   parentEventEndDate,
-  startDate,
-  endDate,
-  startTime,
-  endTime,
+  date,
   onChange,
   onClose,
 }: ActionItemScheduleBottomSheetProps) {
   const titleId = useId();
 
-  const handleDateChange = (date: Date) => {
+  const handleDateChange = (nextDate: Date) => {
     onChange({
-      startDate: date,
-      endDate: isAfter(date, endDate) ? date : endDate,
-      startTime,
-      endTime,
+      date: nextDate,
     });
   };
 
@@ -62,7 +51,10 @@ export default function ActionItemScheduleBottomSheet({
       />
 
       <Frame className="relative z-10 gap-4 !bg-white px-4 pt-5 pb-1" aria-labelledby={titleId}>
-        <p id={titleId} className="w-full px-padding-medium text-text-additional default-body-small">
+        <p
+          id={titleId}
+          className="w-full px-padding-medium text-text-additional default-body-small"
+        >
           {title}
         </p>
 
@@ -70,8 +62,8 @@ export default function ActionItemScheduleBottomSheet({
           <ContentBox title="">
             <div className="pb-3">
               <DatePickerCalendar
-                value={startDate}
-                defaultMonth={startDate}
+                value={date}
+                defaultMonth={date}
                 referenceDate={parentEventStartDate}
                 referenceEndDate={parentEventEndDate}
                 showCurrentDay={false}
