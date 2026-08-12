@@ -7,15 +7,16 @@
  * 복원하면 된다(이전 구현은 git 이력의 ActionItemEditBottomSheet.tsx 참고).
  *
  * 항목 텍스트를 눌러 새로 추가하거나 제목을 고치는 인라인 입력 — 이 컴포넌트 자체는 저장
- * API를 호출하지 않고, 로컬 상태(labelOverrides/localNewItems)만 들고 있다가
- * onPendingChanges로 부모(EventEditBottomSheet)에 보고한다. 실제 저장은 "완료" 버튼을
- * 눌렀을 때 부모가 C107 PATCH의 actionItems 필드에 실어서 한 번에 보낸다(08/10 백엔드
- * EventUpdateRequest 확장 기준 — 라이브 스웨거엔 아직 미반영, 서버 응답으로 검증 필요).
- * 날짜 편집(ChipButton)은 대응하는 저장 API가 없어 여전히 화면 표시만 갱신한다.
+ * API를 호출하지 않고, 로컬 상태(labelOverrides/localNewItems/dateOverrides)만 들고
+ * 있다가 onPendingChanges로 부모(EventEditBottomSheet)에 보고한다. 실제 저장은 "완료"
+ * 버튼을 눌렀을 때 부모가 C107 PATCH의 actionItems 필드에 실어서 한 번에 보낸다.
+ * 날짜 편집(ChipButton)도 08/13 백엔드 소스(EventUpdateService.syncActionItems →
+ * ActionItems.updateDetails)로 displayDate/displayTime/itemType이 실제로 저장됨을
+ * 확인해서 dateOverrides로 함께 보고한다.
  */
 import { useEffect, useRef, useState } from 'react';
 
-import { isSameDay } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 
 import Checklist from '@/components/common/Checklist/Checklist';
 import type { ChecklistItemData } from '@/components/common/Checklist/Checklist';
@@ -33,11 +34,21 @@ const formatEventDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
 // 인라인 입력 중인 대상 — 새 항목 추가 or 기존 항목 제목 수정
 type InlineEditMode = { type: 'add' } | { type: 'edit'; itemId: number };
 
+// 날짜 편집 결과 — handlePickItemDate가 판정한 itemType과 그에 맞는 displayDate.
+// UNTIMED_PREP은 displayDate를 항상 null로 보낸다(백엔드 hasInvalidDisplayFields 검증과
+// DB 체크 제약이 TIMED_ACTION만 displayDate NOT NULL을 요구 — 08/13 소스 확인).
+export type ActionItemDateOverride = {
+  itemType: 'UNTIMED_PREP' | 'TIMED_ACTION';
+  displayDate: string | null;
+};
+
 // 저장 API를 직접 호출하지 않고 부모에 보고하는 "아직 저장 안 된 변경사항".
 // 부모가 "완료" 시 C107 PATCH의 actionItems에 실어 보낸다.
 export type ActionItemPendingChanges = {
   // 기존 항목 id -> 새 제목
   labelOverrides: Record<number, string>;
+  // 기존 항목 id -> 새 날짜(및 그에 따른 itemType)
+  dateOverrides: Record<number, ActionItemDateOverride>;
   // 로컬에서만 존재하는 새 항목(아직 actionItemId 없음)
   newItems: { label: string }[];
 };
@@ -64,6 +75,7 @@ export function ActionItemChecklistSection({
   // 안 되는 문제가 있었다. 서버에 저장할 API가 아직 없는 "날짜 편집"/"제목 편집"만
   // 이 컴포넌트 안에서 덧입혀서 보여준다.
   const [dateTextOverrides, setDateTextOverrides] = useState<Record<number, string>>({});
+  const [dateOverrides, setDateOverrides] = useState<Record<number, ActionItemDateOverride>>({});
   const [labelOverrides, setLabelOverrides] = useState<Record<number, string>>({});
   // 로컬에서만 존재하는 새 항목(⚠️ API 미연동 — 새로고침하면 사라짐)
   const [localNewItems, setLocalNewItems] = useState<ActionItemEditItem[]>([]);
@@ -87,14 +99,15 @@ export function ActionItemChecklistSection({
     }
   }, [inlineMode]);
 
-  // labelOverrides/localNewItems가 바뀔 때마다 부모에 현재 상태를 보고한다 — 부모는
-  // "완료" 시점에 이 값을 그대로 PATCH 바디에 실어 보낸다.
+  // labelOverrides/dateOverrides/localNewItems가 바뀔 때마다 부모에 현재 상태를
+  // 보고한다 — 부모는 "완료" 시점에 이 값을 그대로 PATCH 바디에 실어 보낸다.
   useEffect(() => {
     onPendingChanges?.({
       labelOverrides,
+      dateOverrides,
       newItems: localNewItems.map((item) => ({ label: item.label })),
     });
-  }, [labelOverrides, localNewItems, onPendingChanges]);
+  }, [labelOverrides, dateOverrides, localNewItems, onPendingChanges]);
 
   const localItems = items.map((item) => ({
     ...item,
@@ -117,15 +130,19 @@ export function ActionItemChecklistSection({
   const handlePickItemDate = (itemId: number, pickedDate: Date) => {
     // ⚠️ 임시 UI 구현, 추후 UI 확정되면 수정 필요: 날짜 선택 팝업에서 부모 일정 날짜와
     // 같은 날짜를 고르면 UNTIMED_PREP("당일")으로, 다른 날짜를 고르면 TIMED_ACTION으로
-    // 판정한다. "당일로 설정" 같은 별도 버튼 없이 날짜 선택만으로 유형을 정하는 임시
-    // 처리이며, 이미 저장된 항목의 날짜를 다시 수정하는 API가 아직 없어 화면 표시만
-    // 갱신하고 서버에는 반영하지 않는다.
+    // 판정한다. "당일로 설정" 같은 별도 버튼 없이 날짜 선택만으로 유형을 정하는 임시 처리.
     const isUntimed = isSameDay(pickedDate, formatEventDate(eventDate));
     const dateText = isUntimed
       ? UNTIMED_DATE_TEXT
       : `${pickedDate.getMonth() + 1}월 ${pickedDate.getDate()}일`;
 
     setDateTextOverrides((prev) => ({ ...prev, [itemId]: dateText }));
+    setDateOverrides((prev) => ({
+      ...prev,
+      [itemId]: isUntimed
+        ? { itemType: 'UNTIMED_PREP', displayDate: null }
+        : { itemType: 'TIMED_ACTION', displayDate: format(pickedDate, 'yyyy-MM-dd') },
+    }));
     setEditingItemId(null);
   };
 
