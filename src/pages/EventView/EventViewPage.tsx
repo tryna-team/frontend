@@ -117,7 +117,7 @@ function EventViewPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const [searchParams] = useSearchParams();
   const occurrenceDate = searchParams.get('occurrenceDate');
-  const viewDate = occurrenceDate ?? null;
+  const viewDate = isValidDateParam(occurrenceDate) ? occurrenceDate : null;
   const navigationState = location.state as EventViewNavigationState | null;
   const labels = useCalendarStore((s) => s.labels);
   const setLabels = useCalendarStore((s) => s.setLabels);
@@ -234,7 +234,7 @@ function EventViewPage() {
   const fromDate = isValidDateParam(navigationState?.fromDate)
     ? navigationState.fromDate
     : undefined;
-  const validOccurrenceDate = isValidDateParam(occurrenceDate) ? occurrenceDate : undefined;
+  const validOccurrenceDate = viewDate ?? undefined;
   const parentDate = fromDate ?? validOccurrenceDate ?? eventDetail?.startDate;
 
   // 캘린더 계층의 상위 화면인 데일리 뷰로 이동
@@ -420,7 +420,9 @@ function EventViewPage() {
     title: eventDetail.eventTitle,
     description: eventDetail.description,
     isAllDay: eventDetail.isAllDay,
-    startDate: new Date(`${(viewDate ?? eventDetail.startDate)}T00:00:00`),
+    startDate: new Date(
+      `${eventDetail.isRecurring && viewDate ? viewDate : eventDetail.startDate}T00:00:00`,
+    ),
     // 종료 날짜/시간이 없는 일정(null)은 시작값으로 대체하지 않고 그대로 null 유지 —
     // 대체하면 안 건드리고 "완료"만 눌러도 PATCH에 가짜 종료값이 실제 값처럼 나간다.
     endDate: eventDetail.endDate ? new Date(`${eventDetail.endDate}T00:00:00`) : null,
