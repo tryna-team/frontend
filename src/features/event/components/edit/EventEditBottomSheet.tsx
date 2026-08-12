@@ -148,10 +148,11 @@ export default function EventEditBottomSheet({
   const [isRepeatModalOpen, setIsRepeatModalOpen] = useState(false);
   const [isScopeModalOpen, setIsScopeModalOpen] = useState(false);
   const [isUpdateErrorOpen, setIsUpdateErrorOpen] = useState(false);
-  // ActionItemChecklistSection이 로컬에서만 들고 있는 변경사항(제목 수정/신규 추가) —
-  // "완료" 시 이 값을 그대로 actionItems.items에 실어 보낸다.
+  // ActionItemChecklistSection이 로컬에서만 들고 있는 변경사항(제목 수정/날짜 수정/신규
+  // 추가) — "완료" 시 이 값을 그대로 actionItems.items에 실어 보낸다.
   const [pendingChecklistChanges, setPendingChecklistChanges] = useState<ActionItemPendingChanges>({
     labelOverrides: {},
+    dateOverrides: {},
     newItems: [],
   });
 
@@ -207,21 +208,29 @@ export default function EventEditBottomSheet({
       // 기존 항목은 원본 필드를 그대로 echo하되, 인라인 수정으로 제목이 바뀐 항목만
       // pendingChecklistChanges.labelOverrides 값으로 덮어쓴다. E105/E106처럼 별도
       // 호출이 아니라 "최종 목록"을 통째로 보내는 방식이라 안 바뀐 항목도 함께 담는다.
-      const existingItems: EventUpdateActionItemRequestItem[] = actionItemsFull.map((item) => ({
-        actionItemId: item.actionItemId,
-        title: pendingChecklistChanges.labelOverrides[item.actionItemId] ?? item.title,
-        itemType: item.itemType,
-        // F103 응답의 occurrenceDate를 그대로 echo — 이전엔 프론트 타입에 이 필드가
-        // 없어서 항상 null로 나갔고, 그게 매번 400의 원인이었다(백엔드
-        // validateActionItemSyncRequest가 필수로 요구).
-        occurrenceDate: item.occurrenceDate ?? itemOccurrenceDate,
-        displayDate: item.displayDate,
-        displayTime: item.displayTime,
-        offsetDays: item.offsetDays,
-        actionItemStatus: item.actionItemStatus,
-        createdBy: item.createdBy,
-        sourceTemplateId: item.sourceTemplateId,
-      }));
+      const existingItems: EventUpdateActionItemRequestItem[] = actionItemsFull.map((item) => {
+        const dateOverride = pendingChecklistChanges.dateOverrides[item.actionItemId];
+
+        return {
+          actionItemId: item.actionItemId,
+          title: pendingChecklistChanges.labelOverrides[item.actionItemId] ?? item.title,
+          // 날짜(ChipButton)로 편집한 항목은 itemType/displayDate가 바뀐다 — 백엔드
+          // hasInvalidDisplayFields 검증(UNTIMED_PREP은 displayDate/displayTime 둘 다
+          // null, TIMED_ACTION은 displayDate 필수)을 만족하도록 displayTime/offsetDays도
+          // 함께 null로 맞춘다(08/13 확인: 날짜만 바뀌고 시간 입력 UI는 없음).
+          itemType: dateOverride?.itemType ?? item.itemType,
+          // F103 응답의 occurrenceDate를 그대로 echo — 이전엔 프론트 타입에 이 필드가
+          // 없어서 항상 null로 나갔고, 그게 매번 400의 원인이었다(백엔드
+          // validateActionItemSyncRequest가 필수로 요구).
+          occurrenceDate: item.occurrenceDate ?? itemOccurrenceDate,
+          displayDate: dateOverride ? dateOverride.displayDate : item.displayDate,
+          displayTime: dateOverride ? null : item.displayTime,
+          offsetDays: dateOverride ? null : item.offsetDays,
+          actionItemStatus: item.actionItemStatus,
+          createdBy: item.createdBy,
+          sourceTemplateId: item.sourceTemplateId,
+        };
+      });
 
       const newItems: EventUpdateActionItemRequestItem[] = pendingChecklistChanges.newItems.map(
         (newItem) => ({
