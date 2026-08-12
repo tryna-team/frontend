@@ -229,18 +229,20 @@ function EventViewPage() {
 
   // 외부 캘린더(구글/카카오/애플) 연동 일정은 백엔드가 수정/삭제 요청 자체를 거부한다
   // (EventUpdateService/EventDeletionService의 validateInternalOwnerEvent, sourceType ===
-  // EXTERNAL_CALENDAR면 400) — 프론트에서도 수정/삭제 버튼을 아예 노출하지 않는다. 아직
-  // eventDetail이 로딩 중일 수 있어 optional chaining으로 안전하게 읽는다.
-  const isExternalCalendarEvent = eventDetail?.sourceType === 'EXTERNAL_CALENDAR';
+  // EXTERNAL_CALENDAR면 400) — 프론트에서도 수정/삭제 버튼을 아예 노출하지 않는다.
+  // eventDetail 로딩 전(undefined)엔 "수정 가능"으로 잘못 새지 않도록 false를 기본값으로
+  // 둔다 — useFloatingButtons는 아래 로딩 가드(return null)보다 먼저 실행되기 때문에,
+  // 로딩 중 기본값이 true였다면 외부 캘린더 일정에서도 삭제 버튼이 잠깐 보일 수 있었다.
+  const canModifyEvent = !!eventDetail && eventDetail.sourceType !== 'EXTERNAL_CALENDAR';
 
   const floatingButtonsContent = useMemo(
     () =>
-      isExternalCalendarEvent ? null : (
+      !canModifyEvent ? null : (
         <Button variant="LargeWarningFit" onClick={() => setIsDeleteModalOpen(true)}>
           이벤트 삭제
         </Button>
       ),
-    [isExternalCalendarEvent, setIsDeleteModalOpen],
+    [canModifyEvent, setIsDeleteModalOpen],
   );
   useFloatingButtons(floatingButtonsContent);
 
@@ -439,7 +441,7 @@ function EventViewPage() {
           onClick: handleBack,
         }}
         trailing={
-          isExternalCalendarEvent
+          !canModifyEvent
             ? { type: 'none' }
             : { type: 'text', text: '수정', onClick: () => setIsEditOpen(true) }
         }
