@@ -45,7 +45,10 @@ export interface EventDetailResponseData {
   isAllDay: boolean;
   isRecurring: boolean;
   recurrenceType: RecurrenceType;
-  recurrenceInterval: number;
+  // 타입 선언과 달리 반복이 아닌 일정은 실측상 null(recurrenceInterval)/빈 문자열
+  // (recurrenceEndDate)로 내려온다 — EventEditBottomSheet가 PATCH로 그대로 echo할 때
+  // 이 값을 검증 없이 보내면 400이 난다(경험적으로 확인, 08/12).
+  recurrenceInterval: number | null;
   recurrenceDayOfWeek: RecurrenceDayOfWeek;
   recurrenceDayOfMonth: number;
   recurrenceEndDate: string;
@@ -89,9 +92,10 @@ export interface EventUpdateActionItemRequestItem {
   actionItemId: number | null;
   title: string;
   itemType: ActionItemType;
-  // 반복 일정에서 이 항목이 속한 특정 회차. 대부분의 항목은 특정 회차에 묶이지 않아
-  // null로 보낸다(백엔드 문서에 이 필드의 정확한 용도 설명이 없어 보수적으로 처리).
-  occurrenceDate: string | null;
+  // 항목이 속한 일정 회차 날짜 — EventUpdateService.validateActionItemSyncRequest가
+  // null이면 무조건 400을 던지는 필수값이다(백엔드 소스로 확인, 08/13). F103
+  // 응답(EventActionItem.occurrenceDate)에서 받은 값을 그대로 echo해야 한다.
+  occurrenceDate: string;
   displayDate: string | null;
   displayTime: string | null;
   offsetDays: number | null;
@@ -127,6 +131,9 @@ export interface EventUpdateRequest {
   isRecurring?: boolean | null;
   recurrenceType?: RecurrenceType | null;
   recurrenceInterval?: number | null;
+  // recurrenceDayOfWeek/recurrenceDayOfMonth는 요청에 없다 — 백엔드가 startDate +
+  // recurrenceType으로 직접 계산해서 저장한다(EventUpdateService.buildRecurringRule,
+  // 08/13 소스로 확인). 한때 요청에 추가해봤지만 서버가 그냥 무시하는 필드라 뺐다.
   recurrenceEndDate?: string | null;
   // 반복 일정 중 지금 수정 중인 회차의 날짜. SINGLE/THIS_AND_FUTURE로 "어느 회차"를
   // 적용할지 서버가 판단하는 데 필요(라이브 스웨거 설명문 기준) — 삭제(C106)의
