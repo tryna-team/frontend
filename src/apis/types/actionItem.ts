@@ -41,6 +41,10 @@ export interface EventActionItem {
   actionItemId: number;
   title: string;
   itemType: ActionItemType;
+  // 항목이 속한 일정 회차 날짜 — 백엔드 EventUpdateService의 C107 검증이 이 값을
+  // 필수로 요구한다(null이면 무조건 400, 08/13 백엔드 소스로 확인). F103 응답엔 항상
+  // 내려오는데 이전엔 타입에 빠져 있어서 PATCH로 되돌려 보낼 때 null로 나가고 있었다.
+  occurrenceDate: string | null;
   displayDate: string | null;
   displayTime: string | null;
   offsetDays: number | null;

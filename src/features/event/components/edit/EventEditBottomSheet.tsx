@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { format } from 'date-fns';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router';
 
 import ActionRow from '@/components/common/ActionRow/ActionRow';
 import { COLOR_ICON } from '@/components/common/ActionRow/ActionRow.constant';
@@ -27,6 +28,7 @@ import { eventDetailService } from '@/apis/services/eventDetailService';
 import type { EventUpdateActionItemRequestItem, UpdateScope } from '@/apis/types/eventDetail';
 import type { EventActionItem } from '@/apis/types/actionItem';
 import { queryKeys } from '@/hooks/queries/queryKeys';
+import { generateEventPath } from '@/routes/paths';
 
 import {
   ActionItemChecklistSection,
@@ -50,7 +52,7 @@ export type EventEditFormValue = {
   repeat: RepeatOption;
   // 반복 "간격"/"종료일"은 이 화면에 편집 UI가 없어(반복 종류만 고를 수 있음) 원래
   // 값을 그대로 되돌려 보내는 용도로만 쓴다.
-  recurrenceInterval: number;
+  recurrenceInterval: number | null;
   recurrenceEndDate: string;
   location: string;
   labelId: number | null;
@@ -63,7 +65,8 @@ type EventEditBottomSheetProps = {
   initialValue: EventEditFormValue;
   actionItems: ActionItemEditItem[];
   // actionItems(표시용 간략 데이터)와 별개로, "완료" 저장 시 C107 PATCH의
-  // actionItems.items에 그대로 실어 보낼 원본 F103 데이터(제목 외 필드를 보존하기 위함).
+  // actionItems.items에 그대로 실어 보낼 원본 F103 데이터(occurrenceDate 등 제목 외
+  // 필드를 보존하기 위함 — occurrenceDate는 백엔드가 필수로 요구하는 값이라 반드시 필요).
   actionItemsFull: EventActionItem[];
   labels: LabelItemData[];
   onClose: () => void;
@@ -153,6 +156,7 @@ export default function EventEditBottomSheet({
   });
 
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // 하루 종일을 끌 때만 시간을 채운다 — 기존 시간이 있으면 그대로 두고, 없으면(원래
   // 하루 종일 일정 등) 지금 시간 기준 가장 가까운 정각을 기본값으로 채운다.
@@ -182,8 +186,9 @@ export default function EventEditBottomSheet({
   };
 
   // C107 일정 수정 — PATCH /api/v1/events/{eventId}
-  // ⚠️ isRecurring/recurrenceType/recurrenceInterval/recurrenceEndDate와 actionItems는
-  // 08/10 백엔드 EventUpdateRequest 확장분(라이브 스웨거엔 미반영) 기준으로 실어 보낸다.
+  // isRecurring/recurrenceType/recurrenceInterval/recurrenceEndDate와 actionItems는
+  // 08/10 백엔드 EventUpdateRequest 확장분 — 08/13 백엔드 소스(EventUpdateService)로
+  // 검증 완료.
   const updateMutation = useMutation({
     mutationFn: ({
       updateScope,
@@ -194,6 +199,11 @@ export default function EventEditBottomSheet({
     }) => {
       const nextRecurrenceType = REPEAT_OPTION_TO_RECURRENCE_TYPE[repeat];
 
+      // 항목이 속한 "회차" 날짜 — 삭제(C106)/최상위 occurrenceDate와 같은 개념으로,
+      // 편집 전 원래 날짜(initialValue.startDate)를 쓴다. 백엔드가 null이면 무조건
+      // 400을 던지는 필수값이라(08/13 소스 확인) 신규 항목에도 반드시 채워야 한다.
+      const itemOccurrenceDate = format(initialValue.startDate, 'yyyy-MM-dd');
+
       // 기존 항목은 원본 필드를 그대로 echo하되, 인라인 수정으로 제목이 바뀐 항목만
       // pendingChecklistChanges.labelOverrides 값으로 덮어쓴다. E105/E106처럼 별도
       // 호출이 아니라 "최종 목록"을 통째로 보내는 방식이라 안 바뀐 항목도 함께 담는다.
@@ -201,7 +211,10 @@ export default function EventEditBottomSheet({
         actionItemId: item.actionItemId,
         title: pendingChecklistChanges.labelOverrides[item.actionItemId] ?? item.title,
         itemType: item.itemType,
-        occurrenceDate: null,
+        // F103 응답의 occurrenceDate를 그대로 echo — 이전엔 프론트 타입에 이 필드가
+        // 없어서 항상 null로 나갔고, 그게 매번 400의 원인이었다(백엔드
+        // validateActionItemSyncRequest가 필수로 요구).
+        occurrenceDate: item.occurrenceDate ?? itemOccurrenceDate,
         displayDate: item.displayDate,
         displayTime: item.displayTime,
         offsetDays: item.offsetDays,
@@ -215,7 +228,7 @@ export default function EventEditBottomSheet({
           actionItemId: null,
           title: newItem.label,
           itemType: 'UNTIMED_PREP',
-          occurrenceDate: null,
+          occurrenceDate: itemOccurrenceDate,
           displayDate: null,
           displayTime: null,
           offsetDays: null,
@@ -225,24 +238,49 @@ export default function EventEditBottomSheet({
         }),
       );
 
+      // 화면에는 endDate가 null이어도 시작 날짜로 대체해서 보여준다(위 렌더링의
+      // formatDate(endDate ?? startDate)) — 그런데 종료 "시간"만 편집(RepeatScheduleBottomSheet)하고
+      // 종료 "날짜"는 안 건드리면 endDate state는 null로 남아서, 화면엔 멀쩡해 보여도
+      // PATCH엔 endDate: null / endTime: "값 있음"이라는 앞뒤 안 맞는 조합이 나가
+      // 백엔드가 400을 낸다. 화면 표시와 동일하게 종료 시간이 있는데 날짜가 비어있으면
+      // 시작 날짜로 채워서 보낸다("종료 없음" 일정처럼 둘 다 비어있는 경우는 그대로 null,null 유지).
+      const resolvedEndDate = !isAllDay && endTime && !endDate ? startDate : endDate;
+
       return eventDetailService.updateEvent(eventId, {
         eventTitle: title.trim(),
         // 설명/장소는 이 바텀시트에 입력 UI가 없어(피그마 기준) 원래 값을 그대로 보낸다.
         description: initialValue.description,
         startDate: format(startDate, 'yyyy-MM-dd'),
         startTime: isAllDay ? null : startTime,
-        endDate: endDate ? format(endDate, 'yyyy-MM-dd') : null,
+        endDate: resolvedEndDate ? format(resolvedEndDate, 'yyyy-MM-dd') : null,
         endTime: isAllDay ? null : endTime,
         isAllDay,
         location: initialValue.location,
         labelId: labelIdToSave,
         isRecurring: nextRecurrenceType !== 'NONE',
         recurrenceType: nextRecurrenceType,
-        // 간격/종료일은 이 화면에서 못 바꾸니 원래 값을 그대로 되돌려 보낸다.
-        recurrenceInterval: initialValue.recurrenceInterval,
-        recurrenceEndDate: initialValue.recurrenceEndDate,
+        // 간격은 이 화면에서 못 바꾸니 원래 값을 그대로 되돌려 보내되, recurrenceEndDate와
+        // 같은 이유로 GET이 null을 내려줄 수 있다(실측 확인) — 반복 중인데 간격이 null이면
+        // 역시 백엔드가 400을 낸다. 반복이 아니면 null, 반복인데 원래 값이 없으면 생성
+        // 플로우(buildRecurrencePayload)와 동일하게 기본값 1로 채운다.
+        recurrenceInterval:
+          nextRecurrenceType === 'NONE' ? null : initialValue.recurrenceInterval || 1,
+        // recurrenceDayOfWeek/recurrenceDayOfMonth는 요청에 없다 — 백엔드가 startDate로
+        // 직접 계산해서 저장한다(EventUpdateService.buildRecurringRule, 08/13 소스 확인).
+        // GET(EventDetailResponseData.recurrenceEndDate)은 반복이 아닌 일정이면 빈
+        // 문자열("")로 내려온다 — 이 값을 그대로 PATCH에 실으면 백엔드가 LocalDate로
+        // 파싱하다 400을 낸다(생성 플로우의 buildRecurrencePayload도 반복이 아니거나
+        // 종료일 미지정 상태면 항상 null을 보냄 — 동일하게 맞춘다). 반복 종료일 편집
+        // UI가 아직 없어 "반복 중이고 원래 값이 실제 날짜 문자열일 때"만 그대로 echo하고,
+        // 그 외(반복 없음/빈 문자열)는 null로 보낸다.
+        recurrenceEndDate:
+          nextRecurrenceType === 'NONE' ? null : initialValue.recurrenceEndDate || null,
         // 반복 일정 중 "지금 보고 있던 이 회차"를 서버에 알려주는 값 — 삭제(C106)와
-        // 동일한 패턴. 사용자가 시작일을 편집했더라도 어느 회차를 수정하는지 식별하는
+        // 동일한 패턴. 백엔드는 "원래(수정 전) 이 이벤트가 반복이었는지"
+        // (event.getIsRecurring())로만 이 값을 요구할지 말지를 정하고, 요청이 반복으로
+        // 바꾸려는지는 안 본다(EventUpdateService.java:73, 08/13 소스 확인) — 그래서
+        // nextRecurrenceType이 아니라 원래 상태를 나타내는 isRecurring prop 기준으로
+        // 판단해야 한다. 사용자가 시작일을 편집했더라도 어느 회차를 수정하는지 식별하는
         // 용도라 편집 전 원래 날짜(initialValue.startDate)를 보낸다.
         occurrenceDate: isRecurring ? format(initialValue.startDate, 'yyyy-MM-dd') : null,
         updateScope,
@@ -252,7 +290,7 @@ export default function EventEditBottomSheet({
         },
       });
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       // events.all(이벤트 상세)과 calendars.all(홈/데일리 캘린더 목록)은 서로 완전히
       // 분리된 쿼리키 네임스페이스라(queryKeys.ts), events.all만 무효화해선 홈/데일리
       // 캐시가 안 갱신된다 — 하루종일 해제처럼 목록에 바로 보이는 값이 저장 직후
@@ -270,6 +308,25 @@ export default function EventEditBottomSheet({
       // 못 맞춰서 사용자 확인이 필요한 경우 true)를 아직 처리하지 않는다. UX가 정해지면
       // 여기서 안내를 띄워야 한다 — memory: project_eventedit_requires_action_item_review.md
       onClose();
+
+      // 반복 일정을 "이 이벤트만"/"이후 전체"로 저장하면 원본 eventId는 그대로 두고
+      // 완전히 새 이벤트로 분리된다(EventUpdateService.createModifiedEvent, 08/13
+      // 소스 확인 — 원본 event row는 수정되지 않고 별도 row+eventId가 새로 생김).
+      // 응답의 eventId가 요청과 다르면 새 이벤트로 이동해야, 옛 eventId에 남아
+      // "수정 전 데이터 + 빈 체크리스트"를 보여주는 버그를 피할 수 있다(체크리스트
+      // 항목도 이 시점에 새 이벤트로 옮겨지기 때문).
+      if (String(data.eventId) !== String(eventId)) {
+        // F103(GET .../action-items)은 occurrenceDate 쿼리를 필수로 요구한다
+        // (ActionItemController.java의 @RequestParam, 기본값/optional 아님 — 08/13
+        // 소스 확인) — 안 붙이면 새 페이지가 곧바로 400으로 체크리스트를 못 불러온다.
+        // 새로 분리된 이벤트의 실제 startDate는 이 PATCH에 실은 startDate와 같다
+        // (EventUpdateService.createModifiedEvent의 resolvedStartDate 로직) — 그 값을
+        // 그대로 occurrenceDate로 넘긴다.
+        navigate(
+          generateEventPath.view(String(data.eventId), format(startDate, 'yyyy-MM-dd')),
+          { replace: true },
+        );
+      }
     },
     onError: () => {
       setIsUpdateErrorOpen(true);
