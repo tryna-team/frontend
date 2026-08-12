@@ -9,7 +9,9 @@ import { RECURRENCE_TYPE } from '../constants';
 import { formatActionItemDisplayTime, normalizeTime } from './dateTime';
 
 export const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: RepeatOption) => {
-  if (!hasRepeatChanged) {
+  const recurrenceType = hasRepeatChanged ? (RECURRENCE_TYPE[repeat] ?? 'NONE') : 'NONE';
+
+  if (recurrenceType === 'NONE') {
     return {
       isRecurring: false,
       recurrenceType: 'NONE' as EventRecurrenceType,
@@ -20,7 +22,7 @@ export const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: Repeat
 
   return {
     isRecurring: true,
-    recurrenceType: RECURRENCE_TYPE[repeat],
+    recurrenceType,
     recurrenceInterval: 1,
     // 반복 종료일 설정 UI가 추가되기 전까지 무기한 반복으로 저장한다.
     recurrenceEndDate: null,
@@ -126,6 +128,7 @@ export const buildCreateEventRequest = ({
   const hasParsedEndTime = Boolean(parsedCandidate?.endTimeCandidate);
   const startTimeValue = hasStartTimeChanged || hasParsedStartTime ? normalizeTime(startTime) : null;
   const endTimeValue = hasEndTimeChanged || hasParsedEndTime ? normalizeTime(endTime) : null;
+  const recurrencePayload = buildRecurrencePayload(hasRepeatChanged, repeat);
   const shouldSaveEndDate =
     Boolean(endTimeValue) ||
     hasEndDateChanged ||
@@ -144,8 +147,12 @@ export const buildCreateEventRequest = ({
     isAllDay: !startTimeValue && !endTimeValue,
     location: parsedCandidate?.placeCandidate ?? null,
     eventType: parsedCandidate?.eventTypeCandidate ?? null,
-    ...buildRecurrencePayload(hasRepeatChanged, repeat),
-    actionItems: buildActionItemsPayload(recommendationCandidates, startDate, hasRepeatChanged),
+    ...recurrencePayload,
+    actionItems: buildActionItemsPayload(
+      recommendationCandidates,
+      startDate,
+      recurrencePayload.isRecurring,
+    ),
   };
 };
 
