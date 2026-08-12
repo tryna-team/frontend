@@ -452,6 +452,7 @@ function EventViewPage() {
 
         <DailyScheduleDetail
           categoryColor={categoryColor}
+          isAllDay={eventDetail.isAllDay}
           startTime={eventDetail.startTime}
           endTime={eventDetail.endTime}
           rotationText={formatRecurrenceText(eventDetail)}
