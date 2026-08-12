@@ -17,10 +17,7 @@ import {
 import { useEventCreationStore } from '@/stores';
 
 import { COLOR_ICON } from './constants';
-import {
-  formatTime,
-  getCurrentTime,
-} from './utils/dateTime';
+import { formatTime, getCurrentTime } from './utils/dateTime';
 import CreateModalSkeleton from './CreateModalSkeleton';
 import type { CreateModalProps } from './types';
 import { useCreateEventSubmit } from './hooks/useCreateEventSubmit';
@@ -40,7 +37,6 @@ const createFallbackTempEventId = () =>
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random()}`
   }`;
-
 
 export default function CreateModal({
   mode = 'default',
@@ -77,6 +73,7 @@ export default function CreateModal({
   );
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [isScheduleAllDay, setIsScheduleAllDay] = useState(false);
   const [scheduleOpenedAtTime, setScheduleOpenedAtTime] = useState('');
   const [repeat, setRepeat] = useState<RepeatOption>('매주');
   const [hasScheduleChanged, setHasScheduleChanged] = useState(false);
@@ -201,22 +198,18 @@ export default function CreateModal({
     handleCloseRequest();
   }, [handleCloseRequest, isLabelModalOpen, setIsLabelModalOpen]);
 
-  const {
-    keepKeyboardOpenRef,
-    isScheduleOpeningRef,
-    handleInputBlur,
-    handleInputKeyDown,
-  } = useCreateModalFocus({
-    dialogRef,
-    inputRef,
-    labelButtonRef,
-    isExitConfirmOpen,
-    isLabelModalOpen,
-    isScheduleOpen,
-    setIsLabelModalOpen,
-    handleCloseRequest,
-    handleExitConfirmClose,
-  });
+  const { keepKeyboardOpenRef, isScheduleOpeningRef, handleInputBlur, handleInputKeyDown } =
+    useCreateModalFocus({
+      dialogRef,
+      inputRef,
+      labelButtonRef,
+      isExitConfirmOpen,
+      isLabelModalOpen,
+      isScheduleOpen,
+      setIsLabelModalOpen,
+      handleCloseRequest,
+      handleExitConfirmClose,
+    });
 
   const {
     recommendationEditDraft,
@@ -229,23 +222,20 @@ export default function CreateModal({
     editCandidate,
   });
 
-  const {
-    renderedChecklistItems,
-    directAddChecklistItem,
-    handleChecklistClick,
-  } = useRecommendationChecklistItems({
-    checklistItems,
-    recommendationCandidates,
-    startDate,
-    isSaving,
-    hideRecommendationUnavailable,
-    addManualCandidate,
-    editCandidate,
-    toggleCandidateSelected,
-    handleOpenRecommendationEdit,
-    onAddChecklist,
-    onToggleChecklist,
-  });
+  const { renderedChecklistItems, directAddChecklistItem, handleChecklistClick } =
+    useRecommendationChecklistItems({
+      checklistItems,
+      recommendationCandidates,
+      startDate,
+      isSaving,
+      hideRecommendationUnavailable,
+      addManualCandidate,
+      editCandidate,
+      toggleCandidateSelected,
+      handleOpenRecommendationEdit,
+      onAddChecklist,
+      onToggleChecklist,
+    });
 
   const { handleCreate } = useCreateEventSubmit({
     trimmedInput,
@@ -583,6 +573,8 @@ export default function CreateModal({
           startTime={startTime || scheduleOpenedAtTime}
           endTime={endTime || scheduleOpenedAtTime}
           repeat={repeat}
+          isAllDay={isScheduleAllDay}
+          onAllDayChange={setIsScheduleAllDay}
           onStartDateChange={(date) => {
             setStartDate(date);
             setHasScheduleChanged(true);
