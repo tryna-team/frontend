@@ -54,6 +54,7 @@ export default function CreateModal({
   labelStatus = { type: 'default' },
   labels = [],
   pendingSelectedLabelId,
+  isLabelCreateOpen = false,
   onInputChange,
   onOpenCalendar,
   onOpenLabel,
@@ -390,9 +391,12 @@ export default function CreateModal({
 
   return (
     <>
-      {/* 하위 일정 설정 화면이 열리면 생성 모달을 숨긴다. */}
+      {/* 하위 일정 설정 화면이나 라벨 생성 시트가 열리면 생성 모달을 숨긴다.
+          라벨 시트는 앱 프레임 안에서 렌더링되는데 이 모달은 body로 포털돼서,
+          숨기지 않으면 시트가 모달 뒤에 가려져 입력이 안 되는 것처럼 보인다. */}
       {!isScheduleOpen &&
         !recommendationEditDraft &&
+        !isLabelCreateOpen &&
         createPortal(
           <Overlay onClick={handleCreateOverlayClick}>
             {(hasInputInteractionStarted || isRecommendMode) && (
@@ -550,7 +554,7 @@ export default function CreateModal({
                         <img src="/icon/icons/label_small.svg" alt="" className="block shrink-0" />
 
                         {!selectedLabel && labelStatus.type === 'default' ? (
-                          <span className="whitespace-nowrap">레이블 없음</span>
+                          <span className="whitespace-nowrap">라벨 없음</span>
                         ) : (
                           <div className="flex min-w-0 items-center gap-xsmall">
                             <span className="max-w-[80px] truncate">

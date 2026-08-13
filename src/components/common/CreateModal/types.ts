@@ -44,6 +44,14 @@ export type CreateModalProps = {
   labelStatus?: LabelStatus;
   labels?: LabelItemData[];
   pendingSelectedLabelId?: number | null;
+  /**
+   * 라벨 생성 시트가 열려 있는지. 열려 있는 동안에는 생성 모달을 숨긴다.
+   *
+   * 생성 모달은 document.body로 포털되는데 라벨 시트는 앱 프레임 안에서 렌더링된다.
+   * 프레임에 transform이 걸려 별도의 쌓임 맥락이 생기므로, 같은 z-index여도 시트가
+   * 항상 모달 뒤에 가려진다. 날짜·반복 시트가 이미 같은 방식으로 모달을 숨기고 있다.
+   */
+  isLabelCreateOpen?: boolean;
   onInputChange?: (value: string) => void;
   onOpenCalendar?: () => void;
   onOpenLabel?: () => void;

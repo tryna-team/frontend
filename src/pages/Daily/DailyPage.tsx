@@ -502,6 +502,7 @@ function DailyPage() {
           inputValue={createInputValue}
           initialScheduleDate={displayDate}
           pendingSelectedLabelId={pendingSelectedLabelId}
+          isLabelCreateOpen={isLabelCreateOpen}
           onInputChange={setCreateInputValue}
           onCreateLabel={() => setIsLabelCreateOpen(true)}
           onCreate={handleCreate}

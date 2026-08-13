@@ -136,7 +136,7 @@ export default function LabelModal(
   return (
     <section
       className="flex w-[200px] flex-col items-start justify-center rounded-[16px] bg-white py-3 shadow-[0_0_20px_0_rgba(0,0,0,0.08)]"
-      aria-label="레이블 선택"
+      aria-label="라벨 선택"
     >
       {labels.map((item) => (
         <LabelItem
