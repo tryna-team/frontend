@@ -379,7 +379,12 @@ function VariantChecklistItem({
           alt={leadingAriaLabel}
           size={iconSize === 'medium' ? 24 : 20}
           hitArea={iconSize === 'medium' ? 24 : 20}
-          onClick={onLeadingClick}
+          onClick={(event) => {
+            // 행 전체 클릭도 onLeadingClick을 부를 수 있어(Checklist.tsx의 toggleOnRowClick,
+            // 'plus' 상태 등), 버블링으로 두 번 호출되지 않게 여기서 막는다.
+            event.stopPropagation();
+            onLeadingClick?.();
+          }}
           disabled={isLeadingDisabled}
           aria-pressed={status === 'plus' ? undefined : isPressed}
           className="shrink-0 disabled:cursor-default"
