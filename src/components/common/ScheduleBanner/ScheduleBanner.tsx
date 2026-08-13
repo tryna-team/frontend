@@ -6,6 +6,7 @@ interface ScheduleBannerProps {
   title: string;
   dateText: string; // "하루" 또는 "N일차"
   onClick?: () => void;
+  disabled?: boolean;
 }
 
 function ScheduleBanner({
@@ -13,12 +14,14 @@ function ScheduleBanner({
   title,
   dateText,
   onClick,
+  disabled = false,
 }: ScheduleBannerProps) {
   return (
     <button
       type="button"
       className={`schedule-banner schedule-banner-${categoryColor}`}
       onClick={onClick}
+      disabled={disabled}
     >
       <div className="schedule-banner-left">
         <img
