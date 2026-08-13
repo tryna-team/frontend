@@ -21,18 +21,6 @@ export default function SettingsMainView({
 }: SettingsMainViewProps) {
   return (
     <div className="flex w-full flex-col gap-2">
-      <ContentBox title="접근" variant="default">
-        <ActionRow
-          leading={{ type: 'text', text: '알림' }}
-          accessory={{
-            type: 'toggle',
-            checked: false,
-            disabled: true,
-            ariaLabel: '알림 설정 준비 중',
-          }}
-        />
-      </ContentBox>
-
       <ContentBox title="이용약관" variant="default">
         <ActionRow
           leading={{ type: 'text', text: '서비스 이용약관' }}
