@@ -12,6 +12,7 @@ import useHorizontalPager, {
   type HorizontalPagerDirection,
 } from '@/features/calendar/hooks/useHorizontalPager';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
+import { formatBannerDateText } from '@/components/common/ScheduleBanner/formatBannerDateText';
 import type { CategoryColor } from '@/features/calendar/types';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useGuestConversionPrompt } from '@/hooks/useGuestConversionPrompt';
@@ -104,35 +105,6 @@ interface BannerItem {
   title: string;
   dateText: string;
   date: string;
-  /** 공휴일은 상세 조회가 403이라 눌러도 들어갈 화면이 없다 */
-  isHoliday?: boolean;
-}
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-/**
- * 배너에 표시할 기간 텍스트를 만든다.
- * - 하루짜리 종일 일정: "하루종일"
- * - 여러 날 걸친 일정: 선택한 날짜가 시작일로부터 몇 번째 날인지 "N일차"
- *
- * ⚠️ 현재 B103은 startDate가 조회일과 같은 일정만 반환한다. 그래서 여러 날 일정은
- * 시작일에만 보이고 항상 "1일차"가 된다. 조회 날짜가 startDate~endDate 범위에 포함되는
- * 일정도 반환되도록 백엔드가 수정되면, 중간 날짜에서도 이 계산이 그대로 맞는다.
- */
-function formatBannerDateText(
-  startDate: string,
-  endDate: string | null,
-  selectedDate: string,
-): string {
-  if (!endDate || endDate === startDate) {
-    return '하루종일';
-  }
-
-  const startTime = new Date(`${startDate}T00:00:00`).getTime();
-  const selectedTime = new Date(`${selectedDate}T00:00:00`).getTime();
-  const dayIndex = Math.round((selectedTime - startTime) / MS_PER_DAY) + 1;
-
-  return `${dayIndex}일차`;
 }
 
 function DailyPage() {
