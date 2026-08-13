@@ -237,6 +237,7 @@ export default function CreateModal({
   } = useRecommendationEdit({
     isSaving,
     startDate,
+    endDate,
     editCandidate,
   });
 
@@ -427,9 +428,19 @@ export default function CreateModal({
                 height: visualViewportRect.height,
               }}
             >
-              <div className="flex w-full max-w-[385px] flex-col gap-2">
+              <div className="flex w-full max-w-[385px] flex-col items-center">
                 {isRecommendationUnavailable && (
-                  <ToastPopup inline GuideText="제안을 불러오지 못했습니다. 다시 시도해주세요." />
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    aria-label="제안을 불러오지 못했습니다. 다시 시도해주세요."
+                    className="mb-[8px] flex w-[353px] items-center justify-center rounded-[24px] bg-white/40 px-[20px] py-[16px] shadow-[0_0_10px_rgba(0,0,0,0.08)] backdrop-blur-[2px]"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <p className="w-full text-text-additional default-body-medium">
+                      제안을 불러오지 못했습니다. 다시 시도해주세요.
+                    </p>
+                  </div>
                 )}
 
                 <Frame

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 import './Frame.css';
 
@@ -6,6 +6,8 @@ interface FrameProps {
   children: ReactNode;
   // 내부 padding/gap 등은 바텀시트 유형마다 달라서 호출부에서 지정
   className?: string;
+  // 키보드로 줄어든 실제 높이(visualViewportRect 등)를 정확히 반영해야 하는 호출부를 위해 허용
+  style?: CSSProperties;
   'aria-labelledby'?: string;
   'aria-describedby'?: string;
 }
@@ -15,6 +17,7 @@ interface FrameProps {
 export default function Frame({
   children,
   className,
+  style,
   'aria-labelledby': ariaLabelledBy,
   'aria-describedby': ariaDescribedBy,
 }: FrameProps) {
@@ -24,6 +27,7 @@ export default function Frame({
       aria-modal="true"
       aria-labelledby={ariaLabelledBy}
       aria-describedby={ariaDescribedBy}
+      style={style}
       className={`flex flex-col items-center w-[calc(100%_-_8px)] bg-background-white rounded-medium shadow-[0px_0px_20px_0px_rgba(0,0,0,0.08)] overflow-clip frame-bottom-spacing ${className ?? ''}`}
       onClick={(e) => e.stopPropagation()}
     >
