@@ -80,7 +80,7 @@ export default function LabelCreateSheet({ onClose, onComplete }: LabelCreateShe
           height: visualViewportRect.height,
         }}
       >
-        <Frame className="h-[92dvh] gap-6 p-4">
+        <Frame className="h-[92%] gap-6 p-4">
           {/* Header 공용 컴포넌트는 leading이 항상 아이콘(챕터론)이라 이 화면의
               "취소(텍스트)/닫기·완료(pill 버튼)" 조합과 맞지 않아 이 화면만 직접 구성 */}
           <div className="flex w-[353px] items-center justify-between">
@@ -108,27 +108,31 @@ export default function LabelCreateSheet({ onClose, onComplete }: LabelCreateShe
             </div>
           </div>
 
-          <div className="w-full rounded-medium bg-background-white p-3 shadow-[0px_4px_8px_rgba(0,0,0,0.04),0px_9.701px_29.104px_rgba(0,0,0,0.1)]">
-            <Input
-              value={name}
-              onChange={setName}
-              onClear={() => setName('')}
-              placeholder="라벨 이름"
-              ariaLabel="라벨 이름"
-            />
-            {nameError && (
-              <p className="pl-1 pt-1 text-danger-200 default-caption-large">{nameError}</p>
-            )}
-            {createMutation.isError && (
-              <p className="pl-1 pt-1 text-danger-200 default-caption-large">
-                라벨을 만들지 못했어요. 다시 시도해주세요.
-              </p>
-            )}
-          </div>
+          {/* dvh 기준 고정 높이 대신 %로 잡은 Frame 안에서, 키보드로 줄어든 실제
+              높이보다 콘텐츠가 길어지면 이 영역만 스크롤되고 헤더는 항상 보이게 한다. */}
+          <div className="flex w-full flex-1 flex-col gap-6 overflow-y-auto">
+            <div className="w-full rounded-medium bg-background-white p-3 shadow-[0px_4px_8px_rgba(0,0,0,0.04),0px_9.701px_29.104px_rgba(0,0,0,0.1)]">
+              <Input
+                value={name}
+                onChange={setName}
+                onClear={() => setName('')}
+                placeholder="라벨 이름"
+                ariaLabel="라벨 이름"
+              />
+              {nameError && (
+                <p className="pl-1 pt-1 text-danger-200 default-caption-large">{nameError}</p>
+              )}
+              {createMutation.isError && (
+                <p className="pl-1 pt-1 text-danger-200 default-caption-large">
+                  라벨을 만들지 못했어요. 다시 시도해주세요.
+                </p>
+              )}
+            </div>
 
-          <ContentBox title="색상" variant="bottom">
-            <ColorPicker selectedColor={color} onSelect={setColor} />
-          </ContentBox>
+            <ContentBox title="색상" variant="bottom">
+              <ColorPicker selectedColor={color} onSelect={setColor} />
+            </ContentBox>
+          </div>
         </Frame>
       </div>
     </Overlay>,
