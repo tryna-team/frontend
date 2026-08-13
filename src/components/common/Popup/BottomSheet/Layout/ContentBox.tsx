@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 
 interface ContentBoxProps {
-  // 박스 상단에 표시되는 섹션 제목 (예: "Gmail", "tryna")
-  title: string;
+  // 박스 상단에 표시되는 섹션 제목 (예: "Gmail", "tryna"). 생략하거나 빈 문자열이면
+  // 제목 줄 자체를 렌더링하지 않는다 — 피그마 기준 제목이 없는 박스(이벤트/반복/라벨
+  // 등, 첫 행의 라벨이 곧 제목 역할)에서 빈 줄이 남는 걸 막기 위함.
+  title?: string;
   children: ReactNode;
   // 'default': 일반 유형(그림자로 카드가 떠 있는 느낌)
   // 'bottom' : 가장 밑의 컨텐츠박스(그림자 없이 경계가 흐려지는 느낌)
@@ -21,9 +23,11 @@ export default function ContentBox({ title, children, variant = 'default' }: Con
     <div
       className={`flex w-full flex-col items-start gap-3 rounded-medium bg-background-white pb-1 ${VARIANT_SHADOW_CLASSNAMES[variant]}`}
     >
-      <div className="flex w-full items-center justify-center pt-3 pl-4">
-        <p className="default-body-medium w-full flex-1 text-text-additional">{title}</p>
-      </div>
+      {title && (
+        <div className="flex w-full items-center justify-center pt-3 pl-4">
+          <p className="default-body-medium w-full flex-1 text-text-additional">{title}</p>
+        </div>
+      )}
       <div className="flex w-full flex-col items-start px-3">{children}</div>
     </div>
   );

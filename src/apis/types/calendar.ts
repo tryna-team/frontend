@@ -32,9 +32,15 @@ export interface CalendarEventDaySummary {
   date: string; // "yyyy-mm-dd"
   eventCount: number;
   hasEvent: boolean;
+  /**
+   * 그 날짜에 표시할 일정들. 달력 칸에 제목을 그리는 데 필요한 정보가 다 들어있어서,
+   * 예전처럼 날짜마다 B103을 따로 호출하지 않아도 된다.
+   * eventCount보다 적게 올 수 있다 (서버가 미리보기 개수를 제한하는 경우).
+   */
+  previewEvents: CalendarEventDetail[];
 }
 
-/** 일정 목록 항목. B101의 selectedDateEvents, B103의 events가 동일한 모양. */
+/** 일정 목록 항목. B101의 monthlyEventDays[].previewEvents/selectedDateEvents, B103의 events가 동일한 모양. */
 export interface CalendarEventDetail {
   eventId: number;
   title: string;
@@ -44,6 +50,8 @@ export interface CalendarEventDetail {
   endTime: string | null;
   isAllDay: boolean;
   location: string | null;
+  /** 일정에 붙은 라벨. 라벨 목록(B108)의 색상과 이어서 칸 색을 정한다 */
+  labelId: number | null;
   sourceType: EventSourceType;
   status: EventStatus;
 }
@@ -62,15 +70,9 @@ export interface CalendarMainResponseData {
 }
 
 /**
- * B102 월간 캘린더 조회 응답
- * ⚠️ Figma 디자인은 날짜별로 일정 제목(최대 2~3개)까지 칩으로 노출하는데,
- * 이 API는 날짜별 eventCount만 주고 title은 없음 — 화면 구현 시 백엔드 확인/요청 필요.
+ * B102(월간 캘린더 조회, GET /calendars/monthly)는 B101로 통합되어 없어졌다.
+ * 날짜별 일정은 B101 응답의 monthlyEventDays[].previewEvents를 쓴다.
  */
-export interface MonthlyCalendarResponseData {
-  year: number;
-  month: number;
-  days: CalendarEventDaySummary[];
-}
 
 /** B103 날짜별 일정 목록 조회 응답 */
 export interface DateEventsResponseData {

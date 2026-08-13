@@ -2,7 +2,10 @@
   display: flex;
   box-sizing: border-box;
   width: 100%;
-  padding: 4px 24px;
+  /* 좌우 20px = 목록 좌우 여백(12px) + 카드 내부 padding(8px).
+     배너는 화면 끝까지 채우는 대신 안쪽 여백을 맞춰서, 색상 점과 우측 텍스트가
+     아래 일정 카드와 같은 세로선에 놓이도록 한다. */
+  padding: 4px 20px;
   justify-content: space-between;
   align-items: center;
   border: none;
@@ -40,7 +43,8 @@
 .schedule-banner-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  padding-left: 4px;
 }
 
 /* dot_*.svg 원본이 6x6이라 그 크기 그대로 쓴다 (8px로 늘리면 확대되어 커 보임) */
@@ -61,12 +65,12 @@
 }
 
 .schedule-banner-date {
-  font-family: var(--Default-Caption-Large-FontFamily, Pretendard);
-  font-size: var(--Default-Caption-Large-FontSize, 12px);
+  font-family: var(--Default-Label-Medium-FontFamily, "Pretendard", sans-serif);
+  font-size: var(--Default-Label-Medium-FontSize, 12px);
   font-style: normal;
-  font-weight: 400;
-  line-height: var(--Default-Caption-Large-LineHeight, 16px);
-  letter-spacing: var(--Default-Caption-Large-LetterSpacing, -0.12px);
+  font-weight: 500;
+  line-height: var(--Default-Label-Medium-LineHeight, 18px);
+  letter-spacing: var(--Default-Label-Medium-LetterSpacing, -0.12px);
 }
 
 /* 기간 텍스트("하루종일", "N일차")는 배경과 같은 계열의 진한 색을 쓴다 */

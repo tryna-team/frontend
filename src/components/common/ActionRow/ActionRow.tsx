@@ -1,7 +1,8 @@
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, MouseEvent } from 'react';
 
 import {
   COLOR_ICON,
+  COLOR_OUTLINE_BORDER,
   type LabelColor,
 } from './ActionRow.constant';
 import RowAccessory, {
@@ -19,6 +20,11 @@ type IconTextLeading = {
   type: 'icon-text';
   text: string;
   color: LabelColor;
+  // 라벨 목록의 표시/숨김 토글처럼 색상 아이콘만 따로 눌러야 하는 경우를 위해 추가.
+  // 지정하면 아이콘이 행의 onClick과 분리된 별도 버튼이 된다(행 클릭 전파 차단).
+  onIconClick?: (event: MouseEvent) => void;
+  // 숨김 라벨을 흑백 아이콘으로 표시하기 위한 플래그
+  dimmed?: boolean;
 };
 
 export type ActionRowLeading =
@@ -43,7 +49,7 @@ export default function ActionRow({
       return (
         <span
           // tone === 'danger'일 때 text-danger-200 적용 (기존엔 text-text-default 고정)
-          className={`min-w-0 truncate default-body-large ${
+          className={`min-w-0 truncate default-body-medium ${
             leading.tone === 'danger' ? 'text-danger-200' : 'text-text-default'
           }`}
         >
@@ -52,18 +58,48 @@ export default function ActionRow({
       );
     }
 
+    const handleIconClick = (event: MouseEvent) => {
+      event.stopPropagation();
+      leading.onIconClick?.(event);
+    };
+
+    // 숨김 라벨: 채워진 색상 아이콘 대신, 해당 색상의 옅은 톤(-200)으로 테두리만 그린
+    // 원을 보여준다(회색조 필터가 아님 — 피그마 실측 기준, 라벨 색은 유지하고 "비어있음"만 표현).
+    const icon = leading.dimmed ? (
+      <span
+        aria-hidden="true"
+        className={`block size-5 shrink-0 rounded-full border bg-white ${COLOR_OUTLINE_BORDER[leading.color]}`}
+      />
+    ) : (
+      <img
+        src={COLOR_ICON[leading.color]}
+        alt=""
+        aria-hidden="true"
+        className="block h-auto w-auto shrink-0"
+      />
+    );
+
     return (
       <div className="flex min-w-0 items-center gap-3">
-        <span className="flex shrink-0 items-center justify-center">
-          <img
-            src={COLOR_ICON[leading.color]}
-            alt=""
-            aria-hidden="true"
-            className="block h-auto w-auto shrink-0"
-          />
-        </span>
+        {leading.onIconClick ? (
+          <button
+            type="button"
+            onClick={handleIconClick}
+            aria-label="표시 여부 전환"
+            className="flex shrink-0 items-center justify-center border-0 bg-transparent p-0"
+          >
+            {icon}
+          </button>
+        ) : (
+          <span className="flex shrink-0 items-center justify-center">{icon}</span>
+        )}
 
-        <span className="min-w-0 truncate text-text-default default-body-large">
+        {/* 숨김 라벨은 이름도 disable 톤(피그마: rgba(28,22,48,0.3))으로 흐리게 표시 */}
+        <span
+          className={`min-w-0 truncate default-body-medium ${
+            leading.dimmed ? 'text-text-disable' : 'text-text-default'
+          }`}
+        >
           {leading.text}
         </span>
       </div>

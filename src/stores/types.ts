@@ -108,6 +108,8 @@ export interface ActionItemStatusUpdate {
 export interface RecommendationCandidate {
   candidateId: string;
   title: string;
+  /** E104 직접 추가 항목은 최종 저장 시 USER 출처로 전달한다. */
+  createdBy?: 'SYSTEM' | 'USER';
   // 'CHECKLIST'는 API 값이 아니라, 공용 체크리스트 화면에서 비시간형 항목을 표현하기 위한 클라이언트 전용 값
   itemType: ActionItemType | 'CHECKLIST';
   /** 서버 응답의 원본 항목 유형은 최종 저장 시 사용한다. */
@@ -116,6 +118,9 @@ export interface RecommendationCandidate {
   offsetDays?: number | null;
   originalTitle?: string;
   displayDate?: string | null;
+  /** 편집 중인 시간형 항목의 종료 날짜 */
+  displayEndDate?: string | null;
+  displayTime?: string | null;
   selected: boolean; // E101 제안 항목 선택
   edited: boolean; // E102 제안 항목 수정 여부
 }
@@ -133,7 +138,7 @@ export interface ParsedEventCandidate {
   warnings: { code?: string; message?: string }[];
   // CreateModal.tsx가 EventParseResponse(apis/types/event.ts)를 매핑할 때 그대로 채우는 부가 필드
   tempEventId?: string | null;
-  dateSource?: 'EXPLICIT' | 'RELATIVE_EXPRESSION' | 'DEFAULT_TODAY' | null;
+  dateSource?: 'EXPLICIT' | 'RELATIVE_EXPRESSION' | 'SELECTED_DATE' | 'DEFAULT_TODAY' | null;
   endDateCandidate?: string | null;
   endTimeCandidate?: string | null;
   embeddingWords?: string[];

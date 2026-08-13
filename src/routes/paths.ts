@@ -5,10 +5,15 @@ export const PATH = {
   DAILY: '/daily/:date',
   EVENT_VIEW: '/event/:eventId',
   YEAR_CALENDAR: '/calendar/year', // 연간 캘린더
+  TERMS: '/terms',
+  PRIVACY: '/privacy',
 } as const;
 
 export const generateDailyPath = (date: string) => `/daily/${date}`;
 
 export const generateEventPath = {
-  view: (id: string) => `/event/${id}`,
+  view: (id: string, occurrenceDate?: string) =>
+    occurrenceDate
+      ? `/event/${id}?occurrenceDate=${encodeURIComponent(occurrenceDate)}`
+      : `/event/${id}`,
 } as const;

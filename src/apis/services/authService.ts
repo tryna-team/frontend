@@ -1,6 +1,7 @@
 import { apiClient } from "../client";
 import { ENDPOINTS } from "../endpoints";
 import { getDeviceId } from "../../utils/deviceId";
+import { clearConversionPromptHistory } from "../../utils/conversionPrompt";
 import { useAuthStore } from "../../stores/authStore";
 import type {
   SocialLoginRequest,
@@ -79,6 +80,9 @@ export const authService = {
    * A109 로그아웃 — DELETE /api/v1/auth-sessions/me?deviceId=
    * 정책: API 성공/실패와 무관하게 로컬 인증 정보는 무조건 삭제한다.
    * deviceId 자체는 초기화하지 않음 (기기 식별용이라 로그아웃과 무관하게 유지돼야 함).
+   *
+   * 전환 유도 노출 이력은 함께 지운다. 로그아웃하면 다시 비회원 상태가 되므로,
+   * 그 뒤에 일정을 만들면 로그인 유도 시트가 다시 떠야 한다.
    */
   logout: async () => {
     try {
@@ -87,6 +91,7 @@ export const authService = {
       });
     } finally {
       useAuthStore.getState().clearAuth();
+      clearConversionPromptHistory();
     }
   },
 

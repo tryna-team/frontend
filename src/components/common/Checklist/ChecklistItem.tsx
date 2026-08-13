@@ -1,5 +1,7 @@
 import Button from '@/components/common/Buttons/Button';
 
+import type { ReactNode } from 'react';
+
 // ChecklistItem의 현재 상태
 // plus: 직접 추가 항목
 // default: event, daily의 미완료 항목
@@ -54,11 +56,15 @@ export type ChecklistTrailing =
 // radioVariant만 선택적 Props로 추가
 export type ChecklistItemProps = {
   label: string;
+  labelContent?: ReactNode;
   status?: ChecklistStatus;
   iconSize?: ChecklistIconSize;
   trailing?: ChecklistTrailing;
   disabled?: boolean;
   onLeadingClick?: () => void;
+  // 전달하면 라벨 텍스트를 버튼으로 렌더링해 클릭을 감지한다(전달하지 않으면 기존과
+  // 동일하게 정적 텍스트).
+  onLabelClick?: () => void;
 
   // 전달하지 않으면 기존 ChecklistItem UI를 사용
   radioVariant?: ChecklistRadioVariant;
@@ -266,6 +272,7 @@ function resolveLeadingAriaLabel(
 // 기존 레이아웃, delete, date 동작을 그대로 유지
 function LegacyChecklistItem({
   label,
+  labelContent,
   status,
   iconSize,
   trailing,
@@ -283,7 +290,7 @@ function LegacyChecklistItem({
 > &
   Pick<
     ChecklistItemProps,
-    'onLeadingClick'
+    'labelContent' | 'onLeadingClick'
   >) {
   const size = resolveChecklistSize(
     status,
@@ -323,9 +330,11 @@ function LegacyChecklistItem({
       iconSize,
     );
 
-  // small 아이콘은 상태 확인용으로만 사용한다.
+  // small 체크는 읽기 전용으로 유지하고 직접 추가는 허용한다.
   const isLeadingDisabled =
-    disabled || iconSize === 'small';
+    disabled ||
+    (iconSize === 'small' &&
+      status !== 'plus');
 
   return (
     <div
@@ -342,26 +351,32 @@ function LegacyChecklistItem({
             : ''
         }`}
       >
-        <button
-          type="button"
+        <Button
+          variant="Icon"
+          icon={leadingIcon.replace(
+            '/icon/',
+            '',
+          )}
+          alt={leadingAriaLabel}
+          size={
+            iconSize === 'medium'
+              ? 24
+              : 20
+          }
+          hitArea={
+            iconSize === 'medium'
+              ? 24
+              : 20
+          }
           onClick={onLeadingClick}
           disabled={isLeadingDisabled}
-          className="flex shrink-0 items-center justify-center bg-transparent p-0 disabled:cursor-default"
-          aria-label={
-            leadingAriaLabel
-          }
-        >
-          <img
-            src={leadingIcon}
-            alt=""
-            className="block shrink-0"
-          />
-        </button>
+          className="shrink-0 disabled:cursor-default"
+        />
 
         <span
-          className={`min-w-0 truncate text-left ${labelStyle} ${labelColor}`}
+          className={`min-w-0 flex-1 truncate text-left ${labelStyle} ${labelColor}`}
         >
-          {label}
+          {labelContent ?? label}
         </span>
       </div>
 
@@ -404,12 +419,14 @@ function LegacyChecklistItem({
 // radioVariant가 전달된 새 사용처에서 렌더링
 function VariantChecklistItem({
   label,
+  labelContent,
   status,
   iconSize,
   radioVariant,
   trailing,
   disabled,
   onLeadingClick,
+  onLabelClick,
 }: Required<
   Pick<
     ChecklistItemProps,
@@ -423,7 +440,7 @@ function VariantChecklistItem({
 > &
   Pick<
     ChecklistItemProps,
-    'onLeadingClick'
+    'labelContent' | 'onLeadingClick' | 'onLabelClick'
   >) {
   const size = resolveChecklistSize(
     status,
@@ -475,9 +492,11 @@ function VariantChecklistItem({
       radioVariant,
     );
 
-  // small 아이콘은 상태 확인용으로만 사용한다.
+  // small 체크는 읽기 전용으로 유지하고 직접 추가는 허용한다.
   const isLeadingDisabled =
-    disabled || iconSize === 'small';
+    disabled ||
+    (iconSize === 'small' &&
+      status !== 'plus');
 
   return (
     <div
@@ -499,32 +518,48 @@ function VariantChecklistItem({
             : ''
         }`}
       >
-        <button
-          type="button"
+        <Button
+          variant="Icon"
+          icon={icon.src.replace(
+            '/icon/',
+            '',
+          )}
+          alt={leadingAriaLabel}
+          size={
+            iconSize === 'medium'
+              ? 24
+              : 20
+          }
+          hitArea={
+            iconSize === 'medium'
+              ? 24
+              : 20
+          }
           onClick={onLeadingClick}
           disabled={isLeadingDisabled}
-          className="flex shrink-0 items-center justify-center bg-transparent p-0 disabled:cursor-default"
-          aria-label={
-            leadingAriaLabel
-          }
           aria-pressed={
             status === 'plus'
               ? undefined
               : isPressed
           }
-        >
-          <img
-            src={icon.src}
-            alt=""
-            className="block shrink-0"
-          />
-        </button>
+          className="shrink-0 disabled:cursor-default"
+        />
 
-        <span
-          className={`min-w-0 truncate text-left ${labelStyle} ${labelColor}`}
-        >
-          {label}
-        </span>
+        {onLabelClick ? (
+          <button
+            type="button"
+            onClick={onLabelClick}
+            className={`min-w-0 flex-1 truncate bg-transparent p-0 text-left ${labelStyle} ${labelColor}`}
+          >
+            {label}
+          </button>
+        ) : (
+          <span
+            className={`min-w-0 flex-1 truncate text-left ${labelStyle} ${labelColor}`}
+          >
+            {labelContent ?? label}
+          </span>
+        )}
       </div>
 
       {/* create: 날짜를 공용 Button으로 표시 */}
@@ -535,9 +570,10 @@ function VariantChecklistItem({
             variant="MediumStrongFit"
             type="button"
             disabled={disabled}
-            onClick={
-              trailing.onClick
-            }
+            onClick={(event) => {
+              event.stopPropagation();
+              trailing.onClick?.();
+            }}
             aria-label={`${label} 날짜 ${trailing.text}`}
             className="ml-auto shrink-0"
           >
@@ -545,16 +581,36 @@ function VariantChecklistItem({
           </Button>
         )}
 
-      {/* event, daily: 날짜를 텍스트로 표시 */}
+      {/* event, daily: 날짜를 텍스트로 표시 — onClick이 있으면(예: 일정 수정 화면의
+          날짜 편집) Chip 버튼으로, 없으면(EventViewPage 등 읽기 전용) 기존처럼 정적 텍스트로.
+          현재는 ActionItemChecklistSection(일정 수정 모달)만 onClick을 넘겨 Chip이 나타나고,
+          DailyScheduleCard(EventViewPage 읽기 전용)는 onClick을 넘기지 않아 그대로 span 유지.
+          disabled는 isMutedLabel(= 항목 자체 disabled || 완료 상태)로 넘겨, 완료된 항목은
+          기존과 동일하게 흐리게 표시하되(B안) 날짜 재수정은 막는다 — 필요해지면 disabled 대신
+          별도 prop으로 "흐리지만 클릭 가능"하게 분리할 수 있다. */}
       {trailing.type === 'date' &&
         radioVariant !==
-          'create' && (
+          'create' &&
+        (trailing.onClick ? (
+          <Button
+            variant="Chip"
+            onClick={(event) => {
+              event.stopPropagation();
+              trailing.onClick?.();
+            }}
+            disabled={isMutedLabel}
+            aria-label={`${label} 날짜 ${trailing.text}`}
+            className="ml-auto shrink-0"
+          >
+            {trailing.text}
+          </Button>
+        ) : (
           <span
             className={`ml-auto shrink-0 ${style.date} ${trailingTextColor}`}
           >
             {trailing.text}
           </span>
-        )}
+        ))}
 
       {/* 이전 delete 타입 사용도 계속 지원 */}
       {trailing.type ===
@@ -585,17 +641,20 @@ function VariantChecklistItem({
 // radioVariant가 있으면 새 화면별 UI를 사용
 export default function ChecklistItem({
   label,
+  labelContent,
   status = 'default',
   iconSize = 'medium',
   trailing = { type: 'none' },
   disabled = false,
   onLeadingClick,
+  onLabelClick,
   radioVariant,
 }: ChecklistItemProps) {
   if (!radioVariant) {
     return (
       <LegacyChecklistItem
         label={label}
+        labelContent={labelContent}
         status={status}
         iconSize={iconSize}
         trailing={trailing}
@@ -610,6 +669,7 @@ export default function ChecklistItem({
   return (
     <VariantChecklistItem
       label={label}
+      labelContent={labelContent}
       status={status}
       iconSize={iconSize}
       radioVariant={radioVariant}
@@ -618,6 +678,7 @@ export default function ChecklistItem({
       onLeadingClick={
         onLeadingClick
       }
+      onLabelClick={onLabelClick}
     />
   );
 }

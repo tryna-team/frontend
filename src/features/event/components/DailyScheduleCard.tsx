@@ -5,21 +5,21 @@ export interface DailyScheduleTodoItem {
   id: string;
   text: string;
   checked: boolean;
-  dateText: string;
+  dateText?: string;
 }
 
 interface DailyScheduleCardProps {
   items: DailyScheduleTodoItem[];
   onToggleItem?: (id: string) => void;
-  onAddClick?: () => void;
   onCompleteAllClick?: () => void;
+  updatingItemIds?: ReadonlySet<string>;
 }
 
 export default function DailyScheduleCard({
   items,
   onToggleItem,
-  onAddClick,
   onCompleteAllClick,
+  updatingItemIds,
 }: DailyScheduleCardProps) {
   return (
     <div className="flex w-full flex-col items-center gap-4 rounded-[24px] bg-white px-4 py-6 shadow-[0px_4px_16px_0px_rgba(0,0,0,0.04),0px_9.701px_58.209px_0px_rgba(0,0,0,0.1)]">
@@ -36,22 +36,26 @@ export default function DailyScheduleCard({
              → onLeadingClick={(id) => onToggleItem?.(String(id))}
            로 바꿔서 index로 items 배열을 다시 뒤지는 우회 없이 item.id를 그대로 전달.
       */}
+      {/* EventView에서는 큰 체크 아이콘과 양 끝 정렬을 사용한다. */}
       <Checklist
+        radioVariant="event"
         items={items.map((item, index) => ({
           id: index,
           label: item.text,
           status: item.checked ? ('done' as const) : ('default' as const),
-          trailing: { type: 'date' as const, text: item.dateText },
+          trailing: item.dateText
+            ? { type: 'date' as const, text: item.dateText }
+            : { type: 'none' as const },
+          // 상태 변경을 요청한 항목만 잠시 비활성화한다.
+          disabled: updatingItemIds?.has(item.id) ?? false,
         }))}
         onLeadingClick={(index) => onToggleItem?.(items[index].id)}
       />
 
       <div className="flex items-center justify-center gap-10">
-        {/* Figma 스펙: "모두 완료"와 동일 크기의 보이지 않는 스페이서 — 기능 없음, 정렬용 */}
+        {/* "직접 추가" 버튼을 제거해도 "모두 완료"가 원래 위치(우측으로 치우친 자리)에
+            그대로 있도록, 반대편에 동일 크기의 보이지 않는 스페이서를 둔다. */}
         <div aria-hidden="true" className="h-5.5 w-14.75" />
-        <Button variant="LargeDefaultFit" onClick={onAddClick}>
-          직접 추가
-        </Button>
         <Button variant="Small" onClick={onCompleteAllClick}>
           모두 완료
         </Button>

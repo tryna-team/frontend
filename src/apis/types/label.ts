@@ -4,7 +4,10 @@
  * 실제 배포 후 응답 구조가 다르면 다시 확인해야 한다.
  */
 
-export type LabelType = "USER" | "EXTERNAL_CALENDAR";
+// SYSTEM: 서버가 항상 끝에 끼워 보내는 가상 라벨(예: "대한민국 공휴일", labelId: -1).
+// 실제 라벨 테이블에 존재하지 않아 수정/삭제/이벤트 연결 대상이 될 수 없다 — 라벨 선택
+// UI에서는 반드시 제외해야 한다(CreateModal.tsx, EventViewPage.tsx의 apiLabels/labelItems 참고).
+export type LabelType = "USER" | "EXTERNAL_CALENDAR" | "SYSTEM";
 
 /** 6가지 프리셋 색상 — 서버는 대문자 enum으로 주고받는다 (stores/types.ts의 CalendarLabel.color는 소문자라 매핑 필요) */
 export type LabelColorCode =
