@@ -400,10 +400,10 @@ function VariantChecklistItem({
         )}
       </div>
 
-      {/* create: 날짜를 공용 Button으로 표시 */}
+      {/* create: 날짜를 공용 Chip 버튼으로 표시 */}
       {trailing.type === 'date' && radioVariant === 'create' && (
         <Button
-          variant="MediumStrongFit"
+          variant="Chip"
           type="button"
           disabled={disabled}
           onClick={(event) => {
