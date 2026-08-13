@@ -187,6 +187,7 @@ export default function GlobalBottomSheet() {
   const showToast = useUIStore((state) => state.showToast);
   const toast = useUIStore((state) => state.toast);
   const clearToast = useUIStore((state) => state.clearToast);
+  const closeSettings = useUIStore((state) => state.closeSettings);
   const [loginLegalView, setLoginLegalView] = useState<LoginLegalView | null>(null);
 
   const { login, isPending } = useSocialLogin();
@@ -196,10 +197,22 @@ export default function GlobalBottomSheet() {
     closeBottomSheet();
   };
 
+  // 로그인이 끝나면 로그인 시트뿐 아니라 설정 시트까지 닫는다.
+  //
+  // 설정에서 "로그인"을 누르면 설정 시트는 열린 채로 그 위에 로그인 시트가 뜬다.
+  // 로그인 시트만 닫으면 설정 시트가 화면을 덮은 채 남아서, 로그인은 됐는데 화면이
+  // 안 뜬 것처럼 보인다(새로고침하면 uiStore가 초기화되어 그제야 사라진다).
+  //
+  // 설정을 거치지 않고 연 경우에는 이미 닫혀 있어 호출해도 아무 일도 일어나지 않는다.
+  const finishLoginFlow = () => {
+    closeLoginFlow();
+    closeSettings();
+  };
+
   const runLogin = async () => {
     try {
       await login();
-      closeLoginFlow();
+      finishLoginFlow();
     } catch (error) {
       // 사용자가 구글 팝업을 닫은 것뿐이라 에러로 알리지 않는다
       if (error instanceof GoogleLoginCancelledError) {

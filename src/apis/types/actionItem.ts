@@ -24,6 +24,7 @@ export type ActionItemCreatedBy = 'SYSTEM' | 'USER' | 'USER_EDITED';
 
 /** E106 준비/실행 항목 상태 변경 요청 */
 export interface ActionItemStatusUpdateRequest {
+  occurrenceDate: string;
   actionItemStatus: ActionItemCompletionStatus;
   // 반복 일정에서 "지금 보고 있는 회차"를 서버에 알려주는 값. 안 보내면 백엔드가 이
   // 항목이 저장될 때 갖고 있던 occurrenceDate로 대체하는데, 그게 지금 보고 있는
@@ -71,8 +72,11 @@ export interface TimedActionItem {
   parentEventTitle: string;
   title: string;
   itemType: ActionItemType;
+  occurrenceDate?: string | null;
+  parentOccurrenceDate?: string | null;
   displayDate: string;
   displayTime: string | null;
+  offsetDays?: number | string | null;
   actionItemStatus: ActionItemStatus;
   createdBy: ActionItemCreatedBy;
   completedAt: string | null;

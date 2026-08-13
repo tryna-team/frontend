@@ -47,7 +47,9 @@ export const useCreateModalLabels = ({
   const apiLabels = useMemo<LabelItemData[]>(
     () =>
       (labelData?.labels ?? [])
-        .filter((label) => label.isVisible)
+        // SYSTEM은 서버가 항상 끼워 보내는 가상 라벨("대한민국 공휴일" 등, labelId: -1)이라
+        // 실제 라벨 테이블에 없다 — 선택하면 이벤트 저장 시 400으로 실패하므로 제외한다.
+        .filter((label) => label.isVisible && label.labelType !== 'SYSTEM')
         .map((label) => ({
           id: label.labelId,
           label: label.name,

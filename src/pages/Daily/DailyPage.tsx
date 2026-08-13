@@ -12,6 +12,7 @@ import useHorizontalPager, {
   type HorizontalPagerDirection,
 } from '@/features/calendar/hooks/useHorizontalPager';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
+import { formatBannerDateText } from '@/components/common/ScheduleBanner/formatBannerDateText';
 import type { CategoryColor } from '@/features/calendar/types';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useGuestConversionPrompt } from '@/hooks/useGuestConversionPrompt';
@@ -53,9 +54,24 @@ function addDays(dateStr: string, delta: number): string {
   return `${y}-${m}-${day}`;
 }
 
+function parseOffsetDays(offsetDays: number | string | null | undefined) {
+  if (typeof offsetDays === 'number') {
+    return Number.isFinite(offsetDays) ? offsetDays : null;
+  }
+
+  if (typeof offsetDays === 'string') {
+    const parsedOffsetDays = Number(offsetDays);
+
+    return Number.isFinite(parsedOffsetDays) ? parsedOffsetDays : null;
+  }
+
+  return null;
+}
+
 interface ScheduleItem {
   id: string;
   eventId: string;
+  occurrenceDate?: string;
   categoryColor: CategoryColor;
   title: string;
   location: string;
@@ -63,6 +79,8 @@ interface ScheduleItem {
   endTime: string;
   date: string;
   checklist?: { id: string; text: string; checked: boolean; dateText?: string }[];
+  /** 공휴일(sourceType: HOLIDAY). 사용자 소유 일정이 아니라 하위 항목 조회 대상이 아니다 */
+  isHoliday?: boolean;
   linkedSchedule?: {
     date: string;
     time: string;
@@ -87,33 +105,7 @@ interface BannerItem {
   title: string;
   dateText: string;
   date: string;
-}
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-/**
- * 배너에 표시할 기간 텍스트를 만든다.
- * - 하루짜리 종일 일정: "하루종일"
- * - 여러 날 걸친 일정: 선택한 날짜가 시작일로부터 몇 번째 날인지 "N일차"
- *
- * ⚠️ 현재 B103은 startDate가 조회일과 같은 일정만 반환한다. 그래서 여러 날 일정은
- * 시작일에만 보이고 항상 "1일차"가 된다. 조회 날짜가 startDate~endDate 범위에 포함되는
- * 일정도 반환되도록 백엔드가 수정되면, 중간 날짜에서도 이 계산이 그대로 맞는다.
- */
-function formatBannerDateText(
-  startDate: string,
-  endDate: string | null,
-  selectedDate: string,
-): string {
-  if (!endDate || endDate === startDate) {
-    return '하루종일';
-  }
-
-  const startTime = new Date(`${startDate}T00:00:00`).getTime();
-  const selectedTime = new Date(`${selectedDate}T00:00:00`).getTime();
-  const dayIndex = Math.round((selectedTime - startTime) / MS_PER_DAY) + 1;
-
-  return `${dayIndex}일차`;
+  isHoliday?: boolean;
 }
 
 function DailyPage() {
@@ -201,6 +193,8 @@ function DailyPage() {
     date: selectedDate,
     checklist: undefined,
     linkedSchedule: undefined,
+    // 공휴일은 서버가 모두에게 공통으로 끼워 보내는 가상 일정이라 준비/실행 항목이 없다.
+    isHoliday: event.sourceType === 'HOLIDAY',
   }));
 
   const timedActionItems = (timedActionItemData?.items ?? []).filter(
@@ -208,16 +202,31 @@ function DailyPage() {
   );
 
   // 부모 일정 날짜에는 시간형과 비시간형 하위 항목을 모두 표시한다.
+  //
+  // 공휴일은 제외한다. 사용자 소유 일정이 아니라서 F103이 403을 주는데, 그 실패가 아래
+  // 패널 에러 판정에 걸려 그날 일정이 통째로 안 보이는 문제가 있었다.
+  // enabled: false로 끄지 않고 목록에서 빼는 이유는, 비활성 쿼리도 pending 상태로 남아
+  // "불러오는 중"에서 영영 벗어나지 못하기 때문이다.
+  const actionItemTargets = schedules.filter((schedule) => !schedule.isHoliday);
+
   const eventActionItemQueries = useQueries({
-    queries: schedules.map((schedule) => ({
+    queries: actionItemTargets.map((schedule) => ({
       queryKey: queryKeys.actionItems.byEvent(schedule.eventId, selectedDate),
       queryFn: () => actionItemService.getByEvent(schedule.eventId, selectedDate),
     })),
   });
 
-  const schedulesWithActionItems: ScheduleItem[] = schedules.map((schedule, index) => ({
+  // 조회 대상에서 공휴일을 빼면서 인덱스가 어긋나므로 eventId로 되짚는다
+  const actionItemsByEventId = new Map(
+    actionItemTargets.map((schedule, index) => [
+      schedule.eventId,
+      eventActionItemQueries[index]?.data?.items ?? [],
+    ]),
+  );
+
+  const schedulesWithActionItems: ScheduleItem[] = schedules.map((schedule) => ({
     ...schedule,
-    checklist: (eventActionItemQueries[index]?.data?.items ?? []).map((item) => ({
+    checklist: (actionItemsByEventId.get(schedule.eventId) ?? []).map((item) => ({
       id: String(item.actionItemId),
       text: item.title,
       checked: item.actionItemStatus === 'COMPLETED',
@@ -244,10 +253,19 @@ function DailyPage() {
   // 실행 날짜에는 시간형 항목을 독립 카드로 표시하고 원래 일정과 연결한다.
   const linkedTimedSchedules: ScheduleItem[] = timedActionItems.map((item) => {
     const parentEvent = timedParentEvents.get(String(item.parentEventId));
+    const offsetDays = parseOffsetDays(item.offsetDays);
+    const parentOccurrenceDate =
+      item.parentOccurrenceDate ??
+      item.occurrenceDate ??
+      (offsetDays !== null ? addDays(item.displayDate, -offsetDays) : undefined);
+    const linkedDate =
+      parentOccurrenceDate ??
+      (parentEvent && !parentEvent.isRecurring ? parentEvent.startDate : selectedDate);
 
     return {
       id: `action-item-${item.actionItemId}`,
       eventId: String(item.parentEventId),
+      occurrenceDate: parentOccurrenceDate,
       // 항목 자체에는 라벨이 없으므로 소속된 일정의 라벨 색을 따른다
       categoryColor: getLabelColor(parentEvent?.labelId),
       title: item.title,
@@ -257,8 +275,7 @@ function DailyPage() {
       date: item.displayDate,
       checklist: undefined,
       linkedSchedule: {
-        date:
-          parentEvent?.startDate === selectedDate ? '오늘' : formatMonthDay(parentEvent?.startDate),
+        date: linkedDate === selectedDate ? '오늘' : formatMonthDay(linkedDate),
         time: formatTime(parentEvent?.startTime),
         title: parentEvent?.eventTitle ?? item.parentEventTitle,
       },
@@ -274,6 +291,7 @@ function DailyPage() {
     title: event.title,
     dateText: formatBannerDateText(event.startDate, event.endDate, selectedDate),
     date: selectedDate,
+    isHoliday: event.sourceType === 'HOLIDAY',
   }));
 
   // 날짜 선택 시 화면 상태, URL을 함께 갱신
@@ -328,7 +346,7 @@ function DailyPage() {
   };
 
   // 일정 카드 -> EventView 이동
-  const handleScheduleClick = (eventId: string, occurrenceDate = selectedDate) => {
+  const handleScheduleClick = (eventId: string, occurrenceDate?: string) => {
     navigate(generateEventPath.view(eventId, occurrenceDate));
   };
 
@@ -337,8 +355,10 @@ function DailyPage() {
   const monthText = `${displayDate.getMonth() + 1}월`;
   const titleText = `${monthText} ${displayDate.getDate()}일 (${DAY_LABELS[displayDate.getDay()]})`;
 
+  // 공휴일은 카드로 그리지 않는다. 위쪽 배너에 이미 그날의 표시로 나오고, 준비 항목도
+  // 클릭해서 들어갈 상세도 없는 가상 일정이라 카드 형태가 맞지 않는다.
   const todaySchedules = [...schedulesWithActionItems, ...linkedTimedSchedules].filter(
-    (schedule) => schedule.date === selectedDate,
+    (schedule) => schedule.date === selectedDate && !schedule.isHoliday,
   );
   const todayBanners = banners.filter((b) => b.date === selectedDate);
 
@@ -359,17 +379,20 @@ function DailyPage() {
           title: event.title,
           dateText: formatBannerDateText(event.startDate, event.endDate, date),
           date,
+          isHoliday: event.sourceType === 'HOLIDAY',
         })),
-      schedules: events.map<ScheduleItem>((event) => ({
-        id: String(event.eventId),
-        eventId: String(event.eventId),
-        categoryColor: getLabelColor(event.labelId),
-        title: event.title,
-        location: event.location ?? '',
-        startTime: event.startTime ?? '',
-        endTime: event.endTime ?? '',
-        date,
-      })),
+      schedules: events
+        .filter((event) => event.sourceType !== 'HOLIDAY')
+        .map<ScheduleItem>((event) => ({
+          id: String(event.eventId),
+          eventId: String(event.eventId),
+          categoryColor: getLabelColor(event.labelId),
+          title: event.title,
+          location: event.location ?? '',
+          startTime: event.startTime ?? '',
+          endTime: event.endTime ?? '',
+          date,
+        })),
       isPending: query.isPending,
       isError: query.isError,
     };
@@ -386,10 +409,10 @@ function DailyPage() {
         isTimedActionItemPending ||
         eventActionItemQueries.some((query) => query.isPending) ||
         timedParentEventQueries.some((query) => query.isPending),
-      isError:
-        isError ||
-        isTimedActionItemError ||
-        eventActionItemQueries.some((query) => query.isError),
+      // 하위 항목 조회 실패는 그날 전체 에러로 보지 않는다. 항목은 일정에 딸린 부가 정보라
+      // 못 받아도 일정 자체는 보여주는 게 맞고, 하나만 실패해도 그날 목록이 통째로
+      // "불러오지 못했어요"로 바뀌던 문제가 있었다 (공휴일 403이 그 경로였다).
+      isError: isError || isTimedActionItemError,
     },
     adjacentPanels[1],
   ];
@@ -411,9 +434,7 @@ function DailyPage() {
             <section
               key={panel.date}
               className="daily-page-panel"
-              data-position={
-                index === 0 ? 'previous' : index === 1 ? 'current' : 'next'
-              }
+              data-position={index === 0 ? 'previous' : index === 1 ? 'current' : 'next'}
               aria-hidden={index !== 1}
               inert={index !== 1}
             >
@@ -425,7 +446,12 @@ function DailyPage() {
                       categoryColor={banner.categoryColor}
                       title={banner.title}
                       dateText={banner.dateText}
-                      onClick={() => handleScheduleClick(banner.id, panel.date)}
+                      disabled={banner.isHoliday}
+                      onClick={
+                        banner.isHoliday
+                          ? undefined
+                          : () => handleScheduleClick(banner.id, panel.date)
+                      }
                     />
                   ))}
                 </div>
@@ -439,24 +465,31 @@ function DailyPage() {
                 ) : panel.schedules.length === 0 ? (
                   <p className="daily-page-empty">일정이 없어요</p>
                 ) : (
-                  panel.schedules.map((schedule) => (
-                    <ScheduleCard
-                      key={schedule.id}
-                      categoryColor={schedule.categoryColor}
-                      title={schedule.title}
-                      location={schedule.location}
-                      startTime={schedule.startTime}
-                      endTime={schedule.endTime}
-                      checklist={schedule.checklist}
-                      onScheduleClick={() => handleScheduleClick(schedule.eventId, panel.date)}
-                      linkedSchedule={schedule.linkedSchedule}
-                      onLinkedScheduleClick={
-                        schedule.linkedSchedule
-                          ? () => handleScheduleClick(schedule.eventId, panel.date)
-                          : undefined
-                      }
-                    />
-                  ))
+                  panel.schedules.map((schedule) => {
+                    const scheduleOccurrenceDate =
+                      schedule.occurrenceDate ?? (schedule.linkedSchedule ? undefined : panel.date);
+
+                    return (
+                      <ScheduleCard
+                        key={schedule.id}
+                        categoryColor={schedule.categoryColor}
+                        title={schedule.title}
+                        location={schedule.location}
+                        startTime={schedule.startTime}
+                        endTime={schedule.endTime}
+                        checklist={schedule.checklist}
+                        onScheduleClick={() =>
+                          handleScheduleClick(schedule.eventId, scheduleOccurrenceDate)
+                        }
+                        linkedSchedule={schedule.linkedSchedule}
+                        onLinkedScheduleClick={
+                          schedule.linkedSchedule
+                            ? () => handleScheduleClick(schedule.eventId, scheduleOccurrenceDate)
+                            : undefined
+                        }
+                      />
+                    );
+                  })
                 )}
               </div>
             </section>

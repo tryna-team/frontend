@@ -11,7 +11,6 @@ export interface DailyScheduleTodoItem {
 interface DailyScheduleCardProps {
   items: DailyScheduleTodoItem[];
   onToggleItem?: (id: string) => void;
-  onAddClick?: () => void;
   onCompleteAllClick?: () => void;
   updatingItemIds?: ReadonlySet<string>;
 }
@@ -19,7 +18,6 @@ interface DailyScheduleCardProps {
 export default function DailyScheduleCard({
   items,
   onToggleItem,
-  onAddClick,
   onCompleteAllClick,
   updatingItemIds,
 }: DailyScheduleCardProps) {
@@ -55,11 +53,9 @@ export default function DailyScheduleCard({
       />
 
       <div className="flex items-center justify-center gap-10">
-        {/* Figma 스펙: "모두 완료"와 동일 크기의 보이지 않는 스페이서 — 기능 없음, 정렬용 */}
+        {/* "직접 추가" 버튼을 제거해도 "모두 완료"가 원래 위치(우측으로 치우친 자리)에
+            그대로 있도록, 반대편에 동일 크기의 보이지 않는 스페이서를 둔다. */}
         <div aria-hidden="true" className="h-5.5 w-14.75" />
-        <Button variant="LargeDefaultFit" onClick={onAddClick}>
-          직접 추가
-        </Button>
         <Button variant="Small" onClick={onCompleteAllClick}>
           모두 완료
         </Button>
