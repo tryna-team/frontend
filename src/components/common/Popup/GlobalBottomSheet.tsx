@@ -18,8 +18,7 @@ import { useUIStore } from '@/stores/uiStore';
  * 현재는 4-1(로그인 안내) → 4-1-1(로그인) 2단계를 처리한다. 나머지 유형(알림 권한,
  * 네트워크 오류 등)은 해당 기능을 붙일 때 분기를 추가하면 된다.
  *
- * 레이아웃은 공용 Modal(BottomSheet.tsx)과 같은 구성이지만, 소셜 로그인 버튼에 제공자
- * 로고가 필요해서 공용 컴포넌트를 고치는 대신 Overlay/Frame을 직접 조합했다
+ * 레이아웃은 다른 바텀시트들과 동일하게 Overlay/Frame을 직접 조합했다
  * (RepeatScheduleBottomSheet와 같은 방식).
  */
 
