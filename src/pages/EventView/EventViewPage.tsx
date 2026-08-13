@@ -5,6 +5,7 @@ import { format, isValid, parseISO } from 'date-fns';
 
 import Header from '@/components/common/Header/Header';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
+import { formatBannerDateText } from '@/components/common/ScheduleBanner/formatBannerDateText';
 import Button from '@/components/common/Buttons/Button';
 import type { LabelItemData } from '@/components/common/LabelModal/LabelModal';
 import DailyScheduleDetail from '@/features/event/components/DailyScheduleDetail';
@@ -474,7 +475,25 @@ function EventViewPage() {
       />
 
       <div className="event-view-page-content">
-        <ScheduleBanner categoryColor={categoryColor} title={eventDetail.eventTitle} dateText="" />
+        {/* DailyPage.tsx와 동일한 formatBannerDateText를 쓴다. ⚠️ 반복 일정의 경우, DailyPage는
+            날짜별 일정 목록(B103) 응답이 "지금 보고 있는 회차"의 실제 시작일을 정확히 내려줘서
+            계산이 맞지만, 이 화면이 쓰는 이벤트 상세 조회(F102)는 occurrenceDate를 안 받아서
+            항상 이벤트의 기준(첫 회차) 시작일만 내려준다 — 즉 eventDetail.startDate가 "지금
+            보고 있는 회차의 시작일"이 아닐 수 있어, 반복 + 기간형 일정에서는 "N일차" 값이
+            부정확할 수 있다(DailyPage와 다른 지점). */}
+        <ScheduleBanner
+          categoryColor={categoryColor}
+          title={eventDetail.eventTitle}
+          dateText={
+            eventDetail.isAllDay
+              ? formatBannerDateText(
+                  eventDetail.startDate,
+                  eventDetail.endDate,
+                  viewDate ?? eventDetail.startDate,
+                )
+              : ''
+          }
+        />
 
         <DailyScheduleDetail
           categoryColor={categoryColor}
