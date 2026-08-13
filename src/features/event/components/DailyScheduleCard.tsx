@@ -53,9 +53,19 @@ export default function DailyScheduleCard({
       />
 
       <div className="flex items-center justify-center gap-10">
-        {/* "직접 추가" 버튼을 제거해도 "모두 완료"가 원래 위치(우측으로 치우친 자리)에
-            그대로 있도록, 반대편에 동일 크기의 보이지 않는 스페이서를 둔다. */}
+        {/* "모두 완료"와 동일 크기의 보이지 않는 스페이서 — 기능 없음, 정렬용 */}
         <div aria-hidden="true" className="h-5.5 w-14.75" />
+        {/* 기능 없는 자리표시자 — "직접 추가"가 있던 자리를 그대로 차지시켜 "모두 완료"
+            위치를 원래대로 유지한다. 폭을 숫자로 추정하지 않고 실제 버튼을 렌더링한 뒤
+            안 보이게만 처리해 폰트/패딩 변경에도 위치가 어긋나지 않도록 한다. */}
+        <Button
+          variant="LargeDefaultFit"
+          className="invisible pointer-events-none"
+          tabIndex={-1}
+          aria-hidden="true"
+        >
+          직접 추가
+        </Button>
         <Button variant="Small" onClick={onCompleteAllClick}>
           모두 완료
         </Button>
