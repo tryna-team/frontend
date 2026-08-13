@@ -42,7 +42,13 @@ export type EventSourceType =
   | 'USER_NATURAL_LANGUAGE'
   | 'USER_MANUAL_EDIT'
   | 'EXTERNAL_CALENDAR'
-  | 'EXTERNAL_BASED_INTERNAL';
+  | 'EXTERNAL_BASED_INTERNAL'
+  /**
+   * 공휴일. 서버가 모든 사용자에게 공통으로 끼워 보내는 가상 일정이며 labelId는 -1
+   * (SYSTEM 가상 라벨)이다. 사용자 소유 일정이 아니라서 준비/실행 항목 조회(F103)는
+   * 403이 떨어진다 — 항목을 조회하거나 수정 대상으로 삼으면 안 된다.
+   */
+  | 'HOLIDAY';
 
 export type CreatedEventStatus = 'DRAFT' | 'CONFIRMED' | 'NEEDS_CONFIRMATION' | 'DELETED';
 

@@ -78,6 +78,8 @@ interface ScheduleItem {
   endTime: string;
   date: string;
   checklist?: { id: string; text: string; checked: boolean; dateText?: string }[];
+  /** 공휴일(sourceType: HOLIDAY). 사용자 소유 일정이 아니라 하위 항목 조회 대상이 아니다 */
+  isHoliday?: boolean;
   linkedSchedule?: {
     date: string;
     time: string;
@@ -216,6 +218,8 @@ function DailyPage() {
     date: selectedDate,
     checklist: undefined,
     linkedSchedule: undefined,
+    // 공휴일은 서버가 모두에게 공통으로 끼워 보내는 가상 일정이라 준비/실행 항목이 없다.
+    isHoliday: event.sourceType === 'HOLIDAY',
   }));
 
   const timedActionItems = (timedActionItemData?.items ?? []).filter(
@@ -223,16 +227,31 @@ function DailyPage() {
   );
 
   // 부모 일정 날짜에는 시간형과 비시간형 하위 항목을 모두 표시한다.
+  //
+  // 공휴일은 제외한다. 사용자 소유 일정이 아니라서 F103이 403을 주는데, 그 실패가 아래
+  // 패널 에러 판정에 걸려 그날 일정이 통째로 안 보이는 문제가 있었다.
+  // enabled: false로 끄지 않고 목록에서 빼는 이유는, 비활성 쿼리도 pending 상태로 남아
+  // "불러오는 중"에서 영영 벗어나지 못하기 때문이다.
+  const actionItemTargets = schedules.filter((schedule) => !schedule.isHoliday);
+
   const eventActionItemQueries = useQueries({
-    queries: schedules.map((schedule) => ({
+    queries: actionItemTargets.map((schedule) => ({
       queryKey: queryKeys.actionItems.byEvent(schedule.eventId, selectedDate),
       queryFn: () => actionItemService.getByEvent(schedule.eventId, selectedDate),
     })),
   });
 
-  const schedulesWithActionItems: ScheduleItem[] = schedules.map((schedule, index) => ({
+  // 조회 대상에서 공휴일을 빼면서 인덱스가 어긋나므로 eventId로 되짚는다
+  const actionItemsByEventId = new Map(
+    actionItemTargets.map((schedule, index) => [
+      schedule.eventId,
+      eventActionItemQueries[index]?.data?.items ?? [],
+    ]),
+  );
+
+  const schedulesWithActionItems: ScheduleItem[] = schedules.map((schedule) => ({
     ...schedule,
-    checklist: (eventActionItemQueries[index]?.data?.items ?? []).map((item) => ({
+    checklist: (actionItemsByEventId.get(schedule.eventId) ?? []).map((item) => ({
       id: String(item.actionItemId),
       text: item.title,
       checked: item.actionItemStatus === 'COMPLETED',
@@ -409,10 +428,10 @@ function DailyPage() {
         isTimedActionItemPending ||
         eventActionItemQueries.some((query) => query.isPending) ||
         timedParentEventQueries.some((query) => query.isPending),
-      isError:
-        isError ||
-        isTimedActionItemError ||
-        eventActionItemQueries.some((query) => query.isError),
+      // 하위 항목 조회 실패는 그날 전체 에러로 보지 않는다. 항목은 일정에 딸린 부가 정보라
+      // 못 받아도 일정 자체는 보여주는 게 맞고, 하나만 실패해도 그날 목록이 통째로
+      // "불러오지 못했어요"로 바뀌던 문제가 있었다 (공휴일 403이 그 경로였다).
+      isError: isError || isTimedActionItemError,
     },
     adjacentPanels[1],
   ];
