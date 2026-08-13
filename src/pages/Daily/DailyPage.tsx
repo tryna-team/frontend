@@ -119,6 +119,11 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  * 시작일에만 보이고 항상 "1일차"가 된다. 조회 날짜가 startDate~endDate 범위에 포함되는
  * 일정도 반환되도록 백엔드가 수정되면, 중간 날짜에서도 이 계산이 그대로 맞는다.
  */
+/** 여러 날에 걸친 일정인지. endDate가 없으면 하루짜리다 */
+function isMultiDayEvent(startDate: string, endDate: string | null): boolean {
+  return Boolean(endDate) && endDate !== startDate;
+}
+
 function formatBannerDateText(
   startDate: string,
   endDate: string | null,
@@ -199,10 +204,15 @@ function DailyPage() {
     enabled: isValidDateParam(selectedDate),
   });
 
-  // 종일 일정은 상단에 배너로 한 번 더 요약해서 보여준다 (피그마 00-2).
-  // 배너 전용 API는 따로 없고, B103 응답의 isAllDay로 판별한다.
+  // 종일 일정과 여러 날에 걸친 일정을 상단에 배너로 한 번 더 요약해서 보여준다 (피그마 00-2).
+  // 배너 전용 API는 따로 없고 B103 응답으로 판별한다.
   // 배너에 올라간 일정도 아래 목록에는 그대로 남는다 — 배너는 목록을 대체하는 게 아니라 요약이다.
-  const allDayEvents = (data?.events ?? []).filter((event) => event.isAllDay);
+  //
+  // isAllDay만 보면 시간을 넣은 순간 배너에서 빠진다. 그런데 여러 날에 걸친 일정은
+  // 날짜마다 "N일차"로 진행 상황을 보여주는 게 배너의 역할이라, 시간이 있다고 빠지면 안 된다.
+  const bannerEvents = (data?.events ?? []).filter(
+    (event) => event.isAllDay || isMultiDayEvent(event.startDate, event.endDate),
+  );
 
   // API 응답(CalendarEventDetail[])을 기존 JSX가 기대하는 ScheduleItem 형태로 변환
   // ⚠️ checklist, linkedSchedule은 B103 응답에 없는 필드 — 추후 별도 API 연동 필요
@@ -312,7 +322,7 @@ function DailyPage() {
   // date를 event.startDate가 아니라 selectedDate로 두는 이유: 여러 날 걸친 일정이
   // 중간 날짜 조회에도 내려오게 되면 startDate는 과거 날짜라 아래 필터에서 걸러진다.
   // B103은 날짜 단위 조회라 응답에 담긴 일정은 모두 그 날짜에 속한다고 봐도 된다.
-  const banners: BannerItem[] = allDayEvents.map((event) => ({
+  const banners: BannerItem[] = bannerEvents.map((event) => ({
     id: String(event.eventId),
     categoryColor: getLabelColor(event.labelId),
     title: event.title,
@@ -399,7 +409,7 @@ function DailyPage() {
     return {
       date,
       banners: events
-        .filter((event) => event.isAllDay)
+        .filter((event) => event.isAllDay || isMultiDayEvent(event.startDate, event.endDate))
         .map<BannerItem>((event) => ({
           id: String(event.eventId),
           categoryColor: getLabelColor(event.labelId),
