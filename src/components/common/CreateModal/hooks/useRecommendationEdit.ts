@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { format, isSameDay, isValid, parseISO } from 'date-fns';
+import { endOfDay, format, isValid, isWithinInterval, parseISO, startOfDay } from 'date-fns';
 
 import type { ActionItemScheduleValue } from '@/features/event/components/create';
 import type { RecommendationCandidate } from '@/stores/types';
@@ -10,12 +10,14 @@ import type { RecommendationEditDraft } from '../types';
 type UseRecommendationEditParams = {
   isSaving: boolean;
   startDate: Date;
+  endDate: Date;
   editCandidate: (candidateId: string, patch: Partial<RecommendationCandidate>) => void;
 };
 
 export function useRecommendationEdit({
   isSaving,
   startDate,
+  endDate,
   editCandidate,
 }: UseRecommendationEditParams) {
   const [recommendationEditDraft, setRecommendationEditDraft] =
@@ -61,9 +63,12 @@ export function useRecommendationEdit({
       return;
     }
 
-    const isTimedAction =
-      Boolean(recommendationEditDraft.originalDisplayDate) ||
-      !isSameDay(recommendationEditDraft.date, startDate);
+    // 상위 일정이 범위 일정이든 하루짜리이든, 선택 날짜가 [startDate, endDate] 범위 안이면 당일(비시간형)으로 취급한다.
+    const isWithinParentRange = isWithinInterval(recommendationEditDraft.date, {
+      start: startOfDay(startDate),
+      end: endOfDay(endDate),
+    });
+    const isTimedAction = !isWithinParentRange;
 
     const nextItemType = isTimedAction ? 'TIMED_ACTION' : 'CHECKLIST';
     const nextApiItemType = isTimedAction ? 'TIMED_ACTION' : 'UNTIMED_PREP';
@@ -85,7 +90,7 @@ export function useRecommendationEdit({
       });
     }
     setRecommendationEditDraft(null);
-  }, [editCandidate, recommendationEditDraft, startDate]);
+  }, [editCandidate, endDate, recommendationEditDraft, startDate]);
 
   return {
     recommendationEditDraft,

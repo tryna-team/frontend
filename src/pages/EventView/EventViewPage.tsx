@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { format, isValid, parseISO } from 'date-fns';
+import { addDays, differenceInCalendarDays, format, isValid, parseISO } from 'date-fns';
 
 import Header from '@/components/common/Header/Header';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
@@ -437,16 +437,35 @@ function EventViewPage() {
     dateText: item.dateText,
   }));
 
+  // 반복 일정의 특정 회차를 수정할 때, F102(이벤트 상세 조회)는 occurrenceDate를 받지
+  // 않아 항상 원본(첫 회차) 시작일/종료일만 내려준다. 이 값을 그대로 "완료" 시 PATCH에
+  // 실어 보내면, 지금 보고 있는 회차와 무관한 옛날 날짜가 나가서 startDate보다 endDate가
+  // 앞서는 값이 되어 백엔드가 400을 던진다(EventUpdateService.validateTimePolicy,
+  // endDate.isBefore(startDate)). 원본의 "기간 길이"(종료일-시작일)는 유지한 채, 시작일만
+  // 지금 보고 있는 회차 날짜로 옮겨서 보정한다.
+  const occurrenceStartDate =
+    eventDetail.isRecurring && isValidDateParam(occurrenceDate) ? occurrenceDate : eventDetail.startDate;
+  const occurrenceEndDate = eventDetail.endDate
+    ? format(
+        addDays(
+          new Date(`${occurrenceStartDate}T00:00:00`),
+          differenceInCalendarDays(
+            new Date(`${eventDetail.endDate}T00:00:00`),
+            new Date(`${eventDetail.startDate}T00:00:00`),
+          ),
+        ),
+        'yyyy-MM-dd',
+      )
+    : null;
+
   const eventEditInitialValue: EventEditFormValue = {
     title: eventDetail.eventTitle,
     description: eventDetail.description,
     isAllDay: eventDetail.isAllDay,
-    startDate: new Date(
-      `${eventDetail.isRecurring && viewDate ? viewDate : eventDetail.startDate}T00:00:00`,
-    ),
+    startDate: new Date(`${occurrenceStartDate}T00:00:00`),
     // 종료 날짜/시간이 없는 일정(null)은 시작값으로 대체하지 않고 그대로 null 유지 —
     // 대체하면 안 건드리고 "완료"만 눌러도 PATCH에 가짜 종료값이 실제 값처럼 나간다.
-    endDate: eventDetail.endDate ? new Date(`${eventDetail.endDate}T00:00:00`) : null,
+    endDate: occurrenceEndDate ? new Date(`${occurrenceEndDate}T00:00:00`) : null,
     startTime: eventDetail.startTime,
     endTime: eventDetail.endTime,
     repeat: RECURRENCE_TYPE_TO_REPEAT_OPTION[eventDetail.recurrenceType] ?? '반복 없음',
