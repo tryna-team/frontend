@@ -5,6 +5,7 @@ import { addDays, differenceInCalendarDays, format, isValid, parseISO } from 'da
 
 import Header from '@/components/common/Header/Header';
 import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
+import { formatBannerDateText } from '@/components/common/ScheduleBanner/formatBannerDateText';
 import Button from '@/components/common/Buttons/Button';
 import type { LabelItemData } from '@/components/common/LabelModal/LabelModal';
 import DailyScheduleDetail from '@/features/event/components/DailyScheduleDetail';
@@ -117,6 +118,7 @@ function EventViewPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const [searchParams] = useSearchParams();
   const occurrenceDate = searchParams.get('occurrenceDate');
+  const viewDate = isValidDateParam(occurrenceDate) ? occurrenceDate : null;
   const navigationState = location.state as EventViewNavigationState | null;
   const labels = useCalendarStore((s) => s.labels);
   const setLabels = useCalendarStore((s) => s.setLabels);
@@ -152,8 +154,8 @@ function EventViewPage() {
     isPending: isActionItemsPending,
     isError: isActionItemsError,
   } = useQuery({
-    queryKey: queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
-    queryFn: () => actionItemService.getByEvent(eventId as string, occurrenceDate ?? undefined),
+    queryKey: queryKeys.actionItems.byEvent(eventId ?? '', viewDate ?? undefined),
+    queryFn: () => actionItemService.getByEvent(eventId as string, viewDate ?? undefined),
     enabled: !!eventId,
   });
 
@@ -167,11 +169,11 @@ function EventViewPage() {
           id: String(item.actionItemId),
           text: item.title,
           checked: item.actionItemStatus === 'COMPLETED',
-          // 비시간형 준비 항목은 오늘 확인할 항목으로 표시한다.
+          // 비시간형 준비 항목은 당일 확인할 항목으로 표시한다.
           dateText:
             item.itemType === 'TIMED_ACTION' && displayDate && isValid(displayDate)
               ? format(displayDate, 'M월 d일')
-              : '오늘',
+              : '당일',
         };
       }),
     [actionItemsData],
@@ -194,11 +196,18 @@ function EventViewPage() {
         // 하므로 현재 보고 있는 occurrenceDate를 우선 전달하도록 한다. occurrenceDate가
         // 없으면 eventDetail.startDate를 폴백으로 사용한다. 반복 일정이 아니면 null.
         occurrenceDate: eventDetail?.isRecurring
-          ? (occurrenceDate ?? eventDetail.startDate ?? null)
+          ? (viewDate ?? eventDetail.startDate ?? null)
           : null,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+    onSuccess: async () => {
+      // events.all만 무효화하면 calendars.all(홈/데일리가 읽는 캐시)은 그대로 남아,
+      // 삭제 직후 홈으로 리디렉션돼도 삭제되기 전 캘린더 데이터가 계속 보인다 —
+      // EventEditBottomSheet의 캐시 무효화 gap과 동일한 원인. 재조회가 끝난 뒤에
+      // navigate해야 홈에 도착했을 때 이미 최신 상태다.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.events.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.calendars.all }),
+      ]);
       navigate(PATH.HOME, { replace: true });
     },
     onError: () => {
@@ -220,20 +229,29 @@ function EventViewPage() {
   const pendingActionItemIdsRef = useRef(new Set<number>());
   const [pendingActionItemIds, setPendingActionItemIds] = useState<Set<number>>(() => new Set());
 
+  // 외부 캘린더(구글/카카오/애플) 연동 일정은 백엔드가 수정/삭제 요청 자체를 거부한다
+  // (EventUpdateService/EventDeletionService의 validateInternalOwnerEvent, sourceType ===
+  // EXTERNAL_CALENDAR면 400) — 프론트에서도 수정/삭제 버튼을 아예 노출하지 않는다.
+  // eventDetail 로딩 전(undefined)엔 "수정 가능"으로 잘못 새지 않도록 false를 기본값으로
+  // 둔다 — useFloatingButtons는 아래 로딩 가드(return null)보다 먼저 실행되기 때문에,
+  // 로딩 중 기본값이 true였다면 외부 캘린더 일정에서도 삭제 버튼이 잠깐 보일 수 있었다.
+  const canModifyEvent = !!eventDetail && eventDetail.sourceType !== 'EXTERNAL_CALENDAR';
+
   const floatingButtonsContent = useMemo(
-    () => (
-      <Button variant="LargeWarningFit" onClick={() => setIsDeleteModalOpen(true)}>
-        이벤트 삭제
-      </Button>
-    ),
-    [setIsDeleteModalOpen],
+    () =>
+      !canModifyEvent ? null : (
+        <Button variant="LargeWarningFit" onClick={() => setIsDeleteModalOpen(true)}>
+          이벤트 삭제
+        </Button>
+      ),
+    [canModifyEvent, setIsDeleteModalOpen],
   );
   useFloatingButtons(floatingButtonsContent);
 
   const fromDate = isValidDateParam(navigationState?.fromDate)
     ? navigationState.fromDate
     : undefined;
-  const validOccurrenceDate = isValidDateParam(occurrenceDate) ? occurrenceDate : undefined;
+  const validOccurrenceDate = viewDate ?? undefined;
   const parentDate = fromDate ?? validOccurrenceDate ?? eventDetail?.startDate;
 
   // 캘린더 계층의 상위 화면인 데일리 뷰로 이동
@@ -250,22 +268,22 @@ function EventViewPage() {
   const actionItemStatusMutation = useMutation({
     mutationFn: ({
       actionItemId,
+      occurrenceDate,
       status,
-      occurrenceDate: statusOccurrenceDate,
     }: {
       actionItemId: number;
+      occurrenceDate: string;
       status: ActionItemCompletionStatus;
       displayDate: string | null;
-      occurrenceDate: string;
     }) =>
       actionItemService.updateStatus(actionItemId, {
+        occurrenceDate,
         actionItemStatus: status,
-        occurrenceDate: statusOccurrenceDate,
       }),
     onMutate: async ({ actionItemId, status }) => {
       const eventItemsQueryKey = queryKeys.actionItems.byEvent(
         eventId ?? '',
-        occurrenceDate ?? undefined,
+        viewDate ?? undefined,
       );
 
       pendingActionItemIdsRef.current.add(actionItemId);
@@ -295,7 +313,7 @@ function EventViewPage() {
 
       if (previousStatus) {
         queryClient.setQueryData<EventActionItemResponse>(
-          queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
+          queryKeys.actionItems.byEvent(eventId ?? '', viewDate ?? undefined),
           (current) =>
             current
               ? {
@@ -319,7 +337,7 @@ function EventViewPage() {
 
       const invalidations = [
         queryClient.invalidateQueries({
-          queryKey: queryKeys.actionItems.byEvent(eventId ?? '', occurrenceDate ?? undefined),
+          queryKey: queryKeys.actionItems.byEvent(eventId ?? '', viewDate ?? undefined),
         }),
       ];
 
@@ -342,11 +360,18 @@ function EventViewPage() {
       return;
     }
 
+    const statusOccurrenceDate =
+      viewDate ?? actionItem.displayDate ?? eventDetail?.startDate ?? parentDate;
+
+    if (!statusOccurrenceDate) {
+      return;
+    }
+
     actionItemStatusMutation.mutate({
       actionItemId: actionItem.actionItemId,
+      occurrenceDate: statusOccurrenceDate,
       status: actionItem.actionItemStatus === 'COMPLETED' ? 'PENDING' : 'COMPLETED',
       displayDate: actionItem.itemType === 'TIMED_ACTION' ? actionItem.displayDate : null,
-      occurrenceDate: occurrenceStartDate,
     });
   };
 
@@ -359,11 +384,18 @@ function EventViewPage() {
           !pendingActionItemIdsRef.current.has(item.actionItemId),
       )
       .forEach((item) => {
+        const statusOccurrenceDate =
+          viewDate ?? item.displayDate ?? eventDetail?.startDate ?? parentDate;
+
+        if (!statusOccurrenceDate) {
+          return;
+        }
+
         actionItemStatusMutation.mutate({
           actionItemId: item.actionItemId,
+          occurrenceDate: statusOccurrenceDate,
           status: 'COMPLETED',
           displayDate: item.itemType === 'TIMED_ACTION' ? item.displayDate : null,
-          occurrenceDate: occurrenceStartDate,
         });
       });
   };
@@ -386,11 +418,15 @@ function EventViewPage() {
 
   // EventEditBottomSheet/ActionItemEditBottomSheet에 넘길 라벨 목록 — CalendarLabel과
   // LabelItemData의 color 타입이 동일(LabelModal/LabelItem 기준)해 별도 변환 없이 매핑된다.
-  const labelItems: LabelItemData[] = labels.map((label) => ({
-    id: label.labelId,
-    label: label.name,
-    color: label.color,
-  }));
+  // SYSTEM(예: "대한민국 공휴일", labelId: -1)은 서버가 항상 끼워 보내는 가상 라벨로 실제
+  // 라벨 테이블에 없어, 선택 가능한 목록에 포함하면 안 된다(선택 시 일정 저장이 400으로 실패함).
+  const labelItems: LabelItemData[] = labels
+    .filter((label) => label.labelType !== 'SYSTEM')
+    .map((label) => ({
+      id: label.labelId,
+      label: label.name,
+      color: label.color,
+    }));
 
   // todoItems.id는 이미 실제 actionItemId를 문자열로 담고 있어(String(item.actionItemId)),
   // 숫자로 되돌리기만 하면 된다 — 별도 mock id가 필요 없다.
@@ -450,14 +486,37 @@ function EventViewPage() {
           text: formatDateLabel(parentDate ?? eventDetail.startDate),
           onClick: handleBack,
         }}
-        trailing={{ type: 'text', text: '수정', onClick: () => setIsEditOpen(true) }}
+        trailing={
+          !canModifyEvent
+            ? { type: 'none' }
+            : { type: 'text', text: '수정', onClick: () => setIsEditOpen(true) }
+        }
       />
 
       <div className="event-view-page-content">
-        <ScheduleBanner categoryColor={categoryColor} title={eventDetail.eventTitle} dateText="" />
+        {/* DailyPage.tsx와 동일한 formatBannerDateText를 쓴다. ⚠️ 반복 일정의 경우, DailyPage는
+            날짜별 일정 목록(B103) 응답이 "지금 보고 있는 회차"의 실제 시작일을 정확히 내려줘서
+            계산이 맞지만, 이 화면이 쓰는 이벤트 상세 조회(F102)는 occurrenceDate를 안 받아서
+            항상 이벤트의 기준(첫 회차) 시작일만 내려준다 — 즉 eventDetail.startDate가 "지금
+            보고 있는 회차의 시작일"이 아닐 수 있어, 반복 + 기간형 일정에서는 "N일차" 값이
+            부정확할 수 있다(DailyPage와 다른 지점). */}
+        <ScheduleBanner
+          categoryColor={categoryColor}
+          title={eventDetail.eventTitle}
+          dateText={
+            eventDetail.isAllDay
+              ? formatBannerDateText(
+                  eventDetail.startDate,
+                  eventDetail.endDate,
+                  viewDate ?? eventDetail.startDate,
+                )
+              : ''
+          }
+        />
 
         <DailyScheduleDetail
           categoryColor={categoryColor}
+          isAllDay={eventDetail.isAllDay}
           startTime={eventDetail.startTime}
           endTime={eventDetail.endTime}
           rotationText={formatRecurrenceText(eventDetail)}
@@ -478,8 +537,6 @@ function EventViewPage() {
               준비 항목이 없어요.
             </p>
           ) : (
-            // "직접 추가" 버튼(onAddClick)은 의도적으로 연결하지 않음 — 관련 기능인
-            // ActionItemEditBottomSheet를 제거하면서 함께 비활성화했다.
             <DailyScheduleCard
               items={todoItems}
               onToggleItem={handleToggleItem}

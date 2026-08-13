@@ -6,7 +6,6 @@ import type { ActionItemScheduleValue } from '@/features/event/components/create
 import type { RecommendationCandidate } from '@/stores/types';
 
 import type { RecommendationEditDraft } from '../types';
-import { formatApiTimeForPicker, normalizeTime } from '../utils/dateTime';
 
 type UseRecommendationEditParams = {
   isSaving: boolean;
@@ -30,11 +29,6 @@ export function useRecommendationEdit({
 
       const parsedDisplayDate = candidate.displayDate ? parseISO(candidate.displayDate) : startDate;
       const initialDate = isValid(parsedDisplayDate) ? parsedDisplayDate : startDate;
-      const parsedDisplayEndDate = candidate.displayEndDate
-        ? parseISO(candidate.displayEndDate)
-        : initialDate;
-      const initialEndDate = isValid(parsedDisplayEndDate) ? parsedDisplayEndDate : initialDate;
-      const initialTime = formatApiTimeForPicker(candidate.displayTime);
       const originalApiItemType =
         candidate.apiItemType ??
         (candidate.itemType === 'TIMED_ACTION' ? 'TIMED_ACTION' : 'UNTIMED_PREP');
@@ -42,16 +36,10 @@ export function useRecommendationEdit({
       setRecommendationEditDraft({
         candidateId: candidate.candidateId,
         title: candidate.title,
-        startDate: initialDate,
-        endDate: initialEndDate,
-        startTime: initialTime,
-        endTime: initialTime,
+        date: initialDate,
         originalItemType: candidate.itemType,
         originalApiItemType,
         originalDisplayDate: candidate.displayDate ?? null,
-        originalDisplayEndDate: candidate.displayEndDate ?? null,
-        originalDisplayTime: candidate.displayTime ? normalizeTime(candidate.displayTime) : null,
-        hasTimeChanged: false,
       });
     },
     [isSaving, startDate],
@@ -62,11 +50,7 @@ export function useRecommendationEdit({
       current
         ? {
             ...current,
-            ...value,
-            hasTimeChanged:
-              current.hasTimeChanged ||
-              current.startTime !== value.startTime ||
-              current.endTime !== value.endTime,
+            date: value.date,
           }
         : current,
     );
@@ -77,39 +61,27 @@ export function useRecommendationEdit({
       return;
     }
 
-    const isDateRange = !isSameDay(
-      recommendationEditDraft.startDate,
-      recommendationEditDraft.endDate,
-    );
-    const isTimedAction = isDateRange || !isSameDay(recommendationEditDraft.startDate, startDate);
+    const isTimedAction =
+      Boolean(recommendationEditDraft.originalDisplayDate) ||
+      !isSameDay(recommendationEditDraft.date, startDate);
 
     const nextItemType = isTimedAction ? 'TIMED_ACTION' : 'CHECKLIST';
     const nextApiItemType = isTimedAction ? 'TIMED_ACTION' : 'UNTIMED_PREP';
     const nextDisplayDate = isTimedAction
-      ? format(recommendationEditDraft.startDate, 'yyyy-MM-dd')
-      : null;
-    const nextDisplayEndDate =
-      isTimedAction && isDateRange ? format(recommendationEditDraft.endDate, 'yyyy-MM-dd') : null;
-    // Keep the existing null value unless the user edits time explicitly.
-    const nextDisplayTime = isTimedAction
-      ? recommendationEditDraft.hasTimeChanged
-        ? normalizeTime(recommendationEditDraft.startTime)
-        : recommendationEditDraft.originalDisplayTime
+      ? format(recommendationEditDraft.date, 'yyyy-MM-dd')
       : null;
     const hasScheduleChanged =
       nextItemType !== recommendationEditDraft.originalItemType ||
       nextApiItemType !== recommendationEditDraft.originalApiItemType ||
-      nextDisplayDate !== recommendationEditDraft.originalDisplayDate ||
-      nextDisplayEndDate !== recommendationEditDraft.originalDisplayEndDate ||
-      nextDisplayTime !== recommendationEditDraft.originalDisplayTime;
+      nextDisplayDate !== recommendationEditDraft.originalDisplayDate;
 
     if (hasScheduleChanged) {
       editCandidate(recommendationEditDraft.candidateId, {
         itemType: nextItemType,
         apiItemType: nextApiItemType,
         displayDate: nextDisplayDate,
-        displayEndDate: nextDisplayEndDate,
-        displayTime: nextDisplayTime,
+        displayEndDate: null,
+        displayTime: null,
       });
     }
     setRecommendationEditDraft(null);

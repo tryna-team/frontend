@@ -3,6 +3,7 @@ import { useEffect, useId, useState } from 'react';
 import { format, isAfter, isBefore, isSameDay } from 'date-fns';
 
 import Button from '@/components/common/Buttons/Button';
+import ActionRow from '@/components/common/ActionRow/ActionRow';
 import LabelModal from '@/components/common/LabelModal/LabelModal';
 import type { RepeatType } from '@/components/common/LabelModal/LabelItem';
 import ContentBox from '@/components/common/Popup/BottomSheet/Layout/ContentBox';
@@ -30,8 +31,10 @@ export type RepeatScheduleBottomSheetProps = {
   startTime: string;
   endTime: string;
   repeat: RepeatOption;
+  isAllDay?: boolean;
   onStartDateChange?: (date: Date) => void;
   onEndDateChange?: (date: Date) => void;
+  onAllDayChange?: (isAllDay: boolean) => void;
   onStartTimeClick?: () => void;
   onEndTimeClick?: () => void;
   onStartTimeChange?: (value: TimePickerValue) => void;
@@ -89,8 +92,10 @@ export default function RepeatScheduleBottomSheet({
   startTime,
   endTime,
   repeat,
+  isAllDay = false,
   onStartDateChange,
   onEndDateChange,
+  onAllDayChange,
   onStartTimeClick,
   onEndTimeClick,
   onStartTimeChange,
@@ -179,6 +184,11 @@ export default function RepeatScheduleBottomSheet({
     onEndTimeClick?.();
   };
 
+  const handleToggleAllDay = () => {
+    setActiveTimeField(null);
+    onAllDayChange?.(!isAllDay);
+  };
+
   const handleStartTimeChange = (value: TimePickerValue) => {
     setStartTimeValue(value);
     onStartTimeChange?.(value);
@@ -226,6 +236,7 @@ export default function RepeatScheduleBottomSheet({
         leading="시작"
         date={formatScheduleDate(startDate)}
         time={startTime}
+        hideTime={isAllDay}
         onDateClick={() => {
           setActiveDateField('start');
           setActiveTimeField(null);
@@ -237,13 +248,13 @@ export default function RepeatScheduleBottomSheet({
       {activeTimeField === 'start' && (
         <>
           <div
-            className="fixed inset-0 z-20"
+            className="fixed inset-0 z-40"
             onClick={(event) => {
               event.stopPropagation();
               setActiveTimeField(null);
             }}
           />
-          <div className="absolute right-padding-xsmall bottom-full z-30">
+          <div className="absolute top-[calc(100%+8px)] right-padding-xsmall z-50">
             <TimePickerDial value={startTimeValue} onChange={handleStartTimeChange} />
           </div>
         </>
@@ -258,6 +269,7 @@ export default function RepeatScheduleBottomSheet({
         leading="종료"
         date={formatScheduleDate(endDate)}
         time={endTime}
+        hideTime={isAllDay}
         onDateClick={() => {
           setActiveDateField('end');
           setActiveTimeField(null);
@@ -269,13 +281,13 @@ export default function RepeatScheduleBottomSheet({
       {activeTimeField === 'end' && (
         <>
           <div
-            className="fixed inset-0 z-20"
+            className="fixed inset-0 z-40"
             onClick={(event) => {
               event.stopPropagation();
               setActiveTimeField(null);
             }}
           />
-          <div className="absolute right-padding-xsmall bottom-full z-30">
+          <div className="absolute top-[calc(100%+8px)] right-padding-xsmall z-50">
             <TimePickerDial value={endTimeValue} onChange={handleEndTimeChange} />
           </div>
         </>
@@ -290,6 +302,20 @@ export default function RepeatScheduleBottomSheet({
       defaultMonth={activeDate}
       onChange={handleDateChange}
     />
+  );
+
+  const allDayRow = (
+    <div className="box-content w-[329px] pr-padding-xsmall pl-padding-medium [&>div]:px-0">
+      <ActionRow
+        leading={{ type: 'text', text: '하루종일' }}
+        accessory={{
+          type: 'toggle',
+          checked: isAllDay,
+          ariaLabel: '하루종일',
+          onClick: handleToggleAllDay,
+        }}
+      />
+    </div>
   );
 
   // 반복 행과 닫기 버튼을 하나의 하단 아이템으로 구성한다.
@@ -354,10 +380,14 @@ export default function RepeatScheduleBottomSheet({
           {activeDateField === 'start' ? (
             <>
               <div className={CONTENT_BOX_LAYOUT_CLASS}>
+                <ContentBox title="">{allDayRow}</ContentBox>
+              </div>
+
+              <div className={CONTENT_BOX_LAYOUT_CLASS}>
                 <ContentBox title="">
-                  {calendar}
-                  <div className="mt-3 h-px w-[calc(100%-32px)] bg-grey-opacity-100" />
                   {startRow}
+                  <div className="h-px w-[calc(100%-32px)] bg-grey-opacity-100" />
+                  <div className="pb-3">{calendar}</div>
                 </ContentBox>
               </div>
 
@@ -368,14 +398,18 @@ export default function RepeatScheduleBottomSheet({
           ) : (
             <>
               <div className={CONTENT_BOX_LAYOUT_CLASS}>
+                <ContentBox title="">{allDayRow}</ContentBox>
+              </div>
+
+              <div className={CONTENT_BOX_LAYOUT_CLASS}>
                 <ContentBox title="">{startRow}</ContentBox>
               </div>
 
               <div className={CONTENT_BOX_LAYOUT_CLASS}>
                 <ContentBox title="">
-                  {calendar}
-                  <div className="mt-3 h-px w-[calc(100%-32px)] bg-grey-opacity-100" />
                   {endRow}
+                  <div className="h-px w-[calc(100%-32px)] bg-grey-opacity-100" />
+                  <div className="pb-3">{calendar}</div>
                 </ContentBox>
               </div>
             </>

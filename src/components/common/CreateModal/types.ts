@@ -58,14 +58,8 @@ export type CreateModalProps = {
 export type RecommendationEditDraft = {
   candidateId: string;
   title: string;
-  startDate: Date;
-  endDate: Date;
-  startTime: string;
-  endTime: string;
+  date: Date;
   originalItemType: RecommendationCandidate['itemType'];
   originalApiItemType: NonNullable<RecommendationCandidate['apiItemType']>;
   originalDisplayDate: string | null;
-  originalDisplayEndDate: string | null;
-  originalDisplayTime: string | null;
-  hasTimeChanged: boolean;
 };
