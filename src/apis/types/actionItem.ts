@@ -25,6 +25,11 @@ export type ActionItemCreatedBy = 'SYSTEM' | 'USER' | 'USER_EDITED';
 /** E106 준비/실행 항목 상태 변경 요청 */
 export interface ActionItemStatusUpdateRequest {
   actionItemStatus: ActionItemCompletionStatus;
+  // 반복 일정에서 "지금 보고 있는 회차"를 서버에 알려주는 값. 안 보내면 백엔드가 이
+  // 항목이 저장될 때 갖고 있던 occurrenceDate로 대체하는데, 그게 지금 보고 있는
+  // 회차와 다를 수 있어(예: 원래 회차 vs 이후 회차) 완료 처리가 엉뚱한 회차에 기록되고
+  // 화면은 다시 미완료로 보이는 문제가 있었다 — 반드시 함께 보내야 한다.
+  occurrenceDate?: string;
 }
 
 /** E106 준비/실행 항목 상태 변경 결과 */
