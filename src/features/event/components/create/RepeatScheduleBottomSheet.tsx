@@ -370,8 +370,9 @@ export default function RepeatScheduleBottomSheet({
         />
       )}
 
-      <Frame
-        className="relative z-10 max-h-[92dvh] gap-2 !bg-white px-4 pt-5 pb-1"
+      <Frame 
+        // 콘텐츠가 화면 높이를 초과하는 경우에만 세로 스크롤을 허용한다.
+        className="relative z-10 max-h-[calc(100dvh-16px)] overflow-y-auto overscroll-contain gap-2 !bg-white px-4 pt-5 pb-1"
         aria-labelledby={titleId}
       >
         <h2 id={titleId} className="sr-only">
