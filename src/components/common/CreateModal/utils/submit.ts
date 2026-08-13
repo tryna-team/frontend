@@ -10,7 +10,11 @@ import type { RepeatOption } from '@/features/event/components/create';
 import type { RecommendationCandidate } from '@/stores/types';
 
 import { RECURRENCE_TYPE } from '../constants';
-import { formatActionItemDisplayTime, normalizeTime } from './dateTime';
+import {
+  detectRepeatOptionFromText,
+  formatActionItemDisplayTime,
+  normalizeTime,
+} from './dateTime';
 
 export const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: RepeatOption) => {
   const recurrenceType = hasRepeatChanged ? (RECURRENCE_TYPE[repeat] ?? 'NONE') : 'NONE';
@@ -130,10 +134,13 @@ export const buildCreateEventRequest = ({
   recommendationCandidates,
   isScheduleAllDay = false,
 }: BuildCreateEventRequestParams): EventCreateRequest => {
+  const detectedRepeat = detectRepeatOptionFromText(trimmedInput);
   const hasParsedStartTime = Boolean(parsedCandidate?.timeCandidate);
   const hasParsedEndTime = Boolean(parsedCandidate?.endTimeCandidate);
   const hasEffectiveStartTime = hasStartTimeChanged || hasParsedStartTime || Boolean(startTime);
   const hasEffectiveEndTime = hasEndTimeChanged || hasParsedEndTime || Boolean(endTime);
+  const effectiveRepeat = detectedRepeat ?? repeat;
+  const effectiveHasRepeatChanged = hasRepeatChanged || detectedRepeat !== null;
   const startTimeValue = isScheduleAllDay
     ? null
     : hasEffectiveStartTime
@@ -144,7 +151,7 @@ export const buildCreateEventRequest = ({
     : hasEffectiveEndTime
       ? normalizeTime(endTime || parsedCandidate?.endTimeCandidate || '')
       : null;
-  const recurrencePayload = buildRecurrencePayload(hasRepeatChanged, repeat);
+  const recurrencePayload = buildRecurrencePayload(effectiveHasRepeatChanged, effectiveRepeat);
   const shouldSaveEndDate =
     Boolean(endTimeValue) ||
     hasEndDateChanged ||

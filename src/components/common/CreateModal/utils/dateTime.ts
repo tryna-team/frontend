@@ -37,6 +37,32 @@ export const formatActionItemDisplayTime = (
 export const formatTime = ({ meridiem, hour, minute }: TimePickerValue) =>
   `${hour}:${String(minute).padStart(2, '0')} ${meridiem}`;
 
+export const detectRepeatOptionFromText = (input: string) => {
+  const normalizedText = input.replace(/\s+/g, ' ').trim();
+
+  if (!normalizedText) {
+    return null;
+  }
+
+  if (normalizedText.includes('매년')) {
+    return '매년' as const;
+  }
+
+  if (normalizedText.includes('매월')) {
+    return '매월' as const;
+  }
+
+  if (normalizedText.includes('매주')) {
+    return '매주' as const;
+  }
+
+  if (normalizedText.includes('매일')) {
+    return '매일' as const;
+  }
+
+  return null;
+};
+
 export const getNextHourWindow = (sourceDate: Date = new Date()) => {
   const startDate = new Date(sourceDate);
 

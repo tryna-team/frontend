@@ -17,7 +17,12 @@ import {
 import { useEventCreationStore } from '@/stores';
 
 import { COLOR_ICON } from './constants';
-import { formatTime, getCurrentTime, getNextHourWindow } from './utils/dateTime';
+import {
+  detectRepeatOptionFromText,
+  formatTime,
+  getCurrentTime,
+  getNextHourWindow,
+} from './utils/dateTime';
 import CreateModalSkeleton from './CreateModalSkeleton';
 import type { CreateModalProps } from './types';
 import { useCreateEventSubmit } from './hooks/useCreateEventSubmit';
@@ -300,6 +305,18 @@ export default function CreateModal({
     setIsLabelModalOpen((isOpen) => !isOpen);
     onOpenLabel?.();
   };
+
+  useEffect(() => {
+    const detectedRepeat = detectRepeatOptionFromText(trimmedInput);
+
+    if (!detectedRepeat) {
+      return;
+    }
+
+    setRepeat((prev) => (prev === detectedRepeat ? prev : detectedRepeat));
+    setHasRepeatChanged(true);
+    setHasScheduleChanged(true);
+  }, [trimmedInput]);
 
   const handleCalendarClick = () => {
     if (isSaving || isScheduleOpeningRef.current) {
