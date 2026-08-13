@@ -24,7 +24,7 @@ export default function Frame({
       aria-modal="true"
       aria-labelledby={ariaLabelledBy}
       aria-describedby={ariaDescribedBy}
-      className={`flex flex-col items-center w-[calc(100%_-_8px)] bg-background-white rounded-medium shadow-[0px_0px_20px_0px_rgba(0,0,0,0.08)] overflow-clip frame-bottom-spacing ${className ?? ''}`}
+      className={`flex flex-col items-center w-[calc(100%_-_8px)] bg-background-white rounded-medium shadow-[0px_0px_20px_0px_rgba(0,0,0,0.08)] overflow-clip frame-bottom-spacing frame-slide-up ${className ?? ''}`}
       onClick={(e) => e.stopPropagation()}
     >
       {children}
