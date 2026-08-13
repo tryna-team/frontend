@@ -370,12 +370,17 @@ export default function RepeatScheduleBottomSheet({
         />
       )}
 
-      <Frame className="relative z-10 gap-2 !bg-white px-4 pt-5 pb-1" aria-labelledby={titleId}>
+      <Frame
+        className="relative z-10 max-h-[92dvh] gap-2 !bg-white px-4 pt-5 pb-1"
+        aria-labelledby={titleId}
+      >
         <h2 id={titleId} className="sr-only">
           반복 일정 설정
         </h2>
 
-        <div className="flex w-full flex-col gap-2">
+        {/* 주차가 많은 달은 캘린더까지 포함해 Frame 최대 높이를 넘길 수 있어, 이 영역만
+            스크롤되게 해 상단 "하루종일" 행이 화면 밖으로 밀리지 않게 한다. */}
+        <div className="flex w-full min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
           {/* 선택 중인 날짜 행 가까이에 캘린더를 표시한다. */}
           {activeDateField === 'start' ? (
             <>
