@@ -237,6 +237,7 @@ export default function CreateModal({
   } = useRecommendationEdit({
     isSaving,
     startDate,
+    endDate,
     editCandidate,
   });
 
