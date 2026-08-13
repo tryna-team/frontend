@@ -1,0 +1,13 @@
+/*
+ * Main 콘텐츠 하단 여백: FloatingButtons(82px)가 떠 있을 때 그만큼 예약.
+ *
+ * FloatingButtons(App.tsx)는 h-[82px]로 높이가 고정돼있고, box-sizing: border-box라
+ * 그 안에서 paddingBottom(안전영역 포함)을 소화하므로 바깥에서 보이는 실제 높이는
+ * 항상 82px다. 따라서 여기서 안전영역을 다시 더할 필요가 없다 — 실기기(iOS Safari)
+ * 측정으로 scrollHeight === innerHeight가 되는 걸 확인한 값이다. 만약 안전영역을
+ * 여기서도 중복으로 더하면, 그만큼 페이지 전체 높이가 실제 뷰포트보다 커져서
+ * 불필요한 스크롤이 생기고 FloatingButtons가 화면 밖으로 밀려난다.
+ */
+.main-floating-padding {
+  padding-bottom: 82px;
+}

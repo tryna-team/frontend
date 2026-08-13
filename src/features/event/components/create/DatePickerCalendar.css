@@ -1,0 +1,344 @@
+﻿/* 이벤트 생성 전용 캘린더
+ * 기존 FullCalendar 기반 월간 캘린더와 스타일이 충돌하지 않도록 create-date-picker 내부에서만 DayPicker 스타일을 재정의
+ */
+
+.create-date-picker {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(
+    --Semantic-BackGround-White,
+    #fff
+  );
+}
+
+/* Calendar Header */
+
+.create-date-picker__header {
+  display: flex;
+  width: 100%;
+  padding: 12px 16px 4px;
+  align-items: center;
+  justify-content: space-between;
+  align-self: stretch;
+}
+
+.create-date-picker__month-button {
+  display: flex;
+  height: 24px;
+  align-items: center;
+  gap: var(--Spacing-Semantic-Gap-XSmall, 4px);
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.create-date-picker__month-title {
+  color: var(--Semantic-Text-Default, #1c1630);
+  font-family: var(
+    --Default-Body-Strong-Large-FontFamily,
+    Pretendard
+  );
+  font-size: var(
+    --Default-Body-Strong-Large-FontSize,
+    17px
+  );
+  font-style: normal;
+  font-weight: 600;
+  line-height: var(
+    --Default-Body-Strong-Large-LineHeight,
+    26px
+  );
+  letter-spacing: var(
+    --Default-Body-Strong-Large-LetterSpacing,
+    -0.17px
+  );
+  white-space: nowrap;
+}
+
+.create-date-picker__month-chevron {
+  display: block;
+  flex-shrink: 0;
+}
+
+.create-date-picker__navigation {
+  display: flex;
+  height: 20px;
+  align-items: center;
+  gap: 20px;
+}
+
+.create-date-picker__navigation-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.create-date-picker__navigation-button img {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Calendar Body */
+
+.create-date-picker__body {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: stretch;
+}
+
+.create-date-picker .rdp-root {
+  --rdp-day-width: 40px;
+  --rdp-day-height: 40px;
+  --rdp-day_button-width: 40px;
+  --rdp-day_button-height: 40px;
+  --rdp-outside-opacity: 1;
+  --rdp-today-color: var(
+    --Base-Green-Green-400,
+    #32e089
+  );
+
+  width: 100%;
+  margin: 0;
+  color: var(--Semantic-Text-Default, #1c1630);
+  font-family: Pretendard, sans-serif;
+}
+
+.create-date-picker .rdp-months,
+.create-date-picker .rdp-month {
+  width: 100%;
+  max-width: none;
+}
+
+.create-date-picker .rdp-month_caption,
+.create-date-picker .rdp-nav {
+  display: none;
+}
+
+.create-date-picker .rdp-month_grid {
+  display: block;
+  width: 100%;
+  border: 0;
+}
+
+/* Weekday Header */
+
+.create-date-picker
+  .rdp-month_grid
+  > thead {
+  display: block;
+  width: 100%;
+}
+
+.create-date-picker .rdp-weekdays,
+.create-date-picker .rdp-week {
+  display: grid;
+  grid-template-columns: repeat(
+    7,
+    40px
+  );
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: space-between;
+  padding: 0 16px;
+}
+
+.create-date-picker .rdp-weekdays {
+  grid-template-columns: repeat(
+    7,
+    42px
+  );
+  height: 18px;
+  align-items: center;
+  align-self: stretch;
+}
+
+.create-date-picker .rdp-weekday {
+  width: 42px;
+  height: 18px;
+  padding: 0;
+  color: var(
+    --Semantic-Text-Disable,
+    rgba(28, 22, 48, 0.3)
+  );
+  text-align: center;
+  font-family: var(
+    --Default-Caption-Large-FontFamily,
+    Pretendard
+  );
+  font-size: var(
+    --Default-Caption-Large-FontSize,
+    12px
+  );
+  font-style: normal;
+  font-weight: 400;
+  line-height: var(
+    --Default-Caption-Large-LineHeight,
+    16px
+  );
+  letter-spacing: var(
+    --Default-Caption-Large-LetterSpacing,
+    -0.12px
+  );
+}
+
+/* Week / Day */
+
+.create-date-picker .rdp-weeks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.create-date-picker .rdp-week {
+  height: 40px;
+}
+
+.create-date-picker .rdp-day {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  text-align: center;
+}
+
+.create-date-picker .rdp-day_button {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--Spacing-Semantic-Gap-XSmall, 4px);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--Semantic-Text-Default, #1c1630);
+  font-family: var(
+    --Default-Title-Large-FontFamily,
+    Pretendard
+  );
+  font-size: var(
+    --Default-Title-Large-FontSize,
+    22px
+  );
+  font-style: normal;
+  font-weight: 600;
+  line-height: var(
+    --Default-Title-Large-LineHeight,
+    32px
+  );
+  letter-spacing: var(
+    --Default-Title-Large-LetterSpacing,
+    -0.22px
+  );
+  cursor: pointer;
+}
+
+/* 이전 달 및 다음 달 날짜 */
+.create-date-picker
+  .rdp-outside
+  .rdp-day_button {
+  color: var(
+    --Semantic-Text-Disable,
+    rgba(28, 22, 48, 0.3)
+  );
+}
+
+/* 오늘 날짜 */
+.create-date-picker
+  .create-calendar-current-day
+  .rdp-day_button {
+  color: var(
+    --Base-Green-Green-500,
+    #29c878
+  );
+}
+
+/* 원래 일정 날짜는 선택 날짜보다 옅게 구분한다. */
+.create-date-picker
+  .create-calendar-reference-day:not(.create-calendar-selected-day)
+  .rdp-day_button {
+  color: var(--Base-Green-Green-400, #32e089);
+  background: color-mix(in srgb, var(--Base-Green-Green-400, #32e089) 12%, transparent);
+  border-radius: 999px;
+}
+
+/* 상위 일정의 시작일부터 종료일까지 같은 배경으로 연결한다. */
+.create-date-picker .create-calendar-reference-range-day::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0 -12px;
+  background: var(--color-green-50);
+  content: '';
+}
+
+.create-date-picker .create-calendar-reference-range-start::before {
+  left: 0;
+  border-radius: 999px 0 0 999px;
+}
+
+.create-date-picker .create-calendar-reference-range-end::before {
+  right: 0;
+  border-radius: 0 999px 999px 0;
+}
+
+/* 범위 배경은 각 주의 좌우 16px 여백 안에서만 표시한다. */
+.create-date-picker .rdp-day:first-child.create-calendar-reference-range-day::before {
+  left: 0;
+}
+
+.create-date-picker .rdp-day:last-child.create-calendar-reference-range-day::before {
+  right: 0;
+}
+
+.create-date-picker
+  .create-calendar-reference-range-day
+  .rdp-day_button {
+  background: transparent;
+  color: var(--Base-Green-Green-400, #32e089);
+}
+
+/* Single Selection */
+
+/* 선택된 날짜에 Green 500 원형 배경 표시 */
+.create-date-picker
+  .create-calendar-selected-day
+  .rdp-day_button {
+  border-radius: var(
+    --Radius-Semantic-Full,
+    999px
+  );
+  background: var(
+    --Base-Green-Green-500,
+    #29c878
+  );
+  color: var(
+    --Semantic-Text-White,
+    #fff
+  );
+}
+
+/* Focus */
+
+.create-date-picker
+  .rdp-day_button:focus-visible,
+.create-date-picker__month-button:focus-visible,
+.create-date-picker__navigation-button:focus-visible {
+  outline: 2px solid
+    var(--Base-Green-Green-200, #96f9c7);
+  outline-offset: 2px;
+}

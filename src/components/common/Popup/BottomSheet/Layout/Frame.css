@@ -1,0 +1,21 @@
+.frame-bottom-spacing {
+  /* env() 자체를 모르는 브라우저용 기본값 — 다음 줄이 무효 처리되면 이 값이 그대로 유지됨 */
+  margin-bottom: 0.25rem;
+  /* env() 지원 브라우저는 이 값으로 덮어씀(홈 인디케이터 있으면 자동으로 더 확보) */
+  margin-bottom: max(0.25rem, env(safe-area-inset-bottom));
+}
+
+@keyframes frame-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .frame-slide-up {
+    animation: frame-slide-up 0.2s ease-out;
+  }
+}

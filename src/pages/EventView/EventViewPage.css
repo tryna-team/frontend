@@ -1,0 +1,11 @@
+.event-view-page {
+  box-sizing: border-box;
+}
+
+.event-view-page-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* FloatingButtons 하단 여백은 이제 App.tsx(Main)가 슬롯 콘텐츠 유무에 따라
+     일괄 예약함 — 페이지별로 따로 계산할 필요 없음 */
+}
