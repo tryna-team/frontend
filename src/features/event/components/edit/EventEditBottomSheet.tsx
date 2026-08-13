@@ -664,6 +664,9 @@ export default function EventEditBottomSheet({
       {isScopeModalOpen && labelId !== null && (
         <QuickModal
           message="이 변경 사항을 어떻게 저장할까요?"
+          // 라벨("이후 모든 이벤트에 대해 저장")이 기본 폭보다 길어서 이 화면에서만
+          // 더 넓게 표시한다. 버튼 색상은 다른 QuickModal과 동일한 기본값(빨간색) 유지.
+          widthClassName="w-75"
           primaryAction={{
             text: isRecurring ? '이 이벤트만 저장' : '이벤트 수정',
             onClick: () => {

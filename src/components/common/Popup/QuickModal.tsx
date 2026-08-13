@@ -2,6 +2,7 @@
 import { useEffect, useId } from 'react';
 
 import Button from '@/components/common/Buttons/Button';
+import type { TextButtonType } from '@/components/common/Buttons/ButtonType';
 
 interface QuickModalAction {
   text: string;
@@ -15,6 +16,11 @@ interface QuickModalProps {
   primaryAction: QuickModalAction;
   secondaryAction?: QuickModalAction;
   onClose: () => void;
+  // 다이얼로그 자체 너비. 기본은 삭제/로그아웃류 확인창 폭 — 버튼 라벨이 길어지는
+  // 호출부(예: 일정 수정 "완료" 시 저장 범위 선택)에서만 넓게 덮어쓴다.
+  widthClassName?: string;
+  // 버튼 색상/스타일. 기본은 삭제류 위험 액션을 나타내는 빨간색(LargeWarningRegular).
+  buttonVariant?: TextButtonType;
 }
 
 export default function QuickModal({
@@ -22,6 +28,8 @@ export default function QuickModal({
   primaryAction,
   secondaryAction,
   onClose,
+  widthClassName = 'w-61.25',
+  buttonVariant = 'LargeWarningRegular',
 }: QuickModalProps) {
   // 코드래빗 적용_aria-labelledby로 연결할 메시지 id
   const messageId = useId();
@@ -51,7 +59,7 @@ export default function QuickModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={messageId}
-        className="fixed bottom-22.75 left-1/2 z-70 flex w-61.25 -translate-x-1/2 flex-col items-center gap-6 rounded-medium bg-white py-4 drop-shadow-[0px_0px_10px_rgba(0,0,0,0.08)]"
+        className={`fixed bottom-22.75 left-1/2 z-70 flex ${widthClassName} -translate-x-1/2 flex-col items-center gap-6 rounded-medium bg-white py-4 drop-shadow-[0px_0px_10px_rgba(0,0,0,0.08)]`}
       >
         <div className="flex items-center pl-5 pr-3 w-full">
           {/* 코드래빗 적용_위 aria-labelledby가 참조하는 id */}
@@ -63,12 +71,12 @@ export default function QuickModal({
           </p>
         </div>
         <div className="flex flex-col items-start gap-2 px-6 w-full">
-          <Button variant="LargeWarningRegular" className="w-full" onClick={primaryAction.onClick}>
+          <Button variant={buttonVariant} className="w-full" onClick={primaryAction.onClick}>
             {primaryAction.text}
           </Button>
           {secondaryAction && (
             <Button
-              variant="LargeWarningRegular"
+              variant={buttonVariant}
               className="w-full"
               onClick={secondaryAction.onClick}
             >
