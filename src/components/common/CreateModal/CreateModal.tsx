@@ -17,7 +17,7 @@ import {
 import { useEventCreationStore } from '@/stores';
 
 import { COLOR_ICON } from './constants';
-import { formatTime, getCurrentTime } from './utils/dateTime';
+import { formatTime, getCurrentTime, getNextHourWindow } from './utils/dateTime';
 import CreateModalSkeleton from './CreateModalSkeleton';
 import type { CreateModalProps } from './types';
 import { useCreateEventSubmit } from './hooks/useCreateEventSubmit';
@@ -71,8 +71,9 @@ export default function CreateModal({
   const [parseSelectedDate] = useState(() =>
     format(initialScheduleDate ?? new Date(), 'yyyy-MM-dd'),
   );
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const defaultScheduleWindow = useState(() => getNextHourWindow())[0];
+  const [startTime, setStartTime] = useState(defaultScheduleWindow.startTime);
+  const [endTime, setEndTime] = useState(defaultScheduleWindow.endTime);
   const [isScheduleAllDay, setIsScheduleAllDay] = useState(false);
   const [scheduleOpenedAtTime, setScheduleOpenedAtTime] = useState('');
   const [repeat, setRepeat] = useState<RepeatOption>('반복 없음');
@@ -303,6 +304,16 @@ export default function CreateModal({
   const handleCalendarClick = () => {
     if (isSaving || isScheduleOpeningRef.current) {
       return;
+    }
+
+    const nextHourWindow = getNextHourWindow();
+
+    if (!startTime) {
+      setStartTime(nextHourWindow.startTime);
+    }
+
+    if (!endTime) {
+      setEndTime(nextHourWindow.endTime);
     }
 
     const currentTime = getCurrentTime();

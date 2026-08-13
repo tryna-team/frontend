@@ -37,6 +37,32 @@ export const formatActionItemDisplayTime = (
 export const formatTime = ({ meridiem, hour, minute }: TimePickerValue) =>
   `${hour}:${String(minute).padStart(2, '0')} ${meridiem}`;
 
+export const getNextHourWindow = (sourceDate: Date = new Date()) => {
+  const startDate = new Date(sourceDate);
+
+  if (startDate.getMinutes() > 0 || startDate.getSeconds() > 0 || startDate.getMilliseconds() > 0) {
+    startDate.setHours(startDate.getHours() + 1);
+  }
+
+  startDate.setMinutes(0, 0, 0);
+
+  const endDate = new Date(startDate);
+  endDate.setHours(endDate.getHours() + 1);
+
+  return {
+    startTime: formatTime({
+      meridiem: startDate.getHours() >= 12 ? 'PM' : 'AM',
+      hour: startDate.getHours() % 12 || 12,
+      minute: 0,
+    }),
+    endTime: formatTime({
+      meridiem: endDate.getHours() >= 12 ? 'PM' : 'AM',
+      hour: endDate.getHours() % 12 || 12,
+      minute: 0,
+    }),
+  };
+};
+
 export const formatTriggerDate = (date: Date) => (isToday(date) ? '오늘' : format(date, 'MM.dd'));
 
 export const formatTriggerTime = (time: string) => normalizeTime(time)?.slice(0, 5) ?? time;

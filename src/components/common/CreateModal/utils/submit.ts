@@ -132,15 +132,17 @@ export const buildCreateEventRequest = ({
 }: BuildCreateEventRequestParams): EventCreateRequest => {
   const hasParsedStartTime = Boolean(parsedCandidate?.timeCandidate);
   const hasParsedEndTime = Boolean(parsedCandidate?.endTimeCandidate);
+  const hasEffectiveStartTime = hasStartTimeChanged || hasParsedStartTime || Boolean(startTime);
+  const hasEffectiveEndTime = hasEndTimeChanged || hasParsedEndTime || Boolean(endTime);
   const startTimeValue = isScheduleAllDay
     ? null
-    : hasStartTimeChanged || hasParsedStartTime
-      ? normalizeTime(startTime)
+    : hasEffectiveStartTime
+      ? normalizeTime(startTime || parsedCandidate?.timeCandidate || '')
       : null;
   const endTimeValue = isScheduleAllDay
     ? null
-    : hasEndTimeChanged || hasParsedEndTime
-      ? normalizeTime(endTime)
+    : hasEffectiveEndTime
+      ? normalizeTime(endTime || parsedCandidate?.endTimeCandidate || '')
       : null;
   const recurrencePayload = buildRecurrencePayload(hasRepeatChanged, repeat);
   const shouldSaveEndDate =
