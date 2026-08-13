@@ -168,11 +168,11 @@ function EventViewPage() {
           id: String(item.actionItemId),
           text: item.title,
           checked: item.actionItemStatus === 'COMPLETED',
-          // 비시간형 준비 항목은 오늘 확인할 항목으로 표시한다.
+          // 비시간형 준비 항목은 당일 확인할 항목으로 표시한다.
           dateText:
             item.itemType === 'TIMED_ACTION' && displayDate && isValid(displayDate)
               ? format(displayDate, 'M월 d일')
-              : '오늘',
+              : '당일',
         };
       }),
     [actionItemsData],
