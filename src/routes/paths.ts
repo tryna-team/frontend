@@ -1,6 +1,5 @@
 export const PATH = {
-  LANDING: '/landing',
-  SPLASH: '/',
+  LANDING: '/',
   HOME: '/home',
   DAILY: '/daily/:date',
   EVENT_VIEW: '/event/:eventId',

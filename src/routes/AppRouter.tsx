@@ -8,7 +8,6 @@ import {
 import DailyPage from '@/pages/Daily/DailyPage';
 import EventViewPage from '@/pages/EventView/EventViewPage';
 import HomePage from '@/pages/Home/HomePage';
-import SplashPage from '@/pages/Splash/SplashPage';
 import YearCalendarPage from '@/pages/YearCalendar/YearCalendarPage';
 
 import { PATH } from './paths';
@@ -18,10 +17,6 @@ const LegalPage = lazy(() => import('@/pages/Legal/LegalPage'));
 export default function AppRouter() {
   return (
     <Routes>
-      <Route
-        path={PATH.SPLASH}
-        element={<SplashPage />}
-      />
       <Route
         path={PATH.HOME}
         element={<HomePage />}
