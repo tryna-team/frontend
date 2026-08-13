@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useId, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { format } from 'date-fns';
@@ -18,10 +18,10 @@ import { useEventCreationStore } from '@/stores';
 
 import { COLOR_ICON } from './constants';
 import {
-  detectRepeatOptionFromText,
   formatTime,
   getCurrentTime,
   getNextHourWindow,
+  detectRepeatOptionFromText,
 } from './utils/dateTime';
 import CreateModalSkeleton from './CreateModalSkeleton';
 import type { CreateModalProps } from './types';
@@ -76,6 +76,7 @@ export default function CreateModal({
   const [parseSelectedDate] = useState(() =>
     format(initialScheduleDate ?? new Date(), 'yyyy-MM-dd'),
   );
+  // 기본 시간 윈도우를 상태에서 관리해 자정 넘김 시 날짜도 적용할 수 있도록 한다
   const defaultScheduleWindow = useState(() => getNextHourWindow())[0];
   const [startTime, setStartTime] = useState(defaultScheduleWindow.startTime);
   const [endTime, setEndTime] = useState(defaultScheduleWindow.endTime);
@@ -145,6 +146,13 @@ export default function CreateModal({
     hasRecommendationResponse &&
     recommendationCandidates.length > 0;
 
+  // 입력 텍스트에서 반복 옵션을 추론한다. 키워드가 지워지면 자동으로 null이 되어 추론이 해제된다.
+  const inferredRepeat = useMemo(() => detectRepeatOptionFromText(trimmedInput), [trimmedInput]);
+  // 사용자가 명시적으로 선택한 repeat을 추론된 값보다 우선한다
+  const effectiveRepeat = repeat !== '반복 없음' ? repeat : (inferredRepeat ?? '반복 없음');
+  const effectiveHasRepeatChanged =
+    repeat !== '반복 없음' ? hasRepeatChanged : inferredRepeat !== null;
+
   const { calendarText } = useCreateModalScheduleText({
     calendarStatus,
     initialScheduleDate,
@@ -152,13 +160,13 @@ export default function CreateModal({
     endDate,
     startTime,
     endTime,
-    repeat,
+    repeat: effectiveRepeat,
     parsedCandidate,
     hasScheduleChanged,
     hasStartTimeChanged,
     hasEndTimeChanged,
     hasEndDateChanged,
-    hasRepeatChanged,
+    hasRepeatChanged: effectiveHasRepeatChanged,
   });
   useCreateModalParsing({
     inputValue,
@@ -253,8 +261,8 @@ export default function CreateModal({
     hasStartTimeChanged,
     hasEndTimeChanged,
     hasEndDateChanged,
-    hasRepeatChanged,
-    repeat,
+    hasRepeatChanged: effectiveHasRepeatChanged,
+    repeat: effectiveRepeat,
     parsedCandidate,
     recommendationCandidates,
     inputRevisionRef,
@@ -306,18 +314,6 @@ export default function CreateModal({
     onOpenLabel?.();
   };
 
-  useEffect(() => {
-    const detectedRepeat = detectRepeatOptionFromText(trimmedInput);
-
-    if (!detectedRepeat) {
-      return;
-    }
-
-    setRepeat((prev) => (prev === detectedRepeat ? prev : detectedRepeat));
-    setHasRepeatChanged(true);
-    setHasScheduleChanged(true);
-  }, [trimmedInput]);
-
   const handleCalendarClick = () => {
     if (isSaving || isScheduleOpeningRef.current) {
       return;
@@ -325,12 +321,23 @@ export default function CreateModal({
 
     const nextHourWindow = getNextHourWindow();
 
+    // 시작/종료 시간이 아직 설정되지 않았으면 기본 윈도우로 채운다
     if (!startTime) {
       setStartTime(nextHourWindow.startTime);
+      // 자정을 넘을 때만 startDate를 변경
+      if (nextHourWindow.crossesMidnight) {
+        const newStartDate = new Date(nextHourWindow.startDate);
+        setStartDate(newStartDate);
+      }
     }
 
     if (!endTime) {
       setEndTime(nextHourWindow.endTime);
+      // 자정을 넘을 때 endDate를 다음 날로 설정
+      if (nextHourWindow.crossesMidnight) {
+        const newEndDate = new Date(nextHourWindow.endDate);
+        setEndDate(newEndDate);
+      }
     }
 
     const currentTime = getCurrentTime();
@@ -418,19 +425,9 @@ export default function CreateModal({
                 height: visualViewportRect.height,
               }}
             >
-              <div className="flex w-full max-w-[385px] flex-col items-center">
+              <div className="flex w-full max-w-[385px] flex-col gap-2">
                 {isRecommendationUnavailable && (
-                  <div
-                    role="status"
-                    aria-live="polite"
-                    aria-label="제안을 불러오지 못했습니다. 다시 시도해주세요."
-                    className="mb-[8px] flex w-[353px] items-center justify-center rounded-[24px] bg-white/40 px-[20px] py-[16px] shadow-[0_0_10px_rgba(0,0,0,0.08)] backdrop-blur-[2px]"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <p className="w-full text-text-additional default-body-medium">
-                      제안을 불러오지 못했습니다. 다시 시도해주세요.
-                    </p>
-                  </div>
+                  <ToastPopup inline GuideText="제안을 불러오지 못했습니다. 다시 시도해주세요." />
                 )}
 
                 <Frame

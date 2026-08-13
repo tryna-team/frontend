@@ -10,7 +10,7 @@ import type { RepeatOption } from '@/features/event/components/create';
 import type { RecommendationCandidate } from '@/stores/types';
 
 import { RECURRENCE_TYPE } from '../constants';
-import { detectRepeatOptionFromText, formatActionItemDisplayTime, normalizeTime } from './dateTime';
+import { formatActionItemDisplayTime, normalizeTime } from './dateTime';
 
 export const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: RepeatOption) => {
   const recurrenceType = hasRepeatChanged ? (RECURRENCE_TYPE[repeat] ?? 'NONE') : 'NONE';
@@ -130,13 +130,11 @@ export const buildCreateEventRequest = ({
   recommendationCandidates,
   isScheduleAllDay = false,
 }: BuildCreateEventRequestParams): EventCreateRequest => {
-  const detectedRepeat = detectRepeatOptionFromText(trimmedInput);
+  // repeat/hasRepeatChanged는 호출부(CreateModal)에서 이미 명시적 선택과 추론을 조율한 값이다.
   const hasParsedStartTime = Boolean(parsedCandidate?.timeCandidate);
   const hasParsedEndTime = Boolean(parsedCandidate?.endTimeCandidate);
   const hasEffectiveStartTime = hasStartTimeChanged || hasParsedStartTime || Boolean(startTime);
   const hasEffectiveEndTime = hasEndTimeChanged || hasParsedEndTime || Boolean(endTime);
-  const effectiveRepeat = detectedRepeat ?? repeat;
-  const effectiveHasRepeatChanged = hasRepeatChanged || detectedRepeat !== null;
   const startTimeValue = isScheduleAllDay
     ? null
     : hasEffectiveStartTime
@@ -147,7 +145,7 @@ export const buildCreateEventRequest = ({
     : hasEffectiveEndTime
       ? normalizeTime(endTime || parsedCandidate?.endTimeCandidate || '')
       : null;
-  const recurrencePayload = buildRecurrencePayload(effectiveHasRepeatChanged, effectiveRepeat);
+  const recurrencePayload = buildRecurrencePayload(hasRepeatChanged, repeat);
   const shouldSaveEndDate =
     Boolean(endTimeValue) ||
     hasEndDateChanged ||
