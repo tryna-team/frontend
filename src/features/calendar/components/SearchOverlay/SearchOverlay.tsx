@@ -93,9 +93,15 @@ function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
 
   // 검색 결과 클릭 -> 일정 상세 페이지(EventView) 이동, 오버레이는 닫음
   // 준비/실행 항목이 검색된 경우에도 그 항목이 속한 부모 일정으로 이동한다.
-  const handleResultClick = (eventId: number) => {
+  //
+  // occurrenceDate를 함께 넘긴다. 없이 이동하면 상세 화면의 준비/실행 항목 조회(F103)가
+  // 400으로 떨어져 "준비 항목을 불러오지 못했어요"가 뜬다. 홈·데일리에서 넘어갈 때는
+  // 이미 넘기고 있어서 검색으로 들어온 경우에만 나던 증상이다.
+  //
+  // 검색 결과의 date는 그 일정(또는 항목)이 걸린 날짜라 반복 일정의 회차와도 맞는다.
+  const handleResultClick = (eventId: number, occurrenceDate: string) => {
     handleClose();
-    navigate(generateEventPath.view(String(eventId)));
+    navigate(generateEventPath.view(String(eventId), occurrenceDate));
   };
 
   if (!isOpen) return null;
@@ -157,13 +163,13 @@ function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                       <li
                         key={getResultKey(item)}
                         className="search-overlay-result-item"
-                        onClick={() => handleResultClick(item.eventId)}
+                        onClick={() => handleResultClick(item.eventId, item.date)}
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault(); // role="button"이라 Space의 기본 스크롤 동작을 브라우저가 안 막아줌 — 직접 방지
-                            handleResultClick(item.eventId);
+                            handleResultClick(item.eventId, item.date);
                           }
                         }}
                       >

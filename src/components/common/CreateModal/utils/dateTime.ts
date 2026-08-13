@@ -37,6 +37,64 @@ export const formatActionItemDisplayTime = (
 export const formatTime = ({ meridiem, hour, minute }: TimePickerValue) =>
   `${hour}:${String(minute).padStart(2, '0')} ${meridiem}`;
 
+export const detectRepeatOptionFromText = (input: string) => {
+  const normalizedText = input.replace(/\s+/g, ' ').trim();
+
+  if (!normalizedText) {
+    return null;
+  }
+
+  if (normalizedText.includes('매년')) {
+    return '매년' as const;
+  }
+
+  if (normalizedText.includes('매월')) {
+    return '매월' as const;
+  }
+
+  if (normalizedText.includes('매주')) {
+    return '매주' as const;
+  }
+
+  if (normalizedText.includes('매일')) {
+    return '매일' as const;
+  }
+
+  return null;
+};
+
+export const getNextHourWindow = (sourceDate: Date = new Date()) => {
+  const startDate = new Date(sourceDate);
+
+  if (startDate.getMinutes() > 0 || startDate.getSeconds() > 0 || startDate.getMilliseconds() > 0) {
+    startDate.setHours(startDate.getHours() + 1);
+  }
+
+  startDate.setMinutes(0, 0, 0);
+
+  const endDate = new Date(startDate);
+  endDate.setHours(endDate.getHours() + 1);
+
+  // 자정을 넘을 때 날짜 정보 포함
+  const crossesMidnight = endDate.getDate() !== startDate.getDate();
+
+  return {
+    startTime: formatTime({
+      meridiem: startDate.getHours() >= 12 ? 'PM' : 'AM',
+      hour: startDate.getHours() % 12 || 12,
+      minute: 0,
+    }),
+    startDate: startDate.toLocaleDateString('sv-SE'),
+    endTime: formatTime({
+      meridiem: endDate.getHours() >= 12 ? 'PM' : 'AM',
+      hour: endDate.getHours() % 12 || 12,
+      minute: 0,
+    }),
+    endDate: endDate.toLocaleDateString('sv-SE'),
+    crossesMidnight,
+  };
+};
+
 export const formatTriggerDate = (date: Date) => (isToday(date) ? '오늘' : format(date, 'MM.dd'));
 
 export const formatTriggerTime = (time: string) => normalizeTime(time)?.slice(0, 5) ?? time;

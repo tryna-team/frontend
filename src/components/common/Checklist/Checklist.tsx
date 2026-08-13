@@ -218,7 +218,14 @@ function VariantChecklist({
               <div className="h-px w-full shrink-0 bg-divider-default" aria-hidden="true" />
             )}
 
-            <div className={layout.item}>
+            <div
+              className={`${layout.item} ${status === 'plus' && !item.disabled ? 'cursor-pointer' : ''}`}
+              onClick={() => {
+                if (status === 'plus' && !item.disabled) {
+                  onLeadingClick?.(item.id);
+                }
+              }}
+            >
               <ChecklistItem
                 label={item.label}
                 labelContent={item.labelContent}
@@ -231,9 +238,11 @@ function VariantChecklist({
                   onLeadingClick?.(item.id);
                 }}
                 onLabelClick={
-                  onLabelClick
-                    ? () => onLabelClick(item.id)
-                    : undefined
+                  status === 'plus'
+                    ? undefined
+                    : onLabelClick
+                      ? () => onLabelClick(item.id)
+                      : undefined
                 }
               />
             </div>
