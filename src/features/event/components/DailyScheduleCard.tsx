@@ -39,6 +39,7 @@ export default function DailyScheduleCard({
       {/* EventView에서는 큰 체크 아이콘과 양 끝 정렬을 사용한다. */}
       <Checklist
         radioVariant="event"
+        toggleOnRowClick
         items={items.map((item, index) => ({
           id: index,
           label: item.text,

@@ -166,6 +166,12 @@ export default function EventEditBottomSheet({
     dateOverrides: {},
     newItems: [],
   });
+  // actionItems의 checked는 onToggleActionItem으로 즉시 저장되는 별도 mutation(E106)이라
+  // pendingChecklistChanges에 안 잡힌다 — "완료" 활성화 여부 판단용으로 열었을 때의
+  // 체크 상태를 따로 스냅샷해 둔다(마운트 시 1회만, 이후 prop이 바뀌어도 갱신 안 함).
+  const [initialActionItemChecked] = useState(
+    () => new Map(actionItems.map((item) => [item.id, item.checked])),
+  );
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -355,6 +361,35 @@ export default function EventEditBottomSheet({
 
   const selectedLabel = labels.find((label) => label.id === labelId) ?? null;
 
+  // 원래 값(initialValue)과 비교해 실제로 바뀐 게 있는지 확인한다 — 없으면 "완료"를
+  // 눌러도 서버에 보낼 변경사항이 없으니 버튼을 비활성화한다. description/location처럼
+  // 이 화면에 편집 UI가 없는 필드는 애초에 안 바뀌니 비교 대상에서 뺀다.
+  //
+  // startTime/endTime은 raw state를 그대로 비교하면 안 된다 — handleToggleAllDay가
+  // 하루종일을 끌 때 비어있던 시간을 기본값으로 채워 넣는데, 다시 켜도 그 값이 원복되지
+  // 않는다. 어차피 저장 시에도 isAllDay=true면 null로 보내니(아래 updateMutation 참고),
+  // 비교도 그 "실제로 저장될 값" 기준(isAllDay일 때는 null)으로 맞춘다.
+  const effectiveStartTime = isAllDay ? null : startTime;
+  const effectiveInitialStartTime = initialValue.isAllDay ? null : initialValue.startTime;
+  const effectiveEndTime = isAllDay ? null : endTime;
+  const effectiveInitialEndTime = initialValue.isAllDay ? null : initialValue.endTime;
+
+  const hasChanges =
+    title.trim() !== initialValue.title.trim() ||
+    isAllDay !== initialValue.isAllDay ||
+    startDate.getTime() !== initialValue.startDate.getTime() ||
+    (endDate?.getTime() ?? null) !== (initialValue.endDate?.getTime() ?? null) ||
+    effectiveStartTime !== effectiveInitialStartTime ||
+    effectiveEndTime !== effectiveInitialEndTime ||
+    repeat !== initialValue.repeat ||
+    labelId !== initialValue.labelId ||
+    pendingChecklistChanges.newItems.length > 0 ||
+    Object.keys(pendingChecklistChanges.labelOverrides).length > 0 ||
+    Object.keys(pendingChecklistChanges.dateOverrides).length > 0 ||
+    // 체크박스 토글은 onToggleActionItem으로 즉시 저장되지만(완료 버튼과 무관), 사용자가
+    // 뭔가 건드렸다는 신호로는 봐야 하니 완료 버튼 활성화 여부에는 포함한다.
+    actionItems.some((item) => initialActionItemChecked.get(item.id) !== item.checked);
+
   const handleComplete = () => {
     // 라벨은 PATCH 요청에서 선택 필드(null/생략 시 기존 라벨 유지)라 서버가 필수로
     // 요구하진 않지만, 이 폼엔 라벨을 완전히 비우는 UI가 없어 null이 될 일이 실질적으로
@@ -386,7 +421,7 @@ export default function EventEditBottomSheet({
               type: 'text',
               text: '완료',
               onClick: handleComplete,
-              disabled: updateMutation.isPending,
+              disabled: updateMutation.isPending || !hasChanges,
             }}
           />
 

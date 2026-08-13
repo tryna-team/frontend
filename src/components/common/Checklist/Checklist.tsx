@@ -34,6 +34,11 @@ export type ChecklistProps = {
 
   // 전달하지 않으면 기존 Checklist UI를 사용
   radioVariant?: ChecklistRadioVariant;
+
+  // true면 'plus' 상태가 아닌 일반 항목도 행 전체 클릭으로 onLeadingClick이 호출된다
+  // (기본은 왼쪽 아이콘을 눌렀을 때만). onLabelClick으로 라벨 클릭에 별도 동작(인라인
+  // 수정 등)을 거는 화면에서 같이 켜면 토글과 그 동작이 동시에 발동하니 켜지 않는다.
+  toggleOnRowClick?: boolean;
 };
 
 // 새 화면별 Checklist 외부 레이아웃
@@ -198,8 +203,12 @@ function VariantChecklist({
   onDelete,
   onLabelClick,
   showDivider = true,
+  toggleOnRowClick = false,
 }: Required<Pick<ChecklistProps, 'items' | 'radioVariant'>> &
-  Pick<ChecklistProps, 'onLeadingClick' | 'onDelete' | 'onLabelClick' | 'showDivider'>) {
+  Pick<
+    ChecklistProps,
+    'onLeadingClick' | 'onDelete' | 'onLabelClick' | 'showDivider' | 'toggleOnRowClick'
+  >) {
   const layout = getVariantChecklistLayout(radioVariant);
   const shouldRenderDivider = radioVariant === 'create' && showDivider;
 
@@ -212,6 +221,8 @@ function VariantChecklist({
 
         const trailing = resolveTrailing(item, onDelete);
 
+        const isRowClickable = (status === 'plus' || toggleOnRowClick) && !item.disabled;
+
         return (
           <Fragment key={item.id}>
             {shouldRenderDivider && (
@@ -219,9 +230,9 @@ function VariantChecklist({
             )}
 
             <div
-              className={`${layout.item} ${status === 'plus' && !item.disabled ? 'cursor-pointer' : ''}`}
+              className={`${layout.item} ${isRowClickable ? 'cursor-pointer' : ''}`}
               onClick={() => {
-                if (status === 'plus' && !item.disabled) {
+                if (isRowClickable) {
                   onLeadingClick?.(item.id);
                 }
               }}
@@ -277,6 +288,7 @@ export default function Checklist({
   onLabelClick,
   showDivider,
   radioVariant,
+  toggleOnRowClick,
 }: ChecklistProps) {
   // radioVariant가 없으면 기존 코드와 완전히 동일한 방식으로 동작한다.
   if (!radioVariant) {
@@ -298,6 +310,7 @@ export default function Checklist({
       onDelete={onDelete}
       onLabelClick={onLabelClick}
       showDivider={showDivider}
+      toggleOnRowClick={toggleOnRowClick}
     />
   );
 }
