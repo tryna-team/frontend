@@ -130,6 +130,7 @@ function YearCalendarPage() {
           inputValue={createInputValue}
           initialScheduleDate={initialCreateDate ?? undefined}
           pendingSelectedLabelId={pendingSelectedLabelId}
+          isLabelCreateOpen={isLabelCreateForEventOpen}
           onInputChange={setCreateInputValue}
           onCreateLabel={openEventLabelCreate}
           onCreate={completeCreate}

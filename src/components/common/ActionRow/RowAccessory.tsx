@@ -54,7 +54,7 @@ export default function RowAccessory(
       <button
         type="button"
         onClick={handleClick}
-        aria-label={props.ariaLabel ?? '레이블 색상 선택'}
+        aria-label={props.ariaLabel ?? '라벨 색상 선택'}
         className="flex items-center gap-2 border-0 bg-transparent p-0"
       >
         <img

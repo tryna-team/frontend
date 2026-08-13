@@ -64,11 +64,11 @@ export default function LabelItem(
   // 접근성용 라벨
   const ariaLabel = (() => {
     if (isCreateItem) {
-      return '새로운 레이블 생성';
+      return '새로운 라벨 생성';
     }
 
     if (isColorItem) {
-      return `${props.label} 레이블 선택`;
+      return `${props.label} 라벨 선택`;
     }
 
     return `${props.label} 반복 설정 선택`;
@@ -84,7 +84,7 @@ export default function LabelItem(
       {/* 좌측 텍스트 영역 */}
       {isCreateItem ? (
         <span className="min-w-0 truncate text-[16px] font-medium leading-6 tracking-[-0.3px] text-[#1C1630]">
-          새로운 레이블
+          새로운 라벨
         </span>
       ) : (
         <span className="flex min-w-0 items-center gap-2">
