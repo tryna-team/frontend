@@ -57,6 +57,14 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+html {
+  /* 스크롤바가 필요 없는 짧은 페이지에서도 스크롤바 자리를 항상 예약해 둔다.
+     안 그러면 부피가 큰 모달이 뜰 때 배경 스크롤을 잠그면서(Overlay.tsx) 스크롤바가
+     사라졌다 나타났다 해서 mx-auto로 가운데 정렬된 화면이 좌우로 움찔거리거나
+     한쪽으로 치우친 채 고정돼 버린다. */
+  scrollbar-gutter: stable;
+}
+
 :root {
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
