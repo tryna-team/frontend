@@ -234,8 +234,7 @@ function VariantChecklist({
                 trailing={trailing}
                 disabled={item.disabled}
                 radioVariant={radioVariant}
-                onLeadingClick={(event) => {
-                  event?.stopPropagation?.();
+                onLeadingClick={() => {
                   onLeadingClick?.(item.id);
                 }}
                 onLabelClick={onLabelClick ? () => onLabelClick(item.id) : undefined}

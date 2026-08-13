@@ -10,11 +10,7 @@ import type { RepeatOption } from '@/features/event/components/create';
 import type { RecommendationCandidate } from '@/stores/types';
 
 import { RECURRENCE_TYPE } from '../constants';
-import {
-  detectRepeatOptionFromText,
-  formatActionItemDisplayTime,
-  normalizeTime,
-} from './dateTime';
+import { detectRepeatOptionFromText, formatActionItemDisplayTime, normalizeTime } from './dateTime';
 
 export const buildRecurrencePayload = (hasRepeatChanged: boolean, repeat: RepeatOption) => {
   const recurrenceType = hasRepeatChanged ? (RECURRENCE_TYPE[repeat] ?? 'NONE') : 'NONE';

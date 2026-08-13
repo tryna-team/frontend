@@ -105,6 +105,7 @@ interface BannerItem {
   title: string;
   dateText: string;
   date: string;
+  isHoliday?: boolean;
 }
 
 function DailyPage() {
@@ -254,9 +255,9 @@ function DailyPage() {
     const parentEvent = timedParentEvents.get(String(item.parentEventId));
     const offsetDays = parseOffsetDays(item.offsetDays);
     const parentOccurrenceDate =
-      item.parentOccurrenceDate ?? item.occurrenceDate ?? (
-        offsetDays !== null ? addDays(item.displayDate, -offsetDays) : undefined
-      );
+      item.parentOccurrenceDate ??
+      item.occurrenceDate ??
+      (offsetDays !== null ? addDays(item.displayDate, -offsetDays) : undefined);
     const linkedDate =
       parentOccurrenceDate ??
       (parentEvent && !parentEvent.isRecurring ? parentEvent.startDate : selectedDate);
@@ -433,9 +434,7 @@ function DailyPage() {
             <section
               key={panel.date}
               className="daily-page-panel"
-              data-position={
-                index === 0 ? 'previous' : index === 1 ? 'current' : 'next'
-              }
+              data-position={index === 0 ? 'previous' : index === 1 ? 'current' : 'next'}
               aria-hidden={index !== 1}
               inert={index !== 1}
             >
