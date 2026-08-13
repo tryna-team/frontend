@@ -1,7 +1,7 @@
 ﻿import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 import Button from '@/components/common/Buttons/Button';
 import Checklist from '@/components/common/Checklist/Checklist';
@@ -70,14 +70,18 @@ export default function CreateModal({
   const labelButtonRef = useRef<HTMLButtonElement>(null);
   const inputRevisionRef = useRef(0);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
-  const [startDate, setStartDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
-  const [endDate, setEndDate] = useState(() => new Date(initialScheduleDate ?? new Date()));
+  // 기본 시간 윈도우를 상태에서 관리해 자정 넘김 시 날짜도 적용할 수 있도록 한다
+  const defaultScheduleWindow = useState(() => getNextHourWindow())[0];
+  const [startDate, setStartDate] = useState(() =>
+    initialScheduleDate ? new Date(initialScheduleDate) : parseISO(defaultScheduleWindow.startDate),
+  );
+  const [endDate, setEndDate] = useState(() =>
+    initialScheduleDate ? new Date(initialScheduleDate) : parseISO(defaultScheduleWindow.endDate),
+  );
   // 진입 경로의 날짜를 C103 파싱 기준일로 고정한다.
   const [parseSelectedDate] = useState(() =>
     format(initialScheduleDate ?? new Date(), 'yyyy-MM-dd'),
   );
-  // 기본 시간 윈도우를 상태에서 관리해 자정 넘김 시 날짜도 적용할 수 있도록 한다
-  const defaultScheduleWindow = useState(() => getNextHourWindow())[0];
   const [startTime, setStartTime] = useState(defaultScheduleWindow.startTime);
   const [endTime, setEndTime] = useState(defaultScheduleWindow.endTime);
   const [isScheduleAllDay, setIsScheduleAllDay] = useState(false);
@@ -326,8 +330,7 @@ export default function CreateModal({
       setStartTime(nextHourWindow.startTime);
       // 자정을 넘을 때만 startDate를 변경
       if (nextHourWindow.crossesMidnight) {
-        const newStartDate = new Date(nextHourWindow.startDate);
-        setStartDate(newStartDate);
+        setStartDate(parseISO(nextHourWindow.startDate));
       }
     }
 
@@ -335,8 +338,7 @@ export default function CreateModal({
       setEndTime(nextHourWindow.endTime);
       // 자정을 넘을 때 endDate를 다음 날로 설정
       if (nextHourWindow.crossesMidnight) {
-        const newEndDate = new Date(nextHourWindow.endDate);
-        setEndDate(newEndDate);
+        setEndDate(parseISO(nextHourWindow.endDate));
       }
     }
 
