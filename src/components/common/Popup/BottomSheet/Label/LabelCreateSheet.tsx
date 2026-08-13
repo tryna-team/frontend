@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import Overlay from '@/components/common/Popup/Overlay';
@@ -8,15 +9,12 @@ import Input from '@/components/common/Input/Input';
 import ColorPicker from '@/components/common/ColorPicker/ColorPicker';
 import Button from '@/components/common/Buttons/Button';
 import type { LabelColor } from '@/components/common/ActionRow/ActionRow.constant';
+import { useCreateModalViewport } from '@/components/common/CreateModal/hooks/useViewport';
 import { useCalendarStore } from '@/stores';
 import type { CalendarLabel } from '@/stores/types';
 import { queryKeys } from '@/hooks/queries/queryKeys';
 import type { LabelListResponseData } from '@/apis/types/label';
-import {
-  labelService,
-  toCalendarLabel,
-  toLabelColorCode,
-} from '@/apis/services/labelService';
+import { labelService, toCalendarLabel, toLabelColorCode } from '@/apis/services/labelService';
 
 // 피그마 "1-10. 홈/일반 라벨 추가"에서 선택돼 있는 기본 색상(색상 배열의 4번째, pink)
 const DEFAULT_COLOR: LabelColor = 'pink';
@@ -37,6 +35,8 @@ export default function LabelCreateSheet({ onClose, onComplete }: LabelCreateShe
   const upsertLabel = useCalendarStore((s) => s.upsertLabel);
   const labels = useCalendarStore((s) => s.labels);
   const queryClient = useQueryClient();
+  // body로 포털되면 모바일 프레임 컨테이너를 벗어나므로 프레임 크기를 직접 적용해 기존 레이아웃을 유지한다.
+  const { visualViewportRect, appFrameRect } = useCreateModalViewport();
 
   const trimmedName = name.trim();
   const hasInput = trimmedName.length > 0;
@@ -51,9 +51,8 @@ export default function LabelCreateSheet({ onClose, onComplete }: LabelCreateShe
     onSuccess: (created) => {
       const createdLabel = toCalendarLabel(created);
       upsertLabel(createdLabel);
-      queryClient.setQueryData<LabelListResponseData>(
-        queryKeys.labels.list(),
-        (old) => (old ? { labels: [...old.labels, created] } : { labels: [created] }),
+      queryClient.setQueryData<LabelListResponseData>(queryKeys.labels.list(), (old) =>
+        old ? { labels: [...old.labels, created] } : { labels: [created] },
       );
       onComplete(createdLabel);
     },
@@ -70,58 +69,69 @@ export default function LabelCreateSheet({ onClose, onComplete }: LabelCreateShe
     createMutation.mutate();
   };
 
-  return (
-    <Overlay className="flex items-end justify-center" onClick={onClose}>
-      <Frame className="h-[92dvh] gap-6 p-4">
-        {/* Header 공용 컴포넌트는 leading이 항상 아이콘(챕터론)이라 이 화면의
-            "취소(텍스트)/닫기·완료(pill 버튼)" 조합과 맞지 않아 이 화면만 직접 구성 */}
-        <div className="flex w-[353px] items-center justify-between">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex w-[74px] shrink-0 items-center default-body-strong-medium text-text-default"
-          >
-            취소
-          </button>
-
-          <h1 className="min-w-0 flex-1 truncate text-center text-text-default default-heading-small">
-            새로운 라벨
-          </h1>
-
-          <div className="flex w-[74px] shrink-0 items-center justify-end">
-            <Button
+  return createPortal(
+    <Overlay onClick={onClose}>
+      <div
+        className="absolute flex items-end justify-center"
+        style={{
+          left: appFrameRect.left,
+          width: appFrameRect.width,
+          top: visualViewportRect.top,
+          height: visualViewportRect.height,
+        }}
+      >
+        <Frame className="h-[92dvh] gap-6 p-4">
+          {/* Header 공용 컴포넌트는 leading이 항상 아이콘(챕터론)이라 이 화면의
+              "취소(텍스트)/닫기·완료(pill 버튼)" 조합과 맞지 않아 이 화면만 직접 구성 */}
+          <div className="flex w-[353px] items-center justify-between">
+            <button
               type="button"
-              variant="MediumDefaultFit"
-              onClick={handleTrailingClick}
-              disabled={hasInput && (!!nameError || createMutation.isPending)}
+              onClick={onClose}
+              className="flex w-[74px] shrink-0 items-center default-body-strong-medium text-text-default"
             >
-              {hasInput ? '완료' : '닫기'}
-            </Button>
+              취소
+            </button>
+
+            <h1 className="min-w-0 flex-1 truncate text-center text-text-default default-heading-small">
+              새로운 라벨
+            </h1>
+
+            <div className="flex w-[74px] shrink-0 items-center justify-end">
+              <Button
+                type="button"
+                variant="MediumDefaultFit"
+                onClick={handleTrailingClick}
+                disabled={hasInput && (!!nameError || createMutation.isPending)}
+              >
+                {hasInput ? '완료' : '닫기'}
+              </Button>
+            </div>
           </div>
-        </div>
 
-        <div className="w-full rounded-medium bg-background-white p-3 shadow-[0px_4px_8px_rgba(0,0,0,0.04),0px_9.701px_29.104px_rgba(0,0,0,0.1)]">
-          <Input
-            value={name}
-            onChange={setName}
-            onClear={() => setName('')}
-            placeholder="라벨 이름"
-            ariaLabel="라벨 이름"
-          />
-          {nameError && (
-            <p className="pl-1 pt-1 text-danger-200 default-caption-large">{nameError}</p>
-          )}
-          {createMutation.isError && (
-            <p className="pl-1 pt-1 text-danger-200 default-caption-large">
-              라벨을 만들지 못했어요. 다시 시도해주세요.
-            </p>
-          )}
-        </div>
+          <div className="w-full rounded-medium bg-background-white p-3 shadow-[0px_4px_8px_rgba(0,0,0,0.04),0px_9.701px_29.104px_rgba(0,0,0,0.1)]">
+            <Input
+              value={name}
+              onChange={setName}
+              onClear={() => setName('')}
+              placeholder="라벨 이름"
+              ariaLabel="라벨 이름"
+            />
+            {nameError && (
+              <p className="pl-1 pt-1 text-danger-200 default-caption-large">{nameError}</p>
+            )}
+            {createMutation.isError && (
+              <p className="pl-1 pt-1 text-danger-200 default-caption-large">
+                라벨을 만들지 못했어요. 다시 시도해주세요.
+              </p>
+            )}
+          </div>
 
-        <ContentBox title="색상" variant="bottom">
-          <ColorPicker selectedColor={color} onSelect={setColor} />
-        </ContentBox>
-      </Frame>
-    </Overlay>
+          <ContentBox title="색상" variant="bottom">
+            <ColorPicker selectedColor={color} onSelect={setColor} />
+          </ContentBox>
+        </Frame>
+      </div>
+    </Overlay>,
+    document.body,
   );
 }
