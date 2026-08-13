@@ -74,7 +74,18 @@ type EventEditBottomSheetProps = {
   onToggleActionItem?: (id: number) => void;
 };
 
-const formatDate = (date: Date) => `${date.getMonth() + 1}월 ${date.getDate()}일`;
+// 피그마(node 3317:38211)는 "2026. 06. 20." 형식(yyyy. MM. dd.)을 쓴다.
+const formatDate = (date: Date) => format(date, 'yyyy. MM. dd.');
+
+// 상태(startTime/endTime)는 API(C107)에 맞춰 24시간제 'HH:mm'로 유지하고, 이 화면
+// 표시용으로만 피그마(node 3317:38212, "9:41 AM")와 같은 12시간제로 변환한다.
+const formatTimeDisplay = (time: string) => {
+  const [hourStr, minuteStr] = time.split(':');
+  const hour24 = Number(hourStr);
+  const meridiem = hour24 >= 12 ? 'PM' : 'AM';
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${minuteStr} ${meridiem}`;
+};
 
 // Date.getDay() 인덱스(0=일요일) 기준 요일 라벨. EventViewPage의
 // RECURRENCE_DAY_LABEL과 같은 한글 값을 쓴다.
@@ -410,12 +421,17 @@ export default function EventEditBottomSheet({
               <div className="box-content flex h-[52px] w-full items-center justify-between bg-transparent pl-1">
                 <span className="shrink-0 text-text-default default-body-medium">시작</span>
                 <div className="flex shrink-0 items-center gap-2">
-                  <Button variant="MediumDefaultFit" onClick={openSchedule}>
+                  {/* 너비는 피그마(node 3317:38211, 125px)/(node 3317:38212, 87px) 고정폭
+                      버튼 스펙을 따른다 — "MediumDefaultFit"은 텍스트 길이만큼 늘었다 줄었다
+                      해서(px-6 패딩만 고정) 날짜/시간 자릿수가 바뀌면 버튼 폭도 흔들렸다.
+                      시간 버튼은 피그마 예시("9:41 AM", 7자)보다 "12:59 PM"(8자)처럼 시간이
+                      두 자리인 경우가 더 길어질 수 있어 87px에 여유를 더해 90px로 잡는다. */}
+                  <Button variant="MediumDefaultFit" className="w-31.25" onClick={openSchedule}>
                     {formatDate(startDate)}
                   </Button>
                   {!isAllDay && (
-                    <Button variant="MediumDefaultFit" onClick={openSchedule}>
-                      {startTime}
+                    <Button variant="MediumDefaultFit" className="w-22.5" onClick={openSchedule}>
+                      {formatTimeDisplay(startTime)}
                     </Button>
                   )}
                 </div>
@@ -426,12 +442,12 @@ export default function EventEditBottomSheet({
                 <div className="flex shrink-0 items-center gap-2">
                   {/* endDate가 null(종료 없음)이면 시작 날짜를 표시용으로만 보여준다 —
                       실제로 선택하기 전까진 state는 계속 null로 남는다. */}
-                  <Button variant="MediumDefaultFit" onClick={openSchedule}>
+                  <Button variant="MediumDefaultFit" className="w-31.25" onClick={openSchedule}>
                     {formatDate(endDate ?? startDate)}
                   </Button>
                   {!isAllDay && (
-                    <Button variant="MediumDefaultFit" onClick={openSchedule}>
-                      {endTime}
+                    <Button variant="MediumDefaultFit" className="w-22.5" onClick={openSchedule}>
+                      {formatTimeDisplay(endTime ?? startTime)}
                     </Button>
                   )}
                 </div>

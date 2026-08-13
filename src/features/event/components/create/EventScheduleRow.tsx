@@ -32,8 +32,12 @@ export default function EventScheduleRow(props: EventScheduleRowProps) {
       {/* 시작/종료: 날짜 버튼 + 시간 버튼 */}
       {props.type === 'date-time' ? (
         <div className="flex shrink-0 items-center gap-2">
+          {/* 날짜/시간 버튼 너비는 고정폭으로 둔다 — "MediumDefaultFit"은 텍스트 길이만큼
+              늘었다 줄었다 해서(px-6 패딩만 고정) 날짜/시간 자릿수가 바뀌면 버튼 폭도
+              흔들렸다. 날짜 125px/시간 90px는 EventEditBottomSheet와 동일한 값. */}
           <Button
             variant="MediumDefaultFit"
+            className="w-31.25"
             onClick={props.onDateClick}
             aria-label={`${props.leading} 날짜 ${props.date}`}
           >
@@ -43,6 +47,7 @@ export default function EventScheduleRow(props: EventScheduleRowProps) {
           {!props.hideTime && (
             <Button
               variant="MediumDefaultFit"
+              className="w-22.5"
               onClick={props.onTimeClick}
               aria-label={`${props.leading} 시간 ${props.time}`}
             >
