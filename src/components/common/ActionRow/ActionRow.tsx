@@ -132,7 +132,8 @@ export default function ActionRow({
 
       {/* accessory 없으면 오른쪽 영역 자체를 렌더링하지 않음 */}
       {accessory && (
-        <div className="shrink-0">
+        //trailing 영역을 중앙으로 배치
+        <div className="flex shrink-0 items-center justify-center">
           <RowAccessory {...accessory} />
         </div>
       )}
