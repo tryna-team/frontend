@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { externalCalendarService } from '@/apis/services/externalCalendarService';
+import type { ExternalCalendarConnectionData } from '@/apis/types/externalCalendar';
 import { useAuthStore } from '@/stores/authStore';
 
 import { queryKeys } from './queryKeys';
@@ -12,6 +13,12 @@ import { queryKeys } from './queryKeys';
  */
 const SYNC_POLL_INTERVAL_MS = 2000;
 const SYNC_POLL_TIMEOUT_MS = 30_000;
+
+/**
+ * 화면으로 돌아왔을 때 동기화를 다시 요청하기까지의 최소 간격.
+ * 창 포커스는 클릭할 때마다 발생해서, 이게 없으면 창을 오갈 때마다 요청이 나간다.
+ */
+const MIN_SYNC_INTERVAL_MS = 10_000;
 
 /**
  * 외부 캘린더 연동 상태(G102) 조회와 일정 동기화(B105).
@@ -28,21 +35,50 @@ export function useExternalCalendar(enabled = true) {
   const queryClient = useQueryClient();
   const isMember = useAuthStore((state) => state.userRole) === 'USER';
 
-  /** 폴링을 시작한 시각. 타임아웃 판정에만 쓰고, 진행 중이 아니면 비운다 */
+  /** 폴링을 시작한 시각. 타임아웃 판정에만 쓴다 */
   const pollStartedAtRef = useRef<number | null>(null);
   /** 직전 렌더의 동기화 상태 — SUCCESS로 바뀌는 순간을 잡기 위해 보관한다 */
   const previousSyncStatusRef = useRef<string | undefined>(undefined);
   /** 직전 렌더의 마지막 동기화 시각 — 서버가 빨리 끝내 상태 변화가 안 잡히는 경우를 위해 함께 본다 */
   const previousSyncedAtRef = useRef<string | null | undefined>(undefined);
+  /** 동기화를 요청한 직후인지. 완료를 확인할 때까지 상태와 무관하게 폴링한다 */
+  const isAwaitingSyncRef = useRef(false);
+  /** 동기화를 요청한 시점의 lastSyncedAt. 이 값이 바뀌면 완료로 본다 */
+  const syncBaselineRef = useRef<string | null | undefined>(undefined);
+
+  const stopAwaitingSync = () => {
+    isAwaitingSyncRef.current = false;
+    pollStartedAtRef.current = null;
+  };
 
   const connectionQuery = useQuery({
     queryKey: queryKeys.externalCalendar.connection(),
     queryFn: externalCalendarService.getConnection,
     enabled: enabled && isMember,
     refetchInterval: (query) => {
-      const syncStatus = query.state.data?.syncStatus;
+      const connection = query.state.data;
+      const isTimedOut =
+        pollStartedAtRef.current !== null &&
+        Date.now() - pollStartedAtRef.current > SYNC_POLL_TIMEOUT_MS;
 
-      if (syncStatus !== 'IN_PROGRESS') {
+      // 동기화를 요청한 직후에는 syncStatus를 믿을 수 없다. 서버가 비동기로 처리해서,
+      // 요청 직후 조회하면 아직 작업을 시작하지 않아 지난번 SUCCESS가 그대로 온다.
+      // 그 값을 보고 폴링을 멈추면 뒤늦게 끝난 동기화를 영영 놓친다(새로고침해야 보임).
+      // 그래서 이때만은 상태 대신 lastSyncedAt이 바뀌는지를 기준으로 기다린다.
+      if (isAwaitingSyncRef.current) {
+        const isDone = connection?.lastSyncedAt !== syncBaselineRef.current;
+
+        if (isDone || connection?.syncStatus === 'FAILED' || isTimedOut) {
+          stopAwaitingSync();
+          return false;
+        }
+
+        return SYNC_POLL_INTERVAL_MS;
+      }
+
+      // 이 화면에서 요청한 게 아니어도 서버가 처리 중이면 완료까지 따라간다
+      // (다른 기기나 이전 세션에서 시작된 동기화).
+      if (connection?.syncStatus !== 'IN_PROGRESS') {
         pollStartedAtRef.current = null;
         return false;
       }
@@ -52,7 +88,7 @@ export function useExternalCalendar(enabled = true) {
       }
 
       // 서버가 IN_PROGRESS에서 멈춰버려도 폴링이 영원히 돌지 않도록 제한을 둔다
-      if (Date.now() - pollStartedAtRef.current > SYNC_POLL_TIMEOUT_MS) {
+      if (isTimedOut) {
         return false;
       }
 
@@ -96,9 +132,23 @@ export function useExternalCalendar(enabled = true) {
    */
   const syncMutation = useMutation({
     mutationFn: (year?: number) => externalCalendarService.syncEvents(year),
+    onMutate: () => {
+      // 요청 직전 값을 기준선으로 잡아둔다. 캐시에서 직접 읽는 이유는 렌더 시점의
+      // connection보다 항상 최신이기 때문이다.
+      const cached = queryClient.getQueryData<ExternalCalendarConnectionData>(
+        queryKeys.externalCalendar.connection(),
+      );
+
+      syncBaselineRef.current = cached?.lastSyncedAt;
+      isAwaitingSyncRef.current = true;
+      pollStartedAtRef.current = Date.now();
+    },
     onSuccess: () => {
-      // 서버가 IN_PROGRESS를 기록했을 테니 상태를 다시 읽어 폴링을 시작시킨다
+      // 완료 여부를 확인하러 상태를 다시 읽는다. 이후는 refetchInterval이 이어받는다.
       void queryClient.invalidateQueries({ queryKey: queryKeys.externalCalendar.connection() });
+    },
+    onError: () => {
+      stopAwaitingSync();
     },
   });
 
@@ -166,8 +216,14 @@ export function useAutoSyncExternalCalendar(viewingYear: number, enabled = true)
     latestRef.current = { enabled, isConnected, isSyncing, sync, viewingYear };
   });
 
+  /** 마지막으로 동기화를 요청한 시각. 창을 오갈 때마다 요청이 쏟아지는 걸 막는 데 쓴다 */
+  const lastSyncRequestedAtRef = useRef(0);
+
   useEffect(() => {
-    const handleVisibilityChange = () => {
+    // visibilitychange는 문서가 "가려졌다 보일 때"만 발생한다. 그래서 탭을 옮겼다 돌아오면
+    // 잡히지만, 창 두 개를 나란히 띄워두고 오가는 경우에는 tryna 창이 한 번도 가려지지
+    // 않아 이벤트가 오지 않는다. 그 상황까지 잡으려면 창 포커스도 함께 봐야 한다.
+    const requestSyncOnReturn = () => {
       if (document.visibilityState !== 'visible') {
         return;
       }
@@ -179,11 +235,22 @@ export function useAutoSyncExternalCalendar(viewingYear: number, enabled = true)
         return;
       }
 
+      // focus는 창을 누를 때마다 발생해서 그대로 두면 요청이 지나치게 자주 나간다.
+      // 서버가 매번 구글 API를 호출하므로 최소 간격을 둔다.
+      if (Date.now() - lastSyncRequestedAtRef.current < MIN_SYNC_INTERVAL_MS) {
+        return;
+      }
+
+      lastSyncRequestedAtRef.current = Date.now();
       sync(viewingYear);
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('visibilitychange', requestSyncOnReturn);
+    window.addEventListener('focus', requestSyncOnReturn);
 
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', requestSyncOnReturn);
+      window.removeEventListener('focus', requestSyncOnReturn);
+    };
   }, []);
 }
