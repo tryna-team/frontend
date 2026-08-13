@@ -446,7 +446,7 @@ function DailyPage() {
                       categoryColor={banner.categoryColor}
                       title={banner.title}
                       dateText={banner.dateText}
-                      // 공휴일은 상세 조회가 403이라 눌러도 들어갈 화면이 없다
+                      disabled={banner.isHoliday}
                       onClick={
                         banner.isHoliday
                           ? undefined

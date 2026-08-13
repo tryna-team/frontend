@@ -219,9 +219,9 @@ function VariantChecklist({
             )}
 
             <div
-              className={`${layout.item} ${status === 'plus' ? 'cursor-pointer' : ''}`}
+              className={`${layout.item} ${status === 'plus' && !item.disabled ? 'cursor-pointer' : ''}`}
               onClick={() => {
-                if (status === 'plus') {
+                if (status === 'plus' && !item.disabled) {
                   onLeadingClick?.(item.id);
                 }
               }}
@@ -237,7 +237,13 @@ function VariantChecklist({
                 onLeadingClick={() => {
                   onLeadingClick?.(item.id);
                 }}
-                onLabelClick={onLabelClick ? () => onLabelClick(item.id) : undefined}
+                onLabelClick={
+                  status === 'plus'
+                    ? undefined
+                    : onLabelClick
+                      ? () => onLabelClick(item.id)
+                      : undefined
+                }
               />
             </div>
           </Fragment>

@@ -75,17 +75,23 @@ export const getNextHourWindow = (sourceDate: Date = new Date()) => {
   const endDate = new Date(startDate);
   endDate.setHours(endDate.getHours() + 1);
 
+  // 자정을 넘을 때 날짜 정보 포함
+  const crossesMidnight = endDate.getDate() !== startDate.getDate();
+
   return {
     startTime: formatTime({
       meridiem: startDate.getHours() >= 12 ? 'PM' : 'AM',
       hour: startDate.getHours() % 12 || 12,
       minute: 0,
     }),
+    startDate: startDate.toLocaleDateString('sv-SE'),
     endTime: formatTime({
       meridiem: endDate.getHours() >= 12 ? 'PM' : 'AM',
       hour: endDate.getHours() % 12 || 12,
       minute: 0,
     }),
+    endDate: endDate.toLocaleDateString('sv-SE'),
+    crossesMidnight,
   };
 };
 
