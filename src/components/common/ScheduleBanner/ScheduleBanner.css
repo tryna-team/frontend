@@ -43,7 +43,8 @@
 .schedule-banner-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  padding-left: 4px;
 }
 
 /* dot_*.svg 원본이 6x6이라 그 크기 그대로 쓴다 (8px로 늘리면 확대되어 커 보임) */
@@ -64,12 +65,12 @@
 }
 
 .schedule-banner-date {
-  font-family: var(--Default-Caption-Large-FontFamily, Pretendard);
-  font-size: var(--Default-Caption-Large-FontSize, 12px);
+  font-family: var(--Default-Label-Medium-FontFamily, "Pretendard", sans-serif);
+  font-size: var(--Default-Label-Medium-FontSize, 12px);
   font-style: normal;
-  font-weight: 400;
-  line-height: var(--Default-Caption-Large-LineHeight, 16px);
-  letter-spacing: var(--Default-Caption-Large-LetterSpacing, -0.12px);
+  font-weight: 500;
+  line-height: var(--Default-Label-Medium-LineHeight, 18px);
+  letter-spacing: var(--Default-Label-Medium-LetterSpacing, -0.12px);
 }
 
 /* 기간 텍스트("하루종일", "N일차")는 배경과 같은 계열의 진한 색을 쓴다 */
