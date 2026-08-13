@@ -104,6 +104,8 @@ interface BannerItem {
   title: string;
   dateText: string;
   date: string;
+  /** 공휴일은 상세 조회가 403이라 눌러도 들어갈 화면이 없다 */
+  isHoliday?: boolean;
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -316,6 +318,7 @@ function DailyPage() {
     title: event.title,
     dateText: formatBannerDateText(event.startDate, event.endDate, selectedDate),
     date: selectedDate,
+    isHoliday: event.sourceType === 'HOLIDAY',
   }));
 
   // 날짜 선택 시 화면 상태, URL을 함께 갱신
@@ -379,8 +382,10 @@ function DailyPage() {
   const monthText = `${displayDate.getMonth() + 1}월`;
   const titleText = `${monthText} ${displayDate.getDate()}일 (${DAY_LABELS[displayDate.getDay()]})`;
 
+  // 공휴일은 카드로 그리지 않는다. 위쪽 배너에 이미 그날의 표시로 나오고, 준비 항목도
+  // 클릭해서 들어갈 상세도 없는 가상 일정이라 카드 형태가 맞지 않는다.
   const todaySchedules = [...schedulesWithActionItems, ...linkedTimedSchedules].filter(
-    (schedule) => schedule.date === selectedDate,
+    (schedule) => schedule.date === selectedDate && !schedule.isHoliday,
   );
   const todayBanners = banners.filter((b) => b.date === selectedDate);
 
@@ -401,17 +406,20 @@ function DailyPage() {
           title: event.title,
           dateText: formatBannerDateText(event.startDate, event.endDate, date),
           date,
+          isHoliday: event.sourceType === 'HOLIDAY',
         })),
-      schedules: events.map<ScheduleItem>((event) => ({
-        id: String(event.eventId),
-        eventId: String(event.eventId),
-        categoryColor: getLabelColor(event.labelId),
-        title: event.title,
-        location: event.location ?? '',
-        startTime: event.startTime ?? '',
-        endTime: event.endTime ?? '',
-        date,
-      })),
+      schedules: events
+        .filter((event) => event.sourceType !== 'HOLIDAY')
+        .map<ScheduleItem>((event) => ({
+          id: String(event.eventId),
+          eventId: String(event.eventId),
+          categoryColor: getLabelColor(event.labelId),
+          title: event.title,
+          location: event.location ?? '',
+          startTime: event.startTime ?? '',
+          endTime: event.endTime ?? '',
+          date,
+        })),
       isPending: query.isPending,
       isError: query.isError,
     };
@@ -467,7 +475,12 @@ function DailyPage() {
                       categoryColor={banner.categoryColor}
                       title={banner.title}
                       dateText={banner.dateText}
-                      onClick={() => handleScheduleClick(banner.id, panel.date)}
+                      // 공휴일은 상세 조회가 403이라 눌러도 들어갈 화면이 없다
+                      onClick={
+                        banner.isHoliday
+                          ? undefined
+                          : () => handleScheduleClick(banner.id, panel.date)
+                      }
                     />
                   ))}
                 </div>
