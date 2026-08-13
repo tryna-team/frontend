@@ -8,8 +8,6 @@ import type { TermType } from '@/apis/types/auth';
 import { getAuthState } from '@/stores/authStore';
 import { GOOGLE_REDIRECT_URI, requestGoogleAuthorizationCode } from '@/utils/googleAuth';
 
-import { queryKeys } from './queries/queryKeys';
-
 /** 신규 가입에 반드시 동의해야 하는 약관 (누락 시 백엔드가 TERMS_400) */
 const REQUIRED_TERM_TYPES: TermType[] = ['SERVICE', 'PRIVACY'];
 
@@ -87,8 +85,22 @@ export function useSocialLogin() {
         data = await call(await requestGoogleAuthorizationCode(), true);
       }
 
-      // 앱 진입 상태(userRole 등)가 GUEST로 캐시된 채 남지 않도록 다시 조회하게 한다
-      await queryClient.invalidateQueries({ queryKey: queryKeys.users.status() });
+      // 캐시에 남아 있는 건 전부 로그인 전(비회원) 사용자의 데이터다. 앱 진입 상태뿐 아니라
+      // 라벨·캘린더·일정·준비 항목이 모두 사용자에 종속되므로 통째로 버리고 다시 받는다.
+      //
+      // 앱 진입 상태만 무효화하던 때는 나머지가 그대로 남았다. 특히 라벨 목록은
+      // staleTime이 5분이라, 로그인 후에도 비회원 때 라벨을 최대 5분간 들고 있어
+      // 일정 색이 새로고침 전까지 바뀌지 않았다.
+      //
+      // 로그아웃(useAccountActions)은 같은 이유로 아예 새로고침을 하지만 로그인은 그럴
+      // 필요가 없다. 로그아웃은 토큰을 버린 직후라 재요청이 전부 401이 되는 반면,
+      // 로그인은 이 시점에 이미 새 토큰이 스토어에 들어가 있어 곧바로 다시 받아도 된다.
+      //
+      // clear()가 아니라 invalidateQueries()를 쓴다. clear()는 캐시를 비우기만 할 뿐
+      // 화면에 떠 있는 쿼리를 다시 요청하지 않아서, 로그인 직후 캘린더가 빈 채로 남고
+      // 달을 옮겨 새 쿼리 키가 생겨야 그제야 일정이 나타난다.
+      // invalidateQueries()는 전부 만료 처리하면서 화면에 떠 있는 것들을 즉시 다시 받는다.
+      await queryClient.invalidateQueries();
 
       return data;
     } finally {
