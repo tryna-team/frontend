@@ -4,10 +4,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, differenceInCalendarDays, format, isValid, parseISO } from 'date-fns';
 
 import Header from '@/components/common/Header/Header';
-import ScheduleBanner from '@/components/common/ScheduleBanner/ScheduleBanner';
 import { formatBannerDateText } from '@/components/common/ScheduleBanner/formatBannerDateText';
 import Button from '@/components/common/Buttons/Button';
 import type { LabelItemData } from '@/components/common/LabelModal/LabelModal';
+import EventBanner from '@/features/event/components/eventBanner';
 import DailyScheduleDetail from '@/features/event/components/DailyScheduleDetail';
 import DailyScheduleCard, {
   type DailyScheduleTodoItem,
@@ -478,7 +478,14 @@ function EventViewPage() {
   };
 
   return (
-    <div className="event-view-page">
+    <div
+      className="event-view-page"
+      // 페이지를 뷰포트 높이에 고정해, DailyScheduleCard가 넘치는 액션아이템을
+      // 페이지 스크롤이 아니라 카드 내부 스크롤로 흡수하게 한다. FloatingButtons가
+      // 떠 있으면 Main(App.tsx)이 그만큼(82px, .main-floating-padding) 하단 padding을
+      // 예약하므로, 그 값만큼 가용 높이에서 빼야 실제 뷰포트를 넘기지 않는다.
+      style={{ height: canModifyEvent ? 'calc(100dvh - 82px)' : '100dvh' }}
+    >
       <Header
         variant="daily"
         leading={{
@@ -500,9 +507,10 @@ function EventViewPage() {
             항상 이벤트의 기준(첫 회차) 시작일만 내려준다 — 즉 eventDetail.startDate가 "지금
             보고 있는 회차의 시작일"이 아닐 수 있어, 반복 + 기간형 일정에서는 "N일차" 값이
             부정확할 수 있다(DailyPage와 다른 지점). */}
-        <ScheduleBanner
+        <EventBanner
           categoryColor={categoryColor}
           title={eventDetail.eventTitle}
+          isAllDay={eventDetail.isAllDay}
           dateText={
             eventDetail.isAllDay
               ? formatBannerDateText(
@@ -510,7 +518,7 @@ function EventViewPage() {
                   eventDetail.endDate,
                   viewDate ?? eventDetail.startDate,
                 )
-              : ''
+              : undefined
           }
         />
 
@@ -523,7 +531,9 @@ function EventViewPage() {
           location={eventDetail.location}
         />
 
-        <div className="px-1">
+        {/* DailyScheduleCard가 남은 세로 공간을 모두 받아 448px를 기준으로 하되
+            모자라면 줄어들 수 있도록, 이 래퍼도 flex-1 + min-h-0로 참여시킨다. */}
+        <div className="flex min-h-0 flex-1 flex-col px-1">
           {isActionItemsPending ? (
             <p className="py-6 text-center text-text-additional default-body-medium">
               준비 항목을 불러오는 중이에요.
