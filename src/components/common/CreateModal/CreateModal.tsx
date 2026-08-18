@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { format, parseISO } from 'date-fns';
@@ -286,28 +286,6 @@ export default function CreateModal({
     setIsExitConfirmOpen(false);
     onClose?.();
   };
-
-  // 모달이 열려 있는 동안 배경 페이지의 스크롤을 잠근다.
-  useEffect(() => {
-    const scrollY = window.scrollY;
-    const previousOverflow = document.body.style.overflow;
-    const previousPosition = document.body.style.position;
-    const previousTop = document.body.style.top;
-    const previousWidth = document.body.style.width;
-
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.body.style.position = previousPosition;
-      document.body.style.top = previousTop;
-      document.body.style.width = previousWidth;
-      window.scrollTo(0, scrollY);
-    };
-  }, []);
 
   // 항목이 늘어나면 모달이 위로 확장되고, 남은 공간부터 목록만 스크롤한다.
   const checklistScrollMaxHeight = Math.max(52, Math.min(312, visualViewportRect.height - 188));
@@ -660,3 +638,4 @@ export default function CreateModal({
     </>
   );
 }
+
