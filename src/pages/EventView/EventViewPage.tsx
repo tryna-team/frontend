@@ -24,6 +24,7 @@ import { generateDailyPath, PATH } from '@/routes/paths';
 import { useFloatingButtons } from '@/hooks/useFloatingButtons';
 import { useCalendarStore } from '@/stores';
 import { queryKeys } from '@/hooks/queries/queryKeys';
+import { EXTERNAL_CALENDAR_FALLBACK_COLOR } from '@/hooks/queries/useLabelColors';
 import { eventDetailService } from '@/apis/services/eventDetailService';
 import { actionItemService } from '@/apis/services/actionItemService';
 import { labelService, toCalendarLabel } from '@/apis/services/labelService';
@@ -414,7 +415,13 @@ function EventViewPage() {
   // 로드되지 않았거나(로드 지점은 아직 라벨 관련 화면 진입 시점뿐) 매칭되는 라벨이
   // 없으면 DEFAULT_CATEGORY_COLOR로 대체한다.
   const matchedLabel = labels.find((label) => label.labelId === eventDetail.labelId);
-  const categoryColor = matchedLabel?.color ?? DEFAULT_CATEGORY_COLOR;
+  // 외부 캘린더(구글) 일정은 라벨을 못 찾아도 초록으로 떨어지면 안 된다. 연동 직후에는
+  // 라벨 목록에 구글 라벨이 아직 없어서, 기본색으로 그리면 사용자 일정과 구분이 안 된다.
+  const fallbackCategoryColor =
+    eventDetail.sourceType === 'EXTERNAL_CALENDAR'
+      ? EXTERNAL_CALENDAR_FALLBACK_COLOR
+      : DEFAULT_CATEGORY_COLOR;
+  const categoryColor = matchedLabel?.color ?? fallbackCategoryColor;
 
   // EventEditBottomSheet/ActionItemEditBottomSheet에 넘길 라벨 목록 — CalendarLabel과
   // LabelItemData의 color 타입이 동일(LabelModal/LabelItem 기준)해 별도 변환 없이 매핑된다.

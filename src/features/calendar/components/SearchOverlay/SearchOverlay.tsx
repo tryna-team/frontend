@@ -16,6 +16,9 @@ const SEARCH_DEBOUNCE_DELAY = 300;
 // 라벨이 없는 결과에 쓸 기본 색. 서버의 기본 라벨도 GREEN이라 값을 맞췄다.
 const FALLBACK_DOT_COLOR = 'green';
 
+// B107 결과에는 sourceType이 없어 외부 캘린더 일정인지 구분할 수 없다. 다만 응답의
+// label에 색이 함께 오므로 그 값을 쓰면 되고, 폴백은 label 자체가 없을 때만 걸린다.
+
 function formatDateHeader(dateStr: string, isFirst: boolean): string {
   const [yearStr, monthStr, dayStr] = dateStr.split('-');
   const date = new Date(Number(yearStr), Number(monthStr) - 1, Number(dayStr));

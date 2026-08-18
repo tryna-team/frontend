@@ -1,6 +1,7 @@
 import { keepPreviousData, useQueries } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
+import { actionItemService } from '@/apis/services/actionItemService';
 import { calendarService } from '@/apis/services/calendarService';
 import type { CalendarMainResponseData } from '@/apis/types/calendar';
 import { LABEL_COLOR_HEX_50 } from '@/colors/labelColor';
@@ -128,7 +129,7 @@ function useCalendarMonthEvents({
             start: event.startDate,
             end: event.endDate ? addExclusiveEnd(event.endDate) : undefined,
             allDay: true,
-            backgroundColor: LABEL_COLOR_HEX_50[getLabelColor(event.labelId)],
+            backgroundColor: LABEL_COLOR_HEX_50[getLabelColor(event.labelId, event.sourceType)],
             textColor: '#1C1630',
             borderColor: 'transparent',
             extendedProps: {
@@ -145,8 +146,115 @@ function useCalendarMonthEvents({
     return nextEventsByMonth;
   }, [getLabelColor, monthQueries.data, months]);
 
+  // 시간형 실행 항목은 부모 일정과 다른 날짜로 지정할 수 있는데(생성 모달에서 항목별로
+  // 날짜 선택), 그 날짜는 B101 월간 응답에 들어오지 않는다. 그래서 캘린더에 항목이
+  // 표시되지 않는다.
+  //
+  // 원래는 F104(캘린더 내 시간형 실행 항목 조회)가 이 역할인데 date 하나만 받아서,
+  // 한 달을 채우려면 앞뒤 달까지 90번을 호출해야 한다(범위 조회는 400).
+  // 대신 이미 받아둔 일정 목록을 이용해 일정별로 항목을 가져온다 — 요청이 일정 개수만큼만
+  // 늘고, 데일리 화면이 쓰는 방식과 같다.
+  //
+  // ⚠️ 임시 방편이다. F104가 기간 조회를 받게 되면 이 블록은 걷어내고 그쪽으로 옮긴다.
+  const eventOccurrences = useMemo(() => {
+    const occurrences = new Map<string, { eventId: number; occurrenceDate: string; labelId: number | null }>();
+
+    monthQueries.data.forEach((monthData, index) => {
+      const expectedMonth = months[index];
+
+      if (
+        !monthData ||
+        !expectedMonth ||
+        monthData.year !== expectedMonth.year ||
+        monthData.month !== expectedMonth.month
+      ) {
+        return;
+      }
+
+      for (const day of monthData.monthlyEventDays) {
+        for (const event of day.previewEvents) {
+          // 공휴일은 사용자 소유 일정이 아니라 항목 조회가 403이다
+          if (event.sourceType === 'HOLIDAY') {
+            continue;
+          }
+
+          occurrences.set(`${event.eventId}-${event.startDate}`, {
+            eventId: event.eventId,
+            occurrenceDate: event.startDate,
+            labelId: event.labelId,
+          });
+        }
+      }
+    });
+
+    return [...occurrences.values()];
+  }, [monthQueries.data, months]);
+
+  const actionItemQueries = useQueries({
+    queries: eventOccurrences.map(({ eventId, occurrenceDate }) => ({
+      queryKey: queryKeys.actionItems.byEvent(eventId, occurrenceDate),
+      queryFn: () => actionItemService.getByEvent(eventId, occurrenceDate),
+      // 항목이 자주 바뀌지 않으므로 달을 오갈 때마다 다시 부르지 않는다
+      staleTime: 60 * 1000,
+    })),
+    combine: (results) => results.map((result) => result.data),
+  });
+
+  const timedActionsByMonth = useMemo<CalendarMonthEventsByMonth>(() => {
+    const byMonth: CalendarMonthEventsByMonth = Object.fromEntries(
+      months.map(({ key }) => [key, []]),
+    );
+
+    actionItemQueries.forEach((data, index) => {
+      const parent = eventOccurrences[index];
+
+      if (!data || !parent) {
+        return;
+      }
+
+      for (const item of data.items) {
+        // 날짜가 지정된 항목만 캘린더에 올린다. 그 외에는 부모 일정 안에서만 보여준다.
+        if (item.itemType !== 'TIMED_ACTION' || !item.displayDate) {
+          continue;
+        }
+
+        const monthKey = item.displayDate.slice(0, 7);
+        const bucket = byMonth[monthKey];
+
+        // 불러온 3개월 밖의 날짜를 가리키는 항목은 그릴 칸이 없어 건너뛴다
+        if (!bucket) {
+          continue;
+        }
+
+        bucket.push({
+          title: item.title,
+          start: item.displayDate,
+          allDay: true,
+          backgroundColor: LABEL_COLOR_HEX_50[getLabelColor(parent.labelId)],
+          textColor: '#1C1630',
+          borderColor: 'transparent',
+          // 누르면 부모 일정 상세로 간다 — 항목만 따로 여는 화면은 없다
+          extendedProps: {
+            eventId: parent.eventId,
+            occurrenceDate: parent.occurrenceDate,
+          },
+        });
+      }
+    });
+
+    return byMonth;
+  }, [actionItemQueries, eventOccurrences, getLabelColor, months]);
+
+  const mergedEventsByMonth = useMemo<CalendarMonthEventsByMonth>(
+    () =>
+      Object.fromEntries(
+        months.map(({ key }) => [key, [...(eventsByMonth[key] ?? []), ...(timedActionsByMonth[key] ?? [])]]),
+      ),
+    [eventsByMonth, months, timedActionsByMonth],
+  );
+
   return {
-    eventsByMonth,
+    eventsByMonth: mergedEventsByMonth,
     isPending: monthQueries.isPending,
     isFetching: monthQueries.isFetching,
     isError: monthQueries.isError,
