@@ -29,8 +29,16 @@ export function useSocialLogin() {
     setIsPending(true);
 
     try {
+      // 팝업을 가장 먼저 띄운다 — 앞에 await를 두면 안 된다.
+      // 브라우저는 클릭 직후 짧은 시간에 열리는 팝업만 허용하는데(사파리는 사실상
+      // 동기 실행만 인정) 여기서 서버 왕복을 한 번이라도 하면 그 사이에 유효시간이
+      // 지나 팝업이 차단된다. 차단되면 error_callback으로 빠지고, 호출부는 그걸
+      // 취소로 처리해 아무 안내 없이 끝나서 "눌러도 아무 일이 없다"가 된다.
+      const authorizationCode = await requestGoogleAuthorizationCode();
+
       // 비회원이 만든 일정이 있는지 확인해서 전환(A106)/로그인(A105)을 가른다.
       // 캐시된 앱 진입 상태는 일정을 만들기 전 값일 수 있어 그 시점에 새로 조회한다.
+      // 코드를 받은 뒤에 조회해도 결과는 같다 — 팝업은 로컬 인증 상태를 바꾸지 않는다.
       let hasGuestDataToKeep = false;
 
       if (getAuthState().userRole === 'GUEST') {
@@ -42,8 +50,6 @@ export function useSocialLogin() {
           hasGuestDataToKeep = true;
         }
       }
-
-      const authorizationCode = await requestGoogleAuthorizationCode();
 
       /** asNewSession이 true면 지킬 데이터가 있어도 A105로 새 세션을 연다 (409 대응 경로) */
       const call = (code: string, asNewSession = false) => {
