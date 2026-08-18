@@ -123,6 +123,10 @@ export function useExternalCalendar(enabled = true) {
 
     if (justFinished || syncedAtChanged) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.calendars.all });
+      // 라벨 목록도 함께 받는다. 구글 라벨은 연동되는 순간 서버에서 새로 생기는데,
+      // 라벨 목록은 staleTime이 5분이라 캐시에 그 라벨이 없는 상태로 일정만 먼저 들어온다.
+      // 그러면 색을 찾지 못해 기본색(초록)으로 그려지고, 캐시가 만료될 때까지 그대로 남는다.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.labels.list() });
     }
   }, [connection?.syncStatus, connection?.lastSyncedAt, queryClient]);
 

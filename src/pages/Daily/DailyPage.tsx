@@ -182,7 +182,7 @@ function DailyPage() {
   const schedules: ScheduleItem[] = (data?.events ?? []).map((event) => ({
     id: String(event.eventId),
     eventId: String(event.eventId),
-    categoryColor: getLabelColor(event.labelId),
+    categoryColor: getLabelColor(event.labelId, event.sourceType),
     title: event.title,
     location: event.location ?? '',
     startTime: event.startTime ?? '',
@@ -287,7 +287,7 @@ function DailyPage() {
   // B103은 날짜 단위 조회라 응답에 담긴 일정은 모두 그 날짜에 속한다고 봐도 된다.
   const banners: BannerItem[] = allDayEvents.map((event) => ({
     id: String(event.eventId),
-    categoryColor: getLabelColor(event.labelId),
+    categoryColor: getLabelColor(event.labelId, event.sourceType),
     title: event.title,
     dateText: formatBannerDateText(event.startDate, event.endDate, selectedDate),
     date: selectedDate,
@@ -375,7 +375,7 @@ function DailyPage() {
         .filter((event) => event.isAllDay)
         .map<BannerItem>((event) => ({
           id: String(event.eventId),
-          categoryColor: getLabelColor(event.labelId),
+          categoryColor: getLabelColor(event.labelId, event.sourceType),
           title: event.title,
           dateText: formatBannerDateText(event.startDate, event.endDate, date),
           date,
@@ -386,7 +386,7 @@ function DailyPage() {
         .map<ScheduleItem>((event) => ({
           id: String(event.eventId),
           eventId: String(event.eventId),
-          categoryColor: getLabelColor(event.labelId),
+          categoryColor: getLabelColor(event.labelId, event.sourceType),
           title: event.title,
           location: event.location ?? '',
           startTime: event.startTime ?? '',
