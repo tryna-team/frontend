@@ -1,4 +1,4 @@
-﻿import { useCallback, useId, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { format, parseISO } from 'date-fns';
@@ -196,13 +196,20 @@ export default function CreateModal({
     onClose?.();
   }, [isSaving, onClose, resetCreation, trimmedInput]);
 
+  const focusInputAfterPaint = useCallback(() => {
+    // 모바일 브라우저가 포커스된 input을 보이게 하려고 문서를 스크롤하지 않도록 지연 포커스한다.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        inputRef.current?.focus({ preventScroll: true });
+      });
+    });
+  }, []);
+
   const handleExitConfirmClose = useCallback(() => {
     setIsExitConfirmOpen(false);
 
-    window.requestAnimationFrame(() => {
-      inputRef.current?.focus();
-    });
-  }, []);
+    focusInputAfterPaint();
+  }, [focusInputAfterPaint]);
 
   const handleCreateOverlayClick = useCallback(() => {
     if (isLabelModalOpen) {
@@ -241,6 +248,14 @@ export default function CreateModal({
     endDate,
     editCandidate,
   });
+
+  useEffect(() => {
+    if (isScheduleOpen || recommendationEditDraft || isLabelCreateOpen) {
+      return;
+    }
+
+    focusInputAfterPaint();
+  }, [focusInputAfterPaint, isLabelCreateOpen, isScheduleOpen, recommendationEditDraft]);
 
   const { renderedChecklistItems, directAddChecklistItem, handleChecklistClick } =
     useRecommendationChecklistItems({
@@ -362,9 +377,7 @@ export default function CreateModal({
     isScheduleOpeningRef.current = false;
     keepKeyboardOpenRef.current = true;
 
-    window.requestAnimationFrame(() => {
-      inputRef.current?.focus();
-    });
+    focusInputAfterPaint();
   };
 
   return (
@@ -489,7 +502,6 @@ export default function CreateModal({
                     <input
                       ref={inputRef}
                       type="text"
-                      autoFocus
                       disabled={isSaving}
                       value={inputValue}
                       onPointerDown={() => setHasInputInteractionStarted(true)}
@@ -638,4 +650,3 @@ export default function CreateModal({
     </>
   );
 }
-

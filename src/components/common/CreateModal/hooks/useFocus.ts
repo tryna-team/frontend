@@ -50,7 +50,7 @@ export const useCreateModalFocus = ({
 
       window.requestAnimationFrame(() => {
         if (keepKeyboardOpenRef.current) {
-          inputRef.current?.focus();
+          inputRef.current?.focus({ preventScroll: true });
         }
       });
     },
@@ -66,7 +66,9 @@ export const useCreateModalFocus = ({
 
   useEffect(() => {
     const handleDialogKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (isScheduleOpen) { return; }
+      if (isScheduleOpen) {
+        return;
+      }
 
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -88,11 +90,15 @@ export const useCreateModalFocus = ({
         return;
       }
 
-      if (event.key !== 'Tab') { return; }
+      if (event.key !== 'Tab') {
+        return;
+      }
 
       const dialog = dialogRef.current;
 
-      if (!dialog) { return; }
+      if (!dialog) {
+        return;
+      }
 
       const focusableElements = Array.from(
         dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
