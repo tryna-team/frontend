@@ -139,6 +139,7 @@
   letter-spacing: -0.12px;
 }
 
+/* 기본은 Default/Body/Medium(600이 아니라 500). 선택된 날짜만 아래에서 굵게 올린다 */
 .week-section-date {
   display: flex;
   width: 40px;
@@ -148,11 +149,14 @@
   color: #1C1630;
   font-family: "Pretendard", sans-serif;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 22px;
   letter-spacing: -0.15px;
   border-radius: 999px;
 }
 
+/* 선택된 날짜는 Default/Body/Strong/Medium */
 .week-section-date.is-active {
   background-color: rgba(28, 22, 48, 0.05);
+  font-weight: 600;
 }
