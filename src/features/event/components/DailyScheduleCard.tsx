@@ -22,7 +22,10 @@ export default function DailyScheduleCard({
   updatingItemIds,
 }: DailyScheduleCardProps) {
   return (
-    <div className="flex w-full flex-col items-center gap-4 rounded-[24px] bg-white px-4 py-6 shadow-[0px_4px_16px_0px_rgba(0,0,0,0.04),0px_9.701px_58.209px_0px_rgba(0,0,0,0.1)]">
+    // 피그마 스펙(node 1516:4802 등)의 h-448px 고정 카드. flex-basis가 되는 h-[448px]에
+    // min-h-0을 더해, 부모(EventViewPage)가 뷰포트 높이 제약으로 공간이 모자랄 때 이 카드가
+    // 448px보다 작게 줄어들 수 있도록 한다(넘치는 만큼은 아래 체크리스트 영역이 흡수).
+    <div className="flex h-112 max-h-112 min-h-0 w-full flex-col items-center gap-4 rounded-[24px] bg-white px-4 py-6 shadow-[0px_4px_16px_0px_rgba(0,0,0,0.04),0px_9.701px_58.209px_0px_rgba(0,0,0,0.1)]">
       {/*
         TODO: index를 id로 쓰는 임시 처리 — 항목 추가/삭제/정렬이 생기면 잘못된 줄이
         토글될 수 있는 React key 안티패턴. 아래 두 곳을 고쳐야 함:
@@ -36,38 +39,31 @@ export default function DailyScheduleCard({
              → onLeadingClick={(id) => onToggleItem?.(String(id))}
            로 바꿔서 index로 items 배열을 다시 뒤지는 우회 없이 item.id를 그대로 전달.
       */}
-      {/* EventView에서는 큰 체크 아이콘과 양 끝 정렬을 사용한다. */}
-      <Checklist
-        radioVariant="event"
-        toggleOnRowClick
-        items={items.map((item, index) => ({
-          id: index,
-          label: item.text,
-          status: item.checked ? ('done' as const) : ('default' as const),
-          trailing: item.dateText
-            ? { type: 'date' as const, text: item.dateText }
-            : { type: 'none' as const },
-          // 상태 변경을 요청한 항목만 잠시 비활성화한다.
-          disabled: updatingItemIds?.has(item.id) ?? false,
-        }))}
-        onLeadingClick={(index) => onToggleItem?.(items[index].id)}
-      />
+      {/* 액션아이템이 늘어나 버튼 영역을 침범하지 않도록, 이 영역만 flex-1 + min-h-0 +
+          overflow-y-auto로 남은 세로 공간을 갖고 내부 스크롤한다(버튼 영역은 항상 shrink-0). */}
+      <div className="flex min-h-0 w-full flex-1 flex-col items-center overflow-y-auto scrollbar-none">
+        {/* EventView에서는 큰 체크 아이콘과 양 끝 정렬을 사용한다. */}
+        <Checklist
+          radioVariant="event"
+          toggleOnRowClick
+          items={items.map((item, index) => ({
+            id: index,
+            label: item.text,
+            status: item.checked ? ('done' as const) : ('default' as const),
+            trailing: item.dateText
+              ? { type: 'date' as const, text: item.dateText }
+              : { type: 'none' as const },
+            // 상태 변경을 요청한 항목만 잠시 비활성화한다.
+            disabled: updatingItemIds?.has(item.id) ?? false,
+          }))}
+          onLeadingClick={(index) => onToggleItem?.(items[index].id)}
+        />
+      </div>
 
-      <div className="flex items-center justify-center gap-10">
-        {/* "모두 완료"와 동일 크기의 보이지 않는 스페이서 — 기능 없음, 정렬용 */}
-        <div aria-hidden="true" className="h-5.5 w-14.75" />
-        {/* 기능 없는 자리표시자 — "직접 추가"가 있던 자리를 그대로 차지시켜 "모두 완료"
-            위치를 원래대로 유지한다. 폭을 숫자로 추정하지 않고 실제 버튼을 렌더링한 뒤
-            안 보이게만 처리해 폰트/패딩 변경에도 위치가 어긋나지 않도록 한다. */}
-        <Button
-          variant="LargeDefaultFit"
-          className="invisible pointer-events-none"
-          tabIndex={-1}
-          aria-hidden="true"
-        >
-          직접 추가
-        </Button>
-        <Button variant="Small" onClick={onCompleteAllClick}>
+      <div className="flex shrink-0 items-center justify-center">
+        {/* "직접 추가" 자리에 있던 Button/Large 자리를 그대로 "모두 완료" 액션으로 사용한다
+            (피그마 node 1516:4820의 Button/Large 스타일 그대로, 라벨/기능만 교체). */}
+        <Button variant="LargeDefaultFit" onClick={onCompleteAllClick}>
           모두 완료
         </Button>
       </div>
