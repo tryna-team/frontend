@@ -1,4 +1,6 @@
-import { useEffect, type MouseEvent, type ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
+
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 
 interface OverlayProps {
   children: ReactNode;
@@ -19,16 +21,7 @@ export default function Overlay({ children, onClick, className }: OverlayProps) 
   // 움찔거리거나 한쪽으로 치우치지 않는다. 오버레이가 여러 겹 뜰 수 있어(예: 일정 수정
   // 시트 위에 일정 설정 시트) 매번 "잠그기 직전 값"을 저장했다가 복원하는 방식으로
   // 중첩에도 안전하게 만든다.
-  useEffect(() => {
-    const { body } = document;
-    const previousOverflow = body.style.overflow;
-
-    body.style.overflow = 'hidden';
-
-    return () => {
-      body.style.overflow = previousOverflow;
-    };
-  }, []);
+  useBodyScrollLock();
 
   return (
     <div
