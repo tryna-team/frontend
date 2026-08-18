@@ -28,6 +28,15 @@ export interface CalendarMonthEventItem {
   extendedProps: {
     eventId: number;
     occurrenceDate: string;
+    /**
+     * 블록 정렬 순서. 하루종일 일정이 맨 위, 시간이 있는 일정이 그다음, 준비·실행 항목이
+     * 마지막이다. 모든 블록을 allDay: true로 그리기 때문에(칸을 채우는 형태가 필요해서)
+     * FullCalendar가 하루종일 여부를 구분하지 못한다. 그래서 값을 직접 실어 보내고
+     * CalendarMonth의 eventOrder가 이걸 기준으로 정렬한다.
+     */
+    sortWeight: number;
+    /** 같은 순서 안에서는 시작 시간이 빠른 것부터. 시간이 없으면 빈 문자열 */
+    sortTime: string;
   };
 }
 
@@ -135,6 +144,8 @@ function useCalendarMonthEvents({
             extendedProps: {
               eventId: event.eventId,
               occurrenceDate: event.startDate,
+              sortWeight: event.isAllDay ? 0 : 1,
+              sortTime: event.startTime ?? '',
             },
           });
         }
@@ -237,6 +248,9 @@ function useCalendarMonthEvents({
           extendedProps: {
             eventId: parent.eventId,
             occurrenceDate: parent.occurrenceDate,
+            // 준비·실행 항목은 일정 아래에 둔다
+            sortWeight: 2,
+            sortTime: item.displayTime ?? '',
           },
         });
       }

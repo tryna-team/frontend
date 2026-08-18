@@ -81,6 +81,8 @@ interface ScheduleItem {
   checklist?: { id: string; text: string; checked: boolean; dateText?: string }[];
   /** 공휴일(sourceType: HOLIDAY). 사용자 소유 일정이 아니라 하위 항목 조회 대상이 아니다 */
   isHoliday?: boolean;
+  /** 하루종일 일정. 배너에도 올라가므로 하위 항목이 없으면 카드는 그리지 않는다 */
+  isAllDay?: boolean;
   linkedSchedule?: {
     date: string;
     time: string;
@@ -195,6 +197,7 @@ function DailyPage() {
     linkedSchedule: undefined,
     // 공휴일은 서버가 모두에게 공통으로 끼워 보내는 가상 일정이라 준비/실행 항목이 없다.
     isHoliday: event.sourceType === 'HOLIDAY',
+    isAllDay: event.isAllDay,
   }));
 
   const timedActionItems = (timedActionItemData?.items ?? []).filter(
@@ -357,9 +360,19 @@ function DailyPage() {
 
   // 공휴일은 카드로 그리지 않는다. 위쪽 배너에 이미 그날의 표시로 나오고, 준비 항목도
   // 클릭해서 들어갈 상세도 없는 가상 일정이라 카드 형태가 맞지 않는다.
-  const todaySchedules = [...schedulesWithActionItems, ...linkedTimedSchedules].filter(
-    (schedule) => schedule.date === selectedDate && !schedule.isHoliday,
-  );
+  //
+  // 하루종일 일정은 이미 배너에 올라가 있다. 하위 항목까지 없으면 카드가 배너와 같은
+  // 내용을 반복할 뿐이라 그리지 않고, 항목이 있을 때만 그걸 보여주려고 카드를 남긴다.
+  const todaySchedules = [...schedulesWithActionItems, ...linkedTimedSchedules]
+    .filter((schedule) => {
+      if (schedule.date !== selectedDate || schedule.isHoliday) {
+        return false;
+      }
+
+      return !schedule.isAllDay || (schedule.checklist?.length ?? 0) > 0;
+    })
+    // 하루종일 일정을 맨 위로. sort는 안정 정렬이라 나머지는 서버가 준 순서를 유지한다.
+    .sort((a, b) => Number(b.isAllDay ?? false) - Number(a.isAllDay ?? false));
   const todayBanners = banners.filter((b) => b.date === selectedDate);
 
   // 옆 패널은 드래그 중 보일 기본 일정만 준비한다. 페이지 전환이 끝나 선택 날짜가
