@@ -218,6 +218,11 @@ const CalendarMonth = forwardRef<HTMLDivElement, CalendarMonthProps>(function Ca
         initialDate={initialDate}
         locale="ko"
         events={events}
+        // 하루종일 일정을 맨 위에 둔다. 모든 블록을 allDay: true로 그리기 때문에
+        // FullCalendar 기본 정렬로는 하루종일 여부를 구분하지 못해, useCalendarMonthEvents가
+        // extendedProps에 실어 보낸 값을 기준으로 정렬한다.
+        // (하루종일 0 → 시간 있는 일정 1 → 준비·실행 항목 2)
+        eventOrder="sortWeight,sortTime,title"
         dayHeaders={false}
         headerToolbar={false}
         fixedWeekCount={false}
