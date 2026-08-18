@@ -87,8 +87,11 @@ export default function LabelCreateSheet({ onClose, onComplete }: LabelCreateShe
           style={{ height: visualViewportRect.height * 0.92 }}
         >
           {/* Header 공용 컴포넌트는 leading이 항상 아이콘(챕터론)이라 이 화면의
-              "취소(텍스트)/닫기·완료(pill 버튼)" 조합과 맞지 않아 이 화면만 직접 구성 */}
-          <div className="flex w-[353px] items-center justify-between">
+              "취소(텍스트)/닫기·완료(pill 버튼)" 조합과 맞지 않아 이 화면만 직접 구성.
+              w-full(고정 w-[353px] 아님): Frame의 실제 폭은 appFrameRect 기준이라
+              브라우저 창에 따라 385px보다 커질 수 있는데, 고정폭이면 그 차이만큼 오른쪽에
+              안 쓰는 공간이 남아 "닫기" 버튼이 오른쪽 경계보다 안쪽에 떠 보였다. */}
+          <div className="flex w-full items-center justify-between">
             <button
               type="button"
               onClick={onClose}
@@ -114,8 +117,16 @@ export default function LabelCreateSheet({ onClose, onComplete }: LabelCreateShe
           </div>
 
           {/* Frame이 visualViewportRect.height 기준 높이로 고정돼, 키보드로 줄어든 실제
-              높이보다 콘텐츠가 길어지면 이 영역만 스크롤되고 헤더는 항상 보이게 한다. */}
-          <div className="flex w-full flex-1 flex-col gap-6 overflow-y-auto">
+              높이보다 콘텐츠가 길어지면 이 영역만 스크롤되고 헤더는 항상 보이게 한다.
+              overflow-y-auto는 CSS 스펙상 overflow-x도 auto로 강제돼(둘 다 clip), 바로
+              붙어있던 라벨 이름 Input의 그림자(box-shadow, x-offset 0이라 좌우로도 blur
+              반경만큼 번짐 — 최대 29.104px)가 상하좌우 클리핑 경계에 잘렸다.
+              -m(음수 마진)으로 박스를 Frame의 여유 패딩(p-4=16px) 쪽으로 밀어 클리핑 경계를
+              바깥으로 넓히고 padding으로 안쪽 콘텐츠를 다시 밀어 넣는데 — width:100%는
+              margin과 무관하게 부모 폭에 고정되고 거기서 padding만 그대로 빠지므로(margin은
+              위치만 옮길 뿐 크기를 안 늘려줌), w-[calc(100%+2rem)]로 padding(2rem)만큼 폭도
+              같이 넓혀줘야 실제로 margin+padding이 상쇄돼 콘텐츠 폭/위치가 원래와 같아진다. */}
+          <div className="-mx-4 -mt-4 flex w-[calc(100%+2rem)] flex-1 flex-col gap-6 overflow-y-auto px-4 pt-4">
             <div className="w-full rounded-medium bg-background-white p-3 shadow-[0px_4px_8px_rgba(0,0,0,0.04),0px_9.701px_29.104px_rgba(0,0,0,0.1)]">
               <Input
                 value={name}
