@@ -196,13 +196,20 @@ export default function CreateModal({
     onClose?.();
   }, [isSaving, onClose, resetCreation, trimmedInput]);
 
+  const focusInputAfterPaint = useCallback(() => {
+    // 모바일 브라우저가 포커스된 input을 보이게 하려고 문서를 스크롤하지 않도록 지연 포커스한다.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        inputRef.current?.focus({ preventScroll: true });
+      });
+    });
+  }, []);
+
   const handleExitConfirmClose = useCallback(() => {
     setIsExitConfirmOpen(false);
 
-    window.requestAnimationFrame(() => {
-      inputRef.current?.focus();
-    });
-  }, []);
+    focusInputAfterPaint();
+  }, [focusInputAfterPaint]);
 
   const handleCreateOverlayClick = useCallback(() => {
     if (isLabelModalOpen) {
@@ -241,6 +248,14 @@ export default function CreateModal({
     endDate,
     editCandidate,
   });
+
+  useEffect(() => {
+    if (isScheduleOpen || recommendationEditDraft || isLabelCreateOpen) {
+      return;
+    }
+
+    focusInputAfterPaint();
+  }, [focusInputAfterPaint, isLabelCreateOpen, isScheduleOpen, recommendationEditDraft]);
 
   const { renderedChecklistItems, directAddChecklistItem, handleChecklistClick } =
     useRecommendationChecklistItems({
@@ -286,28 +301,6 @@ export default function CreateModal({
     setIsExitConfirmOpen(false);
     onClose?.();
   };
-
-  // 모달이 열려 있는 동안 배경 페이지의 스크롤을 잠근다.
-  useEffect(() => {
-    const scrollY = window.scrollY;
-    const previousOverflow = document.body.style.overflow;
-    const previousPosition = document.body.style.position;
-    const previousTop = document.body.style.top;
-    const previousWidth = document.body.style.width;
-
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.body.style.position = previousPosition;
-      document.body.style.top = previousTop;
-      document.body.style.width = previousWidth;
-      window.scrollTo(0, scrollY);
-    };
-  }, []);
 
   // 항목이 늘어나면 모달이 위로 확장되고, 남은 공간부터 목록만 스크롤한다.
   const checklistScrollMaxHeight = Math.max(52, Math.min(312, visualViewportRect.height - 188));
@@ -384,9 +377,7 @@ export default function CreateModal({
     isScheduleOpeningRef.current = false;
     keepKeyboardOpenRef.current = true;
 
-    window.requestAnimationFrame(() => {
-      inputRef.current?.focus();
-    });
+    focusInputAfterPaint();
   };
 
   return (
@@ -511,7 +502,6 @@ export default function CreateModal({
                     <input
                       ref={inputRef}
                       type="text"
-                      autoFocus
                       disabled={isSaving}
                       value={inputValue}
                       onPointerDown={() => setHasInputInteractionStarted(true)}
