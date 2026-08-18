@@ -129,7 +129,7 @@ function useCalendarMonthEvents({
             start: event.startDate,
             end: event.endDate ? addExclusiveEnd(event.endDate) : undefined,
             allDay: true,
-            backgroundColor: LABEL_COLOR_HEX_50[getLabelColor(event.labelId)],
+            backgroundColor: LABEL_COLOR_HEX_50[getLabelColor(event.labelId, event.sourceType)],
             textColor: '#1C1630',
             borderColor: 'transparent',
             extendedProps: {
