@@ -125,21 +125,41 @@ function loadGoogleScript(): Promise<void> {
  * 발급된 코드는 일회용이고 수명이 짧다. 받은 즉시 백엔드로 넘겨야 하며,
  * 재시도할 때는 코드를 재사용하지 말고 팝업을 다시 띄워 새로 받아야 한다.
  */
-export async function requestGoogleAuthorizationCode(): Promise<string> {
+export function requestGoogleAuthorizationCode(): Promise<string> {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   if (!clientId) {
-    throw new Error('VITE_GOOGLE_CLIENT_ID가 설정되지 않았습니다.');
+    return Promise.reject(new Error('VITE_GOOGLE_CLIENT_ID가 설정되지 않았습니다.'));
   }
 
-  await loadGoogleScript();
+  // async 함수가 아니고 await도 쓰지 않는다 — 스크립트가 이미 준비돼 있으면 클릭 핸들러와
+  // 같은 실행 스택에서 팝업을 열기 위해서다.
+  //
+  // await는 이미 이행된 프로미스라도 마이크로태스크로 한 번 넘긴다. iOS 사파리는 그 지점에서
+  // 사용자 제스처가 끊긴 것으로 보고 "팝업 허용/차단"을 물어보고, 그동안 GIS는 팝업을 열지
+  // 못한 것으로 판단해 error_callback을 호출해버린다. 사용자가 "허용"을 눌러도 흐름은 이미
+  // 실패로 끝난 뒤라 로그인 화면으로 되돌아온다.
+  const loaded = window.google?.accounts?.oauth2;
 
-  const oauth2 = window.google?.accounts?.oauth2;
-
-  if (!oauth2) {
-    throw new Error('구글 로그인을 초기화하지 못했습니다.');
+  if (loaded) {
+    return openCodeClient(loaded, clientId);
   }
 
+  // 아직 로드 전인 경우에만 기다린다(진입 직후 바로 누른 경우 등). 이 경로는 제스처가
+  // 끊겨 차단될 수 있지만, index.html에서 미리 받고 있어 실제로는 거의 타지 않는다.
+  return loadGoogleScript().then(() => {
+    const ready = window.google?.accounts?.oauth2;
+
+    if (!ready) {
+      throw new Error('구글 로그인을 초기화하지 못했습니다.');
+    }
+
+    return openCodeClient(ready, clientId);
+  });
+}
+
+/** 팝업을 띄우고 인가 코드를 기다린다. 반드시 동기적으로 호출될 것 (위 주석 참고) */
+function openCodeClient(oauth2: GoogleOAuth2, clientId: string): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const client = oauth2.initCodeClient({
       client_id: clientId,
@@ -159,9 +179,6 @@ export async function requestGoogleAuthorizationCode(): Promise<string> {
       // 사용자가 닫은 것(popup_closed)과 브라우저가 못 열게 막은 것(popup_failed_to_open)을
       // 구분한다. 둘 다 "취소"로 뭉개면 팝업이 차단됐을 때 화면에도 콘솔에도 아무것도
       // 남지 않아, 로그인이 아무 일 없이 죽은 것처럼 보인다.
-      //
-      // 차단은 주로 두 번째 팝업에서 난다. 서버 응답을 기다린 뒤에 띄우느라 브라우저가
-      // 인정하는 사용자 클릭 유효시간이 지나기 때문이다.
       error_callback: (error) => {
         if (error?.type === 'popup_closed') {
           reject(new GoogleLoginCancelledError());
