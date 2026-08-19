@@ -397,8 +397,8 @@ export default function CreateModal({
                 style={{
                   left: appFrameRect.left,
                   width: appFrameRect.width,
-                  top: visualViewportRect.top,
-                  height: visualViewportRect.height,
+                  top: 0,
+                  bottom: 0,
                 }}
               >
                 <video
