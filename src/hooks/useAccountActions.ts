@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 
 import { authService } from '@/apis/services/authService';
 import { userService } from '@/apis/services/userService';
+import { resetDeviceId } from '@/utils/deviceId';
 
 /**
  * 로그아웃(A109) / 회원탈퇴(G104).
@@ -24,6 +25,16 @@ export function useAccountActions() {
       // authService.logout은 API 성공/실패와 무관하게 로컬 토큰을 지운다
       await authService.logout();
     } finally {
+      // deviceId까지 새로 발급해 완전히 새 비회원으로 시작한다.
+      //
+      // 유지하면 로그아웃 후 예전 비회원 계정으로 돌아가는데, 그 계정에는 회원으로
+      // 전환하면서 이미 옮겨간 일정이 그대로 남아 있다. 그래서 두 가지 문제가 생겼다.
+      //   1. 로그아웃했는데 이전 사용자의 일정이 그대로 보인다
+      //   2. 재로그인할 때 "지킬 데이터가 있다"고 판단해 A106 전환을 태우고, 이미 가입된
+      //      계정이라 409를 맞아 구글 팝업이 두 번 뜬다
+      //
+      // API 호출이 끝난 뒤에 바꾼다 — A109는 기존 deviceId로 세션을 정리해야 한다.
+      resetDeviceId();
       window.location.reload();
     }
   }, []);
