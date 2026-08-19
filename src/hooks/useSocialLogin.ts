@@ -7,6 +7,10 @@ import { userService } from '@/apis/services/userService';
 import type { TermType } from '@/apis/types/auth';
 import { getAuthState } from '@/stores/authStore';
 import { GOOGLE_REDIRECT_URI, requestGoogleAuthorizationCode } from '@/utils/googleAuth';
+import {
+  hasMemberLoggedInOnDevice,
+  markMemberLoggedInOnDevice,
+} from '@/utils/memberLoginHistory';
 
 /** 신규 가입에 반드시 동의해야 하는 약관 (누락 시 백엔드가 TERMS_400) */
 const REQUIRED_TERM_TYPES: TermType[] = ['SERVICE', 'PRIVACY'];
@@ -18,9 +22,17 @@ const REQUIRED_TERM_TYPES: TermType[] = ['SERVICE', 'PRIVACY'];
  * 항목이 새 계정으로 넘어간다.
  *
  * 일정이 없는 비회원은 A105로 바로 보낸다. A106은 이미 가입된 소셜 계정이면 AUTH_409로
- * 막히는데, 로그아웃 후 재로그인하거나 앱을 다시 깐 사용자는 매번 새 비회원 상태라
- * 무조건 A106을 태우면 항상 409를 맞고 구글 팝업을 두 번 보게 된다.
+ * 막히는데, 그 시점엔 인가 코드가 소진돼 새 코드를 받으러 구글 팝업을 한 번 더 띄워야 한다.
  * 지킬 데이터가 없으면 전환할 이유도 없으므로 처음부터 A105로 가는 게 맞다.
+ *
+ * 같은 이유로, 이 기기에서 이미 회원 로그인을 한 적이 있으면 지킬 데이터가 있어도 A105로
+ * 보낸다(utils/memberLoginHistory). 재로그인이라 그 계정은 이미 가입돼 있어 전환은 반드시
+ * 409로 막히기 때문이다.
+ *
+ * 한계: 로그아웃한 뒤 아직 가입하지 않은 다른 구글 계정으로 로그인하면, 전환이 가능한
+ * 상황인데도 건너뛰게 된다(공용 기기 등). 팝업을 띄우기 전에는 어떤 구글 계정으로
+ * 로그인할지 알 수 없어 프론트에서 더 정확히 판단할 방법이 없다. A106이 409 대신 기존
+ * 계정으로의 이관을 처리해주면 이 분기 자체가 필요 없어진다.
  */
 export function useSocialLogin() {
   const [isPending, setIsPending] = useState(false);
@@ -29,11 +41,23 @@ export function useSocialLogin() {
     setIsPending(true);
 
     try {
+      // 팝업을 가장 먼저 띄운다 — 앞에 await를 두면 안 된다.
+      // 브라우저는 클릭 직후 짧은 시간에 열리는 팝업만 허용하는데(사파리는 사실상
+      // 동기 실행만 인정) 여기서 서버 왕복을 한 번이라도 하면 그 사이에 유효시간이
+      // 지나 팝업이 차단된다. 차단되면 error_callback으로 빠지고, 호출부는 그걸
+      // 취소로 처리해 아무 안내 없이 끝나서 "눌러도 아무 일이 없다"가 된다.
+      const authorizationCode = await requestGoogleAuthorizationCode();
+
       // 비회원이 만든 일정이 있는지 확인해서 전환(A106)/로그인(A105)을 가른다.
       // 캐시된 앱 진입 상태는 일정을 만들기 전 값일 수 있어 그 시점에 새로 조회한다.
+      // 코드를 받은 뒤에 조회해도 결과는 같다 — 팝업은 로컬 인증 상태를 바꾸지 않는다.
+      //
+      // 이 기기에서 이미 회원 로그인을 한 적이 있으면 조회조차 하지 않고 A105로 보낸다.
+      // 재로그인이라 그 계정은 이미 가입돼 있고, A106은 AUTH_409로 막힌 뒤 새 인가 코드를
+      // 받으러 팝업을 한 번 더 띄우게 된다. 어차피 전환되지 않을 요청이라 건너뛴다.
       let hasGuestDataToKeep = false;
 
-      if (getAuthState().userRole === 'GUEST') {
+      if (!hasMemberLoggedInOnDevice() && getAuthState().userRole === 'GUEST') {
         try {
           const status = await userService.getStatus();
           hasGuestDataToKeep = status.hasEvents;
@@ -42,8 +66,6 @@ export function useSocialLogin() {
           hasGuestDataToKeep = true;
         }
       }
-
-      const authorizationCode = await requestGoogleAuthorizationCode();
 
       /** asNewSession이 true면 지킬 데이터가 있어도 A105로 새 세션을 연다 (409 대응 경로) */
       const call = (code: string, asNewSession = false) => {
@@ -83,6 +105,11 @@ export function useSocialLogin() {
         }
 
         data = await call(await requestGoogleAuthorizationCode(), true);
+      }
+
+      // 다음 로그인부터는 전환(A106)을 건너뛰도록 이 기기에 회원 로그인 이력을 남긴다.
+      if (data.userRole === 'USER') {
+        markMemberLoggedInOnDevice();
       }
 
       // 캐시에 남아 있는 건 전부 로그인 전(비회원) 사용자의 데이터다. 앱 진입 상태뿐 아니라

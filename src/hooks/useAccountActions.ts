@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 
 import { authService } from '@/apis/services/authService';
 import { userService } from '@/apis/services/userService';
-import { resetDeviceId } from '@/utils/deviceId';
 
 /**
  * 로그아웃(A109) / 회원탈퇴(G104).
@@ -25,16 +24,14 @@ export function useAccountActions() {
       // authService.logout은 API 성공/실패와 무관하게 로컬 토큰을 지운다
       await authService.logout();
     } finally {
-      // deviceId까지 새로 발급해 완전히 새 비회원으로 시작한다.
+      // deviceId는 유지한다. 이걸 새로 발급하면 로그아웃 후 완전히 새 비회원이 되는데,
+      // 그 상태로 재로그인하면 비회원 때 만든 일정이 회원 계정으로 넘어가지 못한다.
+      // A106 전환은 이미 가입된 소셜 계정이면 AUTH_409로 막히고, 프론트는 A105(새 세션)로
+      // 우회하는데 A105에는 병합 기능이 없기 때문이다(hooks/useSocialLogin.ts 참고).
       //
-      // 유지하면 로그아웃 후 예전 비회원 계정으로 돌아가는데, 그 계정에는 회원으로
-      // 전환하면서 이미 옮겨간 일정이 그대로 남아 있다. 그래서 두 가지 문제가 생겼다.
-      //   1. 로그아웃했는데 이전 사용자의 일정이 그대로 보인다
-      //   2. 재로그인할 때 "지킬 데이터가 있다"고 판단해 A106 전환을 태우고, 이미 가입된
-      //      계정이라 409를 맞아 구글 팝업이 두 번 뜬다
-      //
-      // API 호출이 끝난 뒤에 바꾼다 — A109는 기존 deviceId로 세션을 정리해야 한다.
-      resetDeviceId();
+      // 그 대가로 로그아웃 후에도 이전 비회원 계정으로 돌아가 예전 일정이 보이고,
+      // 재로그인 시 구글 팝업이 두 번 뜬다. 일정 연동이 메인 기능이라 그쪽을 택했다.
+      // A106이 409 대신 병합+로그인을 처리해주면 그때 다시 정리할 수 있다.
       window.location.reload();
     }
   }, []);

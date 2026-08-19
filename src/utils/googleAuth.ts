@@ -73,8 +73,27 @@ function loadGoogleScript(): Promise<void> {
   }
 
   scriptLoadPromise = new Promise((resolve, reject) => {
-    if (document.getElementById(GIS_SCRIPT_ID)) {
-      resolve();
+    // index.html이 같은 id로 미리 심어둔 태그. 태그가 있다고 바로 resolve하면 안 된다 —
+    // async라 아직 다 받지 못했을 수 있고, 그 상태로 넘어가면 window.google이 없어서
+    // "초기화하지 못했습니다"로 죽는다. 실제로 쓸 수 있을 때까지 기다린다.
+    const preloaded = document.getElementById(GIS_SCRIPT_ID);
+
+    if (preloaded) {
+      if (window.google?.accounts?.oauth2) {
+        resolve();
+        return;
+      }
+
+      preloaded.addEventListener('load', () => resolve(), { once: true });
+      preloaded.addEventListener(
+        'error',
+        () => {
+          scriptLoadPromise = null;
+          reject(new Error('구글 로그인 스크립트를 불러오지 못했습니다.'));
+        },
+        { once: true },
+      );
+
       return;
     }
 
@@ -136,7 +155,21 @@ export async function requestGoogleAuthorizationCode(): Promise<string> {
         reject(new GoogleLoginCancelledError());
       },
       // 팝업 자체가 닫히거나 뜨지 못한 경우 (콜백이 아예 호출되지 않는 경로)
-      error_callback: () => reject(new GoogleLoginCancelledError()),
+      //
+      // 사용자가 닫은 것(popup_closed)과 브라우저가 못 열게 막은 것(popup_failed_to_open)을
+      // 구분한다. 둘 다 "취소"로 뭉개면 팝업이 차단됐을 때 화면에도 콘솔에도 아무것도
+      // 남지 않아, 로그인이 아무 일 없이 죽은 것처럼 보인다.
+      //
+      // 차단은 주로 두 번째 팝업에서 난다. 서버 응답을 기다린 뒤에 띄우느라 브라우저가
+      // 인정하는 사용자 클릭 유효시간이 지나기 때문이다.
+      error_callback: (error) => {
+        if (error?.type === 'popup_closed') {
+          reject(new GoogleLoginCancelledError());
+          return;
+        }
+
+        reject(new Error(`구글 로그인 팝업을 열지 못했습니다. (${error?.type ?? 'unknown'})`));
+      },
     });
 
     client.requestCode();
