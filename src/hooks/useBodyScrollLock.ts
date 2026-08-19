@@ -1,33 +1,44 @@
 import { useEffect } from 'react';
 
 type BodyScrollLockSnapshot = {
-  overflow: string;
-  position: string;
-  top: string;
-  width: string;
+  target: HTMLElement;
+  targetPosition: string;
+  targetTop: string;
+  targetLeft: string;
+  targetRight: string;
+  targetWidth: string;
+  bodyOverflow: string;
   scrollY: number;
 };
 
 let lockCount = 0;
 let snapshot: BodyScrollLockSnapshot | null = null;
 
+const getScrollLockTarget = () => document.getElementById('root') ?? document.body;
+
 const lockBodyScroll = () => {
   if (lockCount === 0) {
     const { body } = document;
+    const target = getScrollLockTarget();
     const scrollY = window.scrollY;
 
     snapshot = {
-      overflow: body.style.overflow,
-      position: body.style.position,
-      top: body.style.top,
-      width: body.style.width,
+      target,
+      targetPosition: target.style.position,
+      targetTop: target.style.top,
+      targetLeft: target.style.left,
+      targetRight: target.style.right,
+      targetWidth: target.style.width,
+      bodyOverflow: body.style.overflow,
       scrollY,
     };
 
     body.style.overflow = 'hidden';
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollY}px`;
-    body.style.width = '100%';
+    target.style.position = 'fixed';
+    target.style.top = `-${scrollY}px`;
+    target.style.left = '0';
+    target.style.right = '0';
+    target.style.width = '100%';
   }
 
   lockCount += 1;
@@ -42,11 +53,14 @@ const unlockBodyScroll = () => {
 
   const { body } = document;
   const scrollY = snapshot.scrollY;
+  const { target } = snapshot;
 
-  body.style.overflow = snapshot.overflow;
-  body.style.position = snapshot.position;
-  body.style.top = snapshot.top;
-  body.style.width = snapshot.width;
+  target.style.position = snapshot.targetPosition;
+  target.style.top = snapshot.targetTop;
+  target.style.left = snapshot.targetLeft;
+  target.style.right = snapshot.targetRight;
+  target.style.width = snapshot.targetWidth;
+  body.style.overflow = snapshot.bodyOverflow;
   snapshot = null;
   window.scrollTo(0, scrollY);
 };
