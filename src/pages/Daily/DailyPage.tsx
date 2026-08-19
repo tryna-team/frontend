@@ -95,6 +95,36 @@ function formatTime(value: string | null | undefined) {
   return value.includes('T') ? value.slice(11, 16) : value.slice(0, 5);
 }
 
+/**
+ * 카드 정렬 기준 — 하루종일 일정을 맨 위에 두고, 나머지는 시작 시간 오름차순.
+ *
+ * 서버(B103)가 시간순으로 내려주고 있지만 스펙에 정렬 규칙이 명시돼 있지 않아,
+ * 쿼리가 바뀌면 화면 순서가 조용히 흐트러진다. 표시 순서는 화면 책임이므로
+ * 서버 순서에 기대지 않고 여기서 확정한다. 월간 캘린더(CalendarMonth의
+ * eventOrder="sortWeight,sortTime,title")와 같은 기준이다.
+ */
+function compareSchedules(a: ScheduleItem, b: ScheduleItem) {
+  // 하루종일 일정은 시간 개념이 없어 시간 비교 대상이 아니다. 항상 위로 고정한다.
+  const allDayGap = Number(b.isAllDay ?? false) - Number(a.isAllDay ?? false);
+
+  if (allDayGap !== 0) {
+    return allDayGap;
+  }
+
+  // "HH:mm" 24시간 표기라 문자열 비교로 충분하다.
+  // 서버가 "15:00:00"처럼 초까지 주는 경우가 있어 앞 5자리만 본다.
+  const aTime = a.startTime.slice(0, 5);
+  const bTime = b.startTime.slice(0, 5);
+
+  // 시간이 없는 일정은 맨 뒤로. 빈 문자열은 어떤 시각보다 작아서 그냥 비교하면
+  // 맨 앞으로 올라온다.
+  if (!aTime || !bTime) {
+    return Number(Boolean(bTime)) - Number(Boolean(aTime));
+  }
+
+  return aTime.localeCompare(bTime);
+}
+
 function formatMonthDay(value: string | null | undefined) {
   if (!value) return '';
   const [, month, day] = value.split('-').map(Number);
@@ -371,8 +401,7 @@ function DailyPage() {
 
       return !schedule.isAllDay || (schedule.checklist?.length ?? 0) > 0;
     })
-    // 하루종일 일정을 맨 위로. sort는 안정 정렬이라 나머지는 서버가 준 순서를 유지한다.
-    .sort((a, b) => Number(b.isAllDay ?? false) - Number(a.isAllDay ?? false));
+    .sort(compareSchedules);
   const todayBanners = banners.filter((b) => b.date === selectedDate);
 
   // 옆 패널은 드래그 중 보일 기본 일정만 준비한다. 페이지 전환이 끝나 선택 날짜가
@@ -405,7 +434,10 @@ function DailyPage() {
           startTime: event.startTime ?? '',
           endTime: event.endTime ?? '',
           date,
-        })),
+          isAllDay: event.isAllDay,
+        }))
+        // 드래그 중 잠깐 보이는 패널이라도 순서가 흔들리면 전환 순간에 눈에 띈다.
+        .sort(compareSchedules),
       isPending: query.isPending,
       isError: query.isError,
     };
