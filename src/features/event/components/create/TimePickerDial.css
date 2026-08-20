@@ -182,7 +182,7 @@
     --Default-Body-Large-FontFamily,
     var(
       --font-default,
-      Pretendard,
+      "Pretendard Variable",
       sans-serif
     )
   );

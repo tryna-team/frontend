@@ -1,5 +1,6 @@
 export const PATH = {
   SPLASH: '/',
+  ABOUT: '/about',
   HOME: '/home',
   DAILY: '/daily/:date',
   EVENT_VIEW: '/event/:eventId',
@@ -7,6 +8,8 @@ export const PATH = {
   TERMS: '/terms',
   PRIVACY: '/privacy',
 } as const;
+
+export const PUBLIC_PATHS = [PATH.ABOUT, PATH.TERMS, PATH.PRIVACY] as const;
 
 export const generateDailyPath = (date: string) => `/daily/${date}`;
 

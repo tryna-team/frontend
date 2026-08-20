@@ -65,7 +65,7 @@ export default function QuickModal({
           {/* 코드래빗 적용_위 aria-labelledby가 참조하는 id */}
           <p
             id={messageId}
-            className="font-['Pretendard_Variable',Pretendard,sans-serif] text-[17px] font-semibold text-[#1C1630] leading-6.5 tracking-[-0.17px] flex-1"
+            className="font-['Pretendard_Variable',sans-serif] text-[17px] font-semibold text-[#1C1630] leading-6.5 tracking-[-0.17px] flex-1"
           >
             {message}
           </p>
