@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { MouseEvent, PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 
 import { format, parseISO } from 'date-fns';
@@ -312,6 +313,20 @@ export default function CreateModal({
 
   // 항목이 늘어나면 모달이 위로 확장되고, 남은 공간부터 목록만 스크롤한다.
   const checklistScrollMaxHeight = Math.max(52, Math.min(312, visualViewportRect.height - 188));
+  const keepInputFocusedOnPointerDown = (event: PointerEvent<HTMLElement>) => {
+    const target = event.target;
+
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      (target instanceof HTMLElement && target.isContentEditable)
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+  };
+
   const handleLabelClick = () => {
     if (isSaving) {
       return;
@@ -374,8 +389,13 @@ export default function CreateModal({
     onInputChange?.(value);
   };
 
-  // 스케줄 설정 화면에서는 키보드를 내린다.
-  const handleCalendarPointerDown = () => {
+  // 스케줄 시트는 별도 화면이므로 키보드를 유지하지 않고 일반 클릭으로 연다.
+  const handleCalendarPointerDown = (event: PointerEvent<HTMLElement>) => {
+    event.stopPropagation();
+  };
+
+  const handleCalendarButtonClick = (event: MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
     handleCalendarClick();
   };
 
@@ -397,7 +417,10 @@ export default function CreateModal({
         !recommendationEditDraft &&
         !isLabelCreateOpen &&
         createPortal(
-          <Overlay onClick={handleCreateOverlayClick}>
+          <Overlay
+            onPointerDown={keepInputFocusedOnPointerDown}
+            onClick={handleCreateOverlayClick}
+          >
             {(hasInputInteractionStarted || isRecommendMode) && (
               <div
                 aria-hidden="true"
@@ -524,6 +547,7 @@ export default function CreateModal({
                       variant="CheckCTAButton"
                       className="size-9"
                       disabled={!trimmedInput || isSaving || hasEmptySelectedRecommendationTitle}
+                      onPointerDown={keepInputFocusedOnPointerDown}
                       onClick={handleCreate}
                     />
                   </div>
@@ -534,7 +558,7 @@ export default function CreateModal({
                       icon="icons/calendar_small.svg"
                       disabled={isSaving}
                       onPointerDown={handleCalendarPointerDown}
-                      onClick={handleCalendarClick}
+                      onClick={handleCalendarButtonClick}
                       className="whitespace-nowrap"
                     >
                       {calendarText}
@@ -545,6 +569,7 @@ export default function CreateModal({
                         variant="IconTextSmall"
                         icon="icons/label_small.svg"
                         disabled={isSaving}
+                        onPointerDown={keepInputFocusedOnPointerDown}
                         onClick={handleLabelClick}
                         className="min-w-0"
                       >
@@ -572,7 +597,10 @@ export default function CreateModal({
                       </Button>
 
                       {isLabelModalOpen && (
-                        <div className="absolute bottom-[calc(100%+8px)] left-0 z-30">
+                        <div
+                          className="absolute bottom-[calc(100%+8px)] left-0 z-30"
+                          onPointerDown={keepInputFocusedOnPointerDown}
+                        >
                           <LabelModal
                             labels={selectableLabels}
                             onSelectLabel={handleSelectLabel}
@@ -611,47 +639,49 @@ export default function CreateModal({
         />
       )}
 
-      {isScheduleOpen && (
-        <RepeatScheduleBottomSheet
-          startDate={startDate}
-          endDate={endDate}
-          startTime={startTime || scheduleOpenedAtTime}
-          endTime={endTime || scheduleOpenedAtTime}
-          repeat={repeat}
-          isAllDay={isScheduleAllDay}
-          onAllDayChange={setIsScheduleAllDay}
-          onStartDateChange={(date) => {
-            setStartDate(date);
-            setHasScheduleChanged(true);
-          }}
-          onEndDateChange={(date) => {
-            setEndDate(date);
-            setHasScheduleChanged(true);
-            setHasEndDateChanged(true);
-          }}
-          onStartTimeChange={(value) => {
-            setStartTime(formatTime(value));
-            setHasStartTimeChanged(true);
-            setHasScheduleChanged(true);
-          }}
-          onEndTimeChange={(value) => {
-            // 시작 시간이 없으면 바텀시트를 연 시점의 현재 시간으로 보완한다.
-            if (!startTime) {
-              setStartTime(scheduleOpenedAtTime);
+      {isScheduleOpen &&
+        createPortal(
+          <RepeatScheduleBottomSheet
+            startDate={startDate}
+            endDate={endDate}
+            startTime={startTime || scheduleOpenedAtTime}
+            endTime={endTime || scheduleOpenedAtTime}
+            repeat={repeat}
+            isAllDay={isScheduleAllDay}
+            onAllDayChange={setIsScheduleAllDay}
+            onStartDateChange={(date) => {
+              setStartDate(date);
+              setHasScheduleChanged(true);
+            }}
+            onEndDateChange={(date) => {
+              setEndDate(date);
+              setHasScheduleChanged(true);
+              setHasEndDateChanged(true);
+            }}
+            onStartTimeChange={(value) => {
+              setStartTime(formatTime(value));
               setHasStartTimeChanged(true);
-            }
-            setEndTime(formatTime(value));
-            setHasEndTimeChanged(true);
-            setHasScheduleChanged(true);
-          }}
-          onRepeatChange={(nextRepeat) => {
-            setRepeat(nextRepeat);
-            setHasRepeatChanged(true);
-            setHasScheduleChanged(true);
-          }}
-          onClose={handleScheduleClose}
-        />
-      )}
+              setHasScheduleChanged(true);
+            }}
+            onEndTimeChange={(value) => {
+              // 시작 시간이 없으면 바텀시트를 연 시점의 현재 시간으로 보완한다.
+              if (!startTime) {
+                setStartTime(scheduleOpenedAtTime);
+                setHasStartTimeChanged(true);
+              }
+              setEndTime(formatTime(value));
+              setHasEndTimeChanged(true);
+              setHasScheduleChanged(true);
+            }}
+            onRepeatChange={(nextRepeat) => {
+              setRepeat(nextRepeat);
+              setHasRepeatChanged(true);
+              setHasScheduleChanged(true);
+            }}
+            onClose={handleScheduleClose}
+          />,
+          document.body,
+        )}
     </>
   );
 }
