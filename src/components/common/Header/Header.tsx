@@ -1,4 +1,7 @@
+import type { CSSProperties } from 'react';
+
 import { Button } from '@/components/common/Buttons';
+import { cn } from '@/lib/utils';
 
 type HeaderVariant = 'daily' | 'modal';
 
@@ -27,6 +30,11 @@ type HeaderTrailing =
       // 라벨 수정 바텀시트의 "완료" 버튼처럼, 변경 사항이 있을 때만 활성화해야 하는
       // 경우를 위해 추가. 생략 시(undefined) 기존 동작과 동일하게 항상 활성화됨.
       disabled?: boolean;
+      // 특정 호출부(예: EventEditBottomSheet의 오버레이 헤더)에서만 이 버튼의 배경/블러를
+      // 커스터마이징해야 할 때를 위해 추가. 생략 시 기존 기본 버튼 스타일 그대로 유지되고,
+      // 다른 Header 사용처(SettingsSheet 등)는 영향받지 않는다.
+      className?: string;
+      style?: CSSProperties;
     };
 
 type HeaderProps = {
@@ -187,7 +195,8 @@ export default function Header({
           variant="Small"
           onClick={trailing.onClick}
           disabled={trailing.disabled} // disabled 전달 추가
-          className="ml-auto justify-end text-right"
+          className={cn('ml-auto justify-end text-right', trailing.className)}
+          style={trailing.style}
         >
           {trailing.text}
         </Button>
@@ -200,6 +209,8 @@ export default function Header({
         variant="MediumDefaultFit"
         onClick={trailing.onClick}
         disabled={trailing.disabled} // disabled 전달 추가
+        className={trailing.className}
+        style={trailing.style}
       >
         {trailing.text}
       </Button>
