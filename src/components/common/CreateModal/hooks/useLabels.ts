@@ -8,6 +8,9 @@ import { queryKeys } from '@/hooks/queries/queryKeys';
 
 import type { LabelColor, LabelStatus } from '../types';
 
+const isUserSelectableLabel = (label: { isVisible: boolean; labelType: string }) =>
+  label.isVisible && label.labelType === 'USER';
+
 type UseCreateModalLabelsParams = {
   labels: LabelItemData[];
   labelStatus: LabelStatus;
@@ -47,9 +50,8 @@ export const useCreateModalLabels = ({
   const apiLabels = useMemo<LabelItemData[]>(
     () =>
       (labelData?.labels ?? [])
-        // SYSTEM은 서버가 항상 끼워 보내는 가상 라벨("대한민국 공휴일" 등, labelId: -1)이라
-        // 실제 라벨 테이블에 없다 — 선택하면 이벤트 저장 시 400으로 실패하므로 제외한다.
-        .filter((label) => label.isVisible && label.labelType !== 'SYSTEM')
+        // 일정 생성에서는 사용자 라벨만 직접 선택할 수 있다.
+        .filter(isUserSelectableLabel)
         .map((label) => ({
           id: label.labelId,
           label: label.name,
@@ -60,7 +62,7 @@ export const useCreateModalLabels = ({
   const defaultLabelId = useMemo(
     () =>
       labelData?.labels.find(
-        (label) => label.isVisible && label.labelType !== 'SYSTEM' && label.isDefault,
+        (label) => isUserSelectableLabel(label) && label.isDefault,
       )?.labelId ?? null,
     [labelData],
   );
