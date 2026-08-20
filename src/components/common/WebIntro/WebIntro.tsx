@@ -5,7 +5,7 @@ function WebIntro() {
   return (
     <aside className="sticky top-0 hidden h-[100dvh] w-[min(360px,calc(100vw-426px))] shrink-0 flex-col items-start pt-[160px] lg:flex">
       <img
-        src="/intro/cover.png"
+        src="/intro/cover.webp"
         alt="tryna"
         className="h-auto max-h-[560px] w-full rounded-2xl object-contain"
       />
@@ -14,7 +14,7 @@ function WebIntro() {
         <p className="text-[18px] leading-[1.5] font-semibold text-foreground">
           인스타그램 팔로우하고
           <br />
-          다이어리·캘린더 경품
+          오브제 트레이
           <br />
           받아가세요!
           <br />
@@ -30,7 +30,7 @@ function WebIntro() {
           className="shrink-0"
         >
           <img
-            src="/intro/instarQR.png"
+            src="/intro/instarQR.webp"
             alt="트라이나 인스타그램 QR 코드"
             className="h-[140px] w-[140px] object-contain"
           />
