@@ -3,7 +3,7 @@ import { matchPath, useLocation } from 'react-router';
 
 import { WebIntro } from '@/components/common/WebIntro';
 import AppRouter from '@/routes/AppRouter';
-import { PATH } from '@/routes/paths';
+import { PUBLIC_PATHS } from '@/routes/paths';
 import GlobalBottomSheet from '@/components/common/Popup/GlobalBottomSheet';
 import GlobalSettings from '@/features/settings/components/GlobalSettings';
 import { FloatingButtonsContext } from '@/hooks/useFloatingButtons';
@@ -20,23 +20,22 @@ const FLOATING_BOTTOM_PADDING = 'max(16px,env(safe-area-inset-bottom))';
 function App() {
   const [floatingContent, setFloatingContent] = useState<ReactNode>(null);
   const location = useLocation();
-  const isPublicLegalPage = [PATH.TERMS, PATH.PRIVACY].some((path) =>
+  const isPublicPage = PUBLIC_PATHS.some((path) =>
     Boolean(matchPath({ path, end: true, caseSensitive: false }, location.pathname)),
   );
   // 앱 진입 상태 확인(A101). 유효한 토큰이 없으면 내부에서 비회원 생성(A102)까지 끝낸다.
   // Splash 라우트가 아니라 여기서 부트스트랩하는 이유: /home, /daily/:date 등으로 직접
   // 진입하거나 새로고침하면 Splash를 거치지 않아 토큰 없이 API가 나가게 된다.
-  const { isPending: isBootstrapping } = useAppBootstrap(!isPublicLegalPage);
+  const { isPending: isBootstrapping } = useAppBootstrap(!isPublicPage);
 
   // 외부 캘린더 자동 동기화. 앱 진입·연도 이동·백그라운드 복귀 때 구글 일정을 다시 적재한다.
   // 화면이 아니라 여기에 두는 이유는, 복귀 시점에 사용자가 어느 화면에 있든 동작해야 하기
   // 때문이다. 비회원·미연동이면 훅 내부에서 아무것도 하지 않는다.
   const currentYear = useCalendarStore((state) => state.currentYear);
-  useAutoSyncExternalCalendar(currentYear, !isPublicLegalPage);
+  useAutoSyncExternalCalendar(currentYear, !isPublicPage);
 
-  // OAuth 검증과 비로그인 열람에 사용하는 공개 문서는 앱 부트스트랩이나 모바일 셸에
-  // 의존하지 않는 독립 HTML 페이지로 렌더링한다.
-  if (isPublicLegalPage) {
+  // 공개 페이지는 앱 부트스트랩이나 모바일 셸에 의존하지 않는 독립 화면으로 렌더링한다.
+  if (isPublicPage) {
     return <AppRouter />;
   }
 

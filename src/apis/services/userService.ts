@@ -2,6 +2,7 @@ import { apiClient } from "../client";
 import { ENDPOINTS } from "../endpoints";
 import { getDeviceId, resetDeviceId } from "../../utils/deviceId";
 import { clearConversionPromptHistory } from "../../utils/conversionPrompt";
+import { clearMemberLoginHistory } from "../../utils/memberLoginHistory";
 import { useAuthStore } from "../../stores/authStore";
 import type {
   UserStatusResponseData,
@@ -74,6 +75,9 @@ export const userService = {
     // 새 기기 신원으로 시작하는 것이므로 전환 유도 노출 이력도 초기화한다.
     // 안 지우면 탈퇴 후 새 비회원이 되어도 로그인 유도 시트가 다시 뜨지 않는다.
     clearConversionPromptHistory();
+    // 계정이 사라져 회원 전환(A106)이 다시 가능해지므로 회원 로그인 이력도 지운다.
+    // 안 지우면 탈퇴 후 다시 가입할 때 비회원으로 만든 일정이 넘어가지 않는다.
+    clearMemberLoginHistory();
   },
 
   /**

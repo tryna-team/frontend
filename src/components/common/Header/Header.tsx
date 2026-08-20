@@ -72,8 +72,17 @@ const HEADER_STYLE = {
      * Modal 내부 콘텐츠 너비인 353px 사용. 높이는 피그마 BottomSheetHeader(68px) 기준 —
      * 명시하지 않으면 콘텐츠(아이콘/텍스트) 높이만큼만 차지해서, 그 아래 첫 콘텐츠박스와의
      * 간격이 피그마보다 좁아 보인다.
+     * 배경은 피그마 BottomSheetHeader(node 3317:39496) 스펙대로 거의 완전 투명한
+     * 흰색(rgba(255,255,255,0.01))으로 명시한다 — 지금까지는 배경을 아예 지정하지
+     * 않아 부모 Frame의 불투명 흰 배경에 그대로 얹혀 있었다.
+     * ⚠️ 피그마 원본은 이 헤더가 스크롤 콘텐츠 위에 겹치는 absolute 오버레이라 투명도가
+     * 뒤로 비치는 콘텐츠로 눈에 보이지만, 지금 EventEditBottomSheet 구조는 헤더가 스크롤
+     * 영역과 겹치지 않는 별도 flex 형제라 이 값만으로는 시각적 차이가 거의 없다(둘 다
+     * 흰 배경이라 투명해도 흰색으로 보임) — 실제로 비치는 효과를 보려면 헤더를 스크롤
+     * 콘텐츠와 겹치는 오버레이 구조로 바꿔야 한다.
      */
-    container: 'flex h-[68px] w-[353px] items-center justify-between',
+    container:
+      'flex h-[68px] w-[353px] items-center justify-between bg-[rgba(255,255,255,0.01)] backdrop-blur-none',
 
     // leading과 trailing 영역을 각각 74px로 고정해 title을 중앙에 배치
     leadingSlot: 'flex w-[74px] shrink-0 items-center gap-[10px]',

@@ -14,6 +14,7 @@ import YearCalendarPage from '@/pages/YearCalendar/YearCalendarPage';
 import { PATH } from './paths';
 
 const LegalPage = lazy(() => import('@/pages/Legal/LegalPage'));
+const AboutPage = lazy(() => import('@/pages/About/AboutPage'));
 
 export default function AppRouter() {
   return (
@@ -21,6 +22,14 @@ export default function AppRouter() {
       <Route
         path={PATH.SPLASH}
         element={<SplashPage />}
+      />
+      <Route
+        path={PATH.ABOUT}
+        element={
+          <Suspense fallback={<div className="min-h-[100dvh] bg-background-white" />}>
+            <AboutPage />
+          </Suspense>
+        }
       />
       <Route
         path={PATH.HOME}
