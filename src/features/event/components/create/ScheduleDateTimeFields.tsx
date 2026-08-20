@@ -41,6 +41,12 @@ export type ScheduleDateTimeFieldsProps = {
   // 반복 행 아래에 함께 배치할 내용(예: RepeatScheduleBottomSheet의 "닫기" 버튼).
   // 이 컴포넌트는 시트/인라인 여부를 모르므로, 시트 전용 요소는 호출부가 이 슬롯으로 넘긴다.
   footer?: ReactNode;
+  // 반복 ContentBox의 그림자 여부. 기본값 'bottom'(그림자 없음)은 RepeatScheduleBottomSheet처럼
+  // 반복 박스가 시트의 가장 마지막 콘텐츠일 때의 피그마 스펙(node 3330:39062, 그림자 없음).
+  // EventEditBottomSheet처럼 반복 박스 뒤에 라벨/체크리스트 등 콘텐츠가 더 이어지는 경우엔
+  // 'default'를 넘겨야 한다 — 피그마 실제 이벤트 수정 모달(node 3303:37943)의 반복 박스는
+  // 다른 중간 박스들과 동일하게 그림자가 있다.
+  repeatBoxVariant?: 'default' | 'bottom';
 };
 
 const formatScheduleDate = (date: Date) => format(date, 'yyyy. MM. dd.');
@@ -111,6 +117,7 @@ export default function ScheduleDateTimeFields({
   onRepeatClick,
   onRepeatChange,
   footer,
+  repeatBoxVariant = 'bottom',
 }: ScheduleDateTimeFieldsProps) {
   const [activeDateField, setActiveDateField] = useState<ActiveDateField>('start');
   const [activeTimeField, setActiveTimeField] = useState<ActiveTimeField | null>(null);
@@ -300,7 +307,9 @@ export default function ScheduleDateTimeFields({
   const allDayRow = (
     <div className="box-content w-[329px] pr-padding-xsmall pl-padding-medium [&>div]:px-0">
       <ActionRow
-        leading={{ type: 'text', text: '하루종일' }}
+        // 피그마 이 화면(시작/종료/반복과 같은 그룹)은 전부 Default/Body/Large(17px)를
+        // 쓴다 — ActionRow 기본값(default-body-medium, 15px)이 아니라 이 화면 전용으로 확대.
+        leading={{ type: 'text', text: '하루종일', size: 'large' }}
         accessory={{
           type: 'toggle',
           checked: isAllDay,
@@ -312,8 +321,12 @@ export default function ScheduleDateTimeFields({
   );
 
   // 반복 행과 footer(호출부가 넘긴 내용, 예: 닫기 버튼)를 하나의 하단 아이템으로 구성한다.
+  // gap-10/pb-4는 반복 행과 footer(예: "닫기" 버튼) 사이 여백이라 footer가 있을 때만
+  // 적용한다 — footer가 없는 EventEditBottomSheet에서도 항상 붙어 있어서 반복 박스만
+  // 다른 박스(종료/라벨)보다 아래쪽 여백이 불필요하게 커 보이던 원인이었다(피그마
+  // node 3303:37943은 반복 박스에 이런 여분 padding이 없음).
   const repeatAndFooterLayout = (
-    <div className="flex w-full flex-col items-center gap-10 pb-4">
+    <div className={`flex w-full flex-col items-center ${footer ? 'gap-10 pb-4' : ''}`}>
       <div className="relative">
         <EventScheduleRow
           type="repeat"
@@ -392,7 +405,7 @@ export default function ScheduleDateTimeFields({
 
       {/* 반복 행(과 footer)을 하단 영역에 함께 배치한다. */}
       <div className={`${CONTENT_BOX_LAYOUT_CLASS} [&>div]:!overflow-visible`}>
-        <ContentBox title="" variant="bottom">
+        <ContentBox title="" variant={repeatBoxVariant}>
           {repeatAndFooterLayout}
         </ContentBox>
       </div>

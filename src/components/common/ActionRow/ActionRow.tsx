@@ -14,6 +14,10 @@ type TextLeading = {
   text: string;
   // 설정 화면의 "회원탈퇴"처럼 파괴적 액션을 danger 색상으로 표시하기 위해 추가
   tone?: 'danger';
+  // 기본은 default-body-medium(15px) — 설정/목록류 행 대부분이 이 크기다. 이벤트
+  // 생성·수정 화면의 "하루종일" 행처럼 피그마가 Default/Body/Large(17px)를 쓰는
+  // 곳에서만 'large'를 넘긴다.
+  size?: 'medium' | 'large';
 };
 
 type IconTextLeading = {
@@ -49,7 +53,7 @@ export default function ActionRow({
       return (
         <span
           // tone === 'danger'일 때 text-danger-200 적용 (기존엔 text-text-default 고정)
-          className={`min-w-0 truncate default-body-medium ${
+          className={`min-w-0 truncate ${leading.size === 'large' ? 'default-body-large' : 'default-body-medium'} ${
             leading.tone === 'danger' ? 'text-danger-200' : 'text-text-default'
           }`}
         >

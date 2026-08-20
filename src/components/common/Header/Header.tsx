@@ -87,7 +87,11 @@ const HEADER_STYLE = {
     // leading과 trailing 영역을 각각 74px로 고정해 title을 중앙에 배치
     leadingSlot: 'flex w-[74px] shrink-0 items-center gap-[10px]',
     leadingContent: 'flex items-center gap-[10px]',
-    title: 'min-w-0 flex-1 truncate text-center text-text-default default-heading-small',
+    // 피그마 BottomSheetHeader(예: node 3317:39880 "이벤트 수정")의 타이틀은
+    // Default/Title/Large(20px/500) — tds의 default-title-large. 기존
+    // default-heading-small(22px/600)은 다른 값이라 이 컴포넌트를 쓰는 모든 modal
+    // 헤더(이벤트 수정/라벨 수정/라벨 등)에서 실제보다 크고 굵게 나오고 있었다.
+    title: 'min-w-0 flex-1 truncate text-center text-text-default default-title-large',
     trailingSlot: 'flex w-[74px] shrink-0 items-center justify-end',
   },
 } as const;

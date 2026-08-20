@@ -418,6 +418,11 @@ export default function EventEditBottomSheet({
               onStartTimeChange={(value) => setStartTime(toApiTime(value))}
               onEndTimeChange={(value) => setEndTime(toApiTime(value))}
               onRepeatChange={setRepeat}
+              // 반복 박스 뒤에 라벨/체크리스트 박스가 더 이어지므로(RepeatScheduleBottomSheet와
+              // 달리 반복이 시트의 마지막 콘텐츠가 아님) 피그마 실측(node 3303:37943)대로
+              // 그림자 있는 'default'를 써야 한다 — 기본값('bottom', 그림자 없음)은
+              // 반복이 정말 마지막 콘텐츠인 RepeatScheduleBottomSheet 전용.
+              repeatBoxVariant="default"
             />
 
             <ContentBox title="">
@@ -430,20 +435,26 @@ export default function EventEditBottomSheet({
                   }}
                   className="flex h-[52px] w-full items-center justify-between border-0 bg-transparent py-0 pl-1 pr-4 text-left"
                 >
-                  <span className="text-text-default default-body-medium">라벨</span>
+                  {/* 피그마 시작/종료/반복 행과 같은 그룹 — Default/Body/Large(17px)로 통일 */}
+                  <span className="text-text-default default-body-large">라벨</span>
 
                   <span className="flex items-center gap-2">
                     {selectedLabel ? (
-                      <span className="flex items-center gap-2 text-text-default default-body-medium">
+                      <span className="flex items-center gap-2 text-text-default default-body-large">
+                        {/* 피그마 Icons/ColorPicker(node 3317:38586) 실측: 24px 프레임 안에
+                            20px 원 — svg 자체가 24px 캔버스에 그 비율로 그려져 있어(w-auto
+                            h-auto로 원본 크기 그대로 씀), ActionRow.tsx의 라벨 색상
+                            아이콘과 동일한 렌더링 방식. 기존 size-5(20px)로 강제 축소하면
+                            캔버스 전체가 줄어들어 원이 실제로는 ~16px로 더 작게 보였다. */}
                         <img
                           src={COLOR_ICON[selectedLabel.color]}
                           alt=""
-                          className="block size-5 shrink-0"
+                          className="block h-auto w-auto shrink-0"
                         />
                         <span className="max-w-30 truncate">{selectedLabel.label}</span>
                       </span>
                     ) : (
-                      <span className="text-text-default default-body-medium">없음</span>
+                      <span className="text-text-default default-body-large">없음</span>
                     )}
 
                     <span className="flex flex-col items-center" aria-hidden="true">
@@ -508,9 +519,15 @@ export default function EventEditBottomSheet({
       {isScopeModalOpen && labelId !== null && (
         <QuickModal
           message="이 변경 사항을 어떻게 저장할까요?"
-          // 라벨("이후 모든 이벤트에 대해 저장")이 기본 폭보다 길어서 이 화면에서만
-          // 더 넓게 표시한다. 버튼 색상은 다른 QuickModal과 동일한 기본값(빨간색) 유지.
-          widthClassName="w-75"
+          // 반복 일정일 때만 버튼 2개("이 이벤트만 저장"/"이후 모든 이벤트에 대해 저장")라
+          // 두 번째 버튼 텍스트가 기본 폭보다 길어서 이 경우에만 넓게 표시한다. 단기
+          // 일정(버튼 1개, "이벤트 수정")은 widthClassName을 안 넘겨 QuickModal 기본값
+          // (w-61.25, 다른 QuickModal들과 동일)을 그대로 쓴다. 버튼 색상은 다른 QuickModal과
+          // 동일한 기본값(빨간색) 유지.
+          widthClassName={isRecurring ? 'w-75' : undefined}
+          // 이 모달은 반복/체크리스트 등으로 콘텐츠가 긴 이벤트 수정 화면에서만 쓰여
+          // 기본 하단 고정 위치가 화면 아래쪽 콘텐츠에 가려지기 쉽다 — 헤더 바로 아래로.
+          position="top"
           primaryAction={{
             text: isRecurring ? '이 이벤트만 저장' : '이벤트 수정',
             onClick: () => {
