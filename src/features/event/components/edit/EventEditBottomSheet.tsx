@@ -304,10 +304,9 @@ export default function EventEditBottomSheet({
         // 새로 분리된 이벤트의 실제 startDate는 이 PATCH에 실은 startDate와 같다
         // (EventUpdateService.createModifiedEvent의 resolvedStartDate 로직) — 그 값을
         // 그대로 occurrenceDate로 넘긴다.
-        navigate(
-          generateEventPath.view(String(data.eventId), format(startDate, 'yyyy-MM-dd')),
-          { replace: true },
-        );
+        navigate(generateEventPath.view(String(data.eventId), format(startDate, 'yyyy-MM-dd')), {
+          replace: true,
+        });
       }
     },
     onError: () => {
@@ -361,12 +360,14 @@ export default function EventEditBottomSheet({
   return (
     <>
       <Overlay className="flex items-end justify-center" onClick={onClose}>
-        <Frame className="h-[92dvh]">
-          {/* -mb-2: 아래 스크롤 wrapper의 p-4(그림자 보호용 여백)를 그대로 둔 채, 헤더와
-              첫 콘텐츠 박스 사이 화면상 간격만 원래 값(8px, 기존 Frame의 gap-2와 동일)으로
-              당겨온다. 스크롤 wrapper 안쪽 padding-to-content 거리는 이 마진과 무관하게
-              그대로 16px라 그림자 클리핑은 다시 생기지 않는다. */}
-          <div className="-mb-2 flex w-full justify-center px-4 pt-4">
+        <Frame className="relative h-[92dvh]">
+          {/* 헤더를 스크롤 콘텐츠와 겹치는 absolute 오버레이로 띄운다 — backdrop-blur와
+              반투명 배경이 실제로 "뒤에 있는 것을 흐리게 비추는" 효과를 내려면, 뒤에
+              무언가(스크롤되는 콘텐츠)가 같은 자리에 실제로 렌더링되고 있어야 한다.
+              일반 flex 형제로 두면(이전 방식) 겹치는 대상이 없어 backdrop-blur가
+              아무것도 흐릴 게 없어서 시각적으로 아무 효과가 없다. z-10으로 아래 스크롤
+              wrapper보다 위에 그린다. */}
+          <div className="absolute inset-x-0 top-0 z-10 flex justify-center bg-white/1 px-4 pt-4 backdrop-blur-[3px]">
             <Header
               variant="modal"
               title="이벤트 수정"
@@ -380,15 +381,18 @@ export default function EventEditBottomSheet({
             />
           </div>
 
-          {/* 헤더(타이틀/완료 버튼)는 스크롤에서 제외하고 이 아래 콘텐츠만 자체적으로
-              스크롤한다 — Frame 전체에 overflow-y-auto를 걸면 헤더까지 함께 밀려 올라간다.
+          {/* 헤더가 이제 겹치는 오버레이라 별도로 스크롤에서 뺄 필요 없이, 콘텐츠 wrapper가
+              Frame 전체 높이(h-full)를 채운다. pt-23(92px)은 헤더 높이(68px)+상단 오프셋
+              (16px)+원래 헤더-콘텐츠 간격(8px)을 더한 값 — 스크롤 안 한 초기 상태에서 첫
+              콘텐츠 박스가 헤더 글자에 가려지지 않게 하는 최소값이고, 스크롤하면 그 위쪽
+              콘텐츠가 반투명+블러 처리된 헤더 뒤로 지나가며 실제로 비쳐 보인다.
               min-h-0은 flex 자식 기본값(min-height: auto)이 내용 높이만큼 늘어나 버려서
               overflow-y-auto가 무력화되는 걸 막기 위해 필요하다.
               p-4(패딩)는 이 div 자신에 직접 줘야 한다 — overflow-y-auto가 걸린 요소는
               CSS 스펙상 반대 축(overflow-x)도 함께 클리핑되는데, 패딩이 하나도 없으면
               안쪽 ContentBox들이 이 경계에 딱 붙어 있어 그림자가 사방으로 그대로 잘린다
               (Frame 자체의 바깥쪽 padding은 이 안쪽 클리핑 경계엔 아무 도움이 안 된다). */}
-          <div className="flex w-full min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4 scrollbar-none">
+          <div className="flex h-full w-full min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4 pt-23 scrollbar-none">
             <div className="w-full rounded-medium bg-background-white p-3 shadow-[0px_4px_8px_rgba(0,0,0,0.04),0px_9.701px_29.104px_rgba(0,0,0,0.1)]">
               <Input
                 value={title}
@@ -447,7 +451,11 @@ export default function EventEditBottomSheet({
                     )}
 
                     <span className="flex flex-col items-center" aria-hidden="true">
-                      <img src={CHEVRON_ICON} alt="" className="block size-3 rotate-90 opacity-30" />
+                      <img
+                        src={CHEVRON_ICON}
+                        alt=""
+                        className="block size-3 rotate-90 opacity-30"
+                      />
                       <img
                         src={CHEVRON_ICON}
                         alt=""
