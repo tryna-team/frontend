@@ -68,7 +68,15 @@ export default function CreateModal({
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const labelButtonRef = useRef<HTMLButtonElement>(null);
+  const labelButtonContainerRef = useRef<HTMLDivElement>(null);
+  const labelButtonRef = useMemo(
+    () => ({
+      get current() {
+        return labelButtonContainerRef.current?.querySelector<HTMLButtonElement>('button') ?? null;
+      },
+    }),
+    [],
+  );
   const inputRevisionRef = useRef(0);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   // 기본 시간 윈도우를 상태에서 관리해 자정 넘김 시 날짜도 적용할 수 있도록 한다
@@ -521,28 +529,25 @@ export default function CreateModal({
                   </div>
 
                   <div className="flex w-full items-center gap-4 px-1 py-1">
-                    <button
-                      type="button"
+                    <Button
+                      variant="IconTextSmall"
+                      icon="icons/calendar_small.svg"
                       disabled={isSaving}
                       onPointerDown={handleCalendarPointerDown}
                       onClick={handleCalendarClick}
-                      className="flex items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+                      className="whitespace-nowrap"
                     >
-                      <img src="/icon/icons/calendar_small.svg" alt="" className="block shrink-0" />
+                      {calendarText}
+                    </Button>
 
-                      <span className="whitespace-nowrap">{calendarText}</span>
-                    </button>
-
-                    <div className="relative flex min-w-0">
-                      <button
-                        ref={labelButtonRef}
-                        type="button"
+                    <div ref={labelButtonContainerRef} className="relative flex min-w-0">
+                      <Button
+                        variant="IconTextSmall"
+                        icon="icons/label_small.svg"
                         disabled={isSaving}
                         onClick={handleLabelClick}
-                        className="flex min-w-0 items-center gap-xsmall border-0 bg-transparent p-0 text-text-additional default-caption-large"
+                        className="min-w-0"
                       >
-                        <img src="/icon/icons/label_small.svg" alt="" className="block shrink-0" />
-
                         {!selectedLabel && labelStatus.type === 'default' ? (
                           <span className="whitespace-nowrap">라벨 없음</span>
                         ) : (
@@ -564,7 +569,7 @@ export default function CreateModal({
                             />
                           </div>
                         )}
-                      </button>
+                      </Button>
 
                       {isLabelModalOpen && (
                         <div className="absolute bottom-[calc(100%+8px)] left-0 z-30">

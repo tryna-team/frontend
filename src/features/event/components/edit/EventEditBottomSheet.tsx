@@ -4,24 +4,18 @@ import { format } from 'date-fns';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 
-import ActionRow from '@/components/common/ActionRow/ActionRow';
 import { COLOR_ICON } from '@/components/common/ActionRow/ActionRow.constant';
-import Button from '@/components/common/Buttons/Button';
 import Header from '@/components/common/Header/Header';
 import Input from '@/components/common/Input/Input';
 import LabelModal from '@/components/common/LabelModal/LabelModal';
 import type { LabelItemData } from '@/components/common/LabelModal/LabelModal';
-import type { RepeatType } from '@/components/common/LabelModal/LabelItem';
 import ContentBox from '@/components/common/Popup/BottomSheet/Layout/ContentBox';
 import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
 import Overlay from '@/components/common/Popup/Overlay';
 import ToastPopup from '@/components/common/Popup/ToastPopup';
 import type { RepeatOption } from '@/features/event/components/create/EventScheduleRow';
-import RepeatScheduleBottomSheet from '@/features/event/components/create/RepeatScheduleBottomSheet';
-import {
-  REPEAT_OPTION,
-  REPEAT_OPTION_TO_RECURRENCE_TYPE,
-} from '@/features/event/components/create/repeatOption';
+import ScheduleDateTimeFields from '@/features/event/components/create/ScheduleDateTimeFields';
+import { REPEAT_OPTION_TO_RECURRENCE_TYPE } from '@/features/event/components/create/repeatOption';
 import type { TimePickerValue } from '@/features/event/components/create/TimePickerDial.types';
 import QuickModal from '@/components/common/Popup/QuickModal';
 import { eventDetailService } from '@/apis/services/eventDetailService';
@@ -70,42 +64,6 @@ type EventEditBottomSheetProps = {
   actionItemsFull: EventActionItem[];
   labels: LabelItemData[];
   onClose: () => void;
-  // 체크리스트 항목 완료 토글 — EventViewPage의 E106 mutation을 그대로 전달받아 쓴다.
-  onToggleActionItem?: (id: number) => void;
-};
-
-// 피그마(node 3317:38211)는 "2026. 06. 20." 형식(yyyy. MM. dd.)을 쓴다.
-const formatDate = (date: Date) => format(date, 'yyyy. MM. dd.');
-
-// 상태(startTime/endTime)는 API(C107)에 맞춰 24시간제 'HH:mm'로 유지하고, 이 화면
-// 표시용으로만 피그마(node 3317:38212, "9:41 AM")와 같은 12시간제로 변환한다.
-const formatTimeDisplay = (time: string) => {
-  const [hourStr, minuteStr] = time.split(':');
-  const hour24 = Number(hourStr);
-  const meridiem = hour24 >= 12 ? 'PM' : 'AM';
-  const hour12 = hour24 % 12 || 12;
-  return `${hour12}:${minuteStr} ${meridiem}`;
-};
-
-// Date.getDay() 인덱스(0=일요일) 기준 요일 라벨. EventViewPage의
-// RECURRENCE_DAY_LABEL과 같은 한글 값을 쓴다.
-const WEEKDAY_LABEL = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
-
-// 반복 값 표시 텍스트 — 피그마(node 3317:38228)는 "매주 수요일"처럼 요일/며칠까지
-// 보여준다. 서버(EventUpdateService.buildRecurringRule)가 startDate로부터 요일/며칠을
-// 자동 계산하는 것과 같은 공식을 그대로 재현해서, 시작일을 바꿀 때마다 실시간으로
-// 맞는 값이 보이게 한다.
-const formatRepeatDisplayText = (repeat: RepeatOption, startDate: Date): string => {
-  switch (repeat) {
-    case '매주':
-      return `매주 ${WEEKDAY_LABEL[startDate.getDay()]}`;
-    case '매월':
-      return `매월 ${startDate.getDate()}일`;
-    case '매년':
-      return `매년 ${startDate.getMonth() + 1}월 ${startDate.getDate()}일`;
-    default:
-      return repeat;
-  }
 };
 
 // API(C107)는 24시간제 'HH:mm' 문자열을 받는다 — TimePickerValue를 바로 이 형식으로
@@ -144,7 +102,6 @@ export default function EventEditBottomSheet({
   actionItemsFull,
   labels,
   onClose,
-  onToggleActionItem,
 }: EventEditBottomSheetProps) {
   const [title, setTitle] = useState(initialValue.title);
   const [isAllDay, setIsAllDay] = useState(initialValue.isAllDay);
@@ -154,24 +111,18 @@ export default function EventEditBottomSheet({
   const [endTime, setEndTime] = useState<string | null>(initialValue.endTime);
   const [repeat, setRepeat] = useState<RepeatOption>(initialValue.repeat);
   const [labelId, setLabelId] = useState<number | null>(initialValue.labelId);
-  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
-  const [isRepeatModalOpen, setIsRepeatModalOpen] = useState(false);
   const [isScopeModalOpen, setIsScopeModalOpen] = useState(false);
   const [isUpdateErrorOpen, setIsUpdateErrorOpen] = useState(false);
-  // ActionItemChecklistSection이 로컬에서만 들고 있는 변경사항(제목 수정/날짜 수정/신규
-  // 추가) — "완료" 시 이 값을 그대로 actionItems.items에 실어 보낸다.
+  // ActionItemChecklistSection이 로컬에서만 들고 있는 변경사항(제목/날짜/완료 여부 수정,
+  // 신규 추가) — 전부 "완료" 버튼을 누르기 전까진 서버에 반영되지 않고, 누르는 시점에
+  // 이 값을 그대로 actionItems.items에 실어 보낸다.
   const [pendingChecklistChanges, setPendingChecklistChanges] = useState<ActionItemPendingChanges>({
     labelOverrides: {},
     dateOverrides: {},
+    checkedOverrides: {},
     newItems: [],
   });
-  // actionItems의 checked는 onToggleActionItem으로 즉시 저장되는 별도 mutation(E106)이라
-  // pendingChecklistChanges에 안 잡힌다 — "완료" 활성화 여부 판단용으로 열었을 때의
-  // 체크 상태를 따로 스냅샷해 둔다(마운트 시 1회만, 이후 prop이 바뀌어도 갱신 안 함).
-  const [initialActionItemChecked] = useState(
-    () => new Map(actionItems.map((item) => [item.id, item.checked])),
-  );
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -183,24 +134,21 @@ export default function EventEditBottomSheet({
   // 때만" 이 로직 전체가 실행돼서 이런 경우 endTime이 계속 비어있었다. isAllDay=false로
   // 바뀌었는데 endTime이 비어있으면 백엔드(resolveAllDay)가 startTime만 보고 판단하긴
   // 하지만, 값 자체가 반쪽만 채워진 상태로 저장되는 걸 막기 위해 둘 다 확실히 채운다.
-  const handleToggleAllDay = () => {
-    setIsAllDay((prev) => {
-      const next = !prev;
+  // ScheduleDateTimeFields의 onAllDayChange는 다음 값을 직접 넘겨준다(토글 트리거가 아님).
+  const handleAllDayChange = (nextIsAllDay: boolean) => {
+    setIsAllDay(nextIsAllDay);
 
-      if (prev && !next) {
-        const resolvedStart = startTime || getNextHourTime(new Date());
+    if (!nextIsAllDay) {
+      const resolvedStart = startTime || getNextHourTime(new Date());
 
-        if (!startTime) {
-          setStartTime(resolvedStart);
-        }
-
-        if (!endTime) {
-          setEndTime(addOneHour(resolvedStart));
-        }
+      if (!startTime) {
+        setStartTime(resolvedStart);
       }
 
-      return next;
-    });
+      if (!endTime) {
+        setEndTime(addOneHour(resolvedStart));
+      }
+    }
   };
 
   // C107 일정 수정 — PATCH /api/v1/events/{eventId}
@@ -227,6 +175,7 @@ export default function EventEditBottomSheet({
       // 호출이 아니라 "최종 목록"을 통째로 보내는 방식이라 안 바뀐 항목도 함께 담는다.
       const existingItems: EventUpdateActionItemRequestItem[] = actionItemsFull.map((item) => {
         const dateOverride = pendingChecklistChanges.dateOverrides[item.actionItemId];
+        const checkedOverride = pendingChecklistChanges.checkedOverrides[item.actionItemId];
 
         return {
           actionItemId: item.actionItemId,
@@ -243,7 +192,14 @@ export default function EventEditBottomSheet({
           displayDate: dateOverride ? dateOverride.displayDate : item.displayDate,
           displayTime: dateOverride ? null : item.displayTime,
           offsetDays: dateOverride ? null : item.offsetDays,
-          actionItemStatus: item.actionItemStatus,
+          // 완료 체크도 "완료" 버튼을 눌러야 반영되도록 즉시 저장(E106)을 그만두고
+          // pendingChecklistChanges의 로컬 오버라이드로만 들고 있다가 여기서 echo한다.
+          actionItemStatus:
+            checkedOverride === undefined
+              ? item.actionItemStatus
+              : checkedOverride
+                ? 'COMPLETED'
+                : 'PENDING',
           createdBy: item.createdBy,
           sourceTemplateId: item.sourceTemplateId,
         };
@@ -253,20 +209,20 @@ export default function EventEditBottomSheet({
         (newItem) => ({
           actionItemId: null,
           title: newItem.label,
-          itemType: 'UNTIMED_PREP',
+          itemType: newItem.itemType,
           occurrenceDate: itemOccurrenceDate,
-          displayDate: null,
+          displayDate: newItem.displayDate,
           displayTime: null,
           offsetDays: null,
-          actionItemStatus: 'PENDING',
+          actionItemStatus: newItem.checked ? 'COMPLETED' : 'PENDING',
           createdBy: 'USER',
           sourceTemplateId: null,
         }),
       );
 
-      // 화면에는 endDate가 null이어도 시작 날짜로 대체해서 보여준다(위 렌더링의
-      // formatDate(endDate ?? startDate)) — 그런데 종료 "시간"만 편집(RepeatScheduleBottomSheet)하고
-      // 종료 "날짜"는 안 건드리면 endDate state는 null로 남아서, 화면엔 멀쩡해 보여도
+      // 화면에는 endDate가 null이어도 시작 날짜로 대체해서 보여준다(ScheduleDateTimeFields에
+      // endDate={endDate ?? startDate}로 넘김) — 그런데 종료 "시간"만 편집하고 종료 "날짜"는
+      // 안 건드리면 endDate state는 null로 남아서, 화면엔 멀쩡해 보여도
       // PATCH엔 endDate: null / endTime: "값 있음"이라는 앞뒤 안 맞는 조합이 나가
       // 백엔드가 400을 낸다. 화면 표시와 동일하게 종료 시간이 있는데 날짜가 비어있으면
       // 시작 날짜로 채워서 보낸다("종료 없음" 일정처럼 둘 다 비어있는 경우는 그대로 null,null 유지).
@@ -348,10 +304,9 @@ export default function EventEditBottomSheet({
         // 새로 분리된 이벤트의 실제 startDate는 이 PATCH에 실은 startDate와 같다
         // (EventUpdateService.createModifiedEvent의 resolvedStartDate 로직) — 그 값을
         // 그대로 occurrenceDate로 넘긴다.
-        navigate(
-          generateEventPath.view(String(data.eventId), format(startDate, 'yyyy-MM-dd')),
-          { replace: true },
-        );
+        navigate(generateEventPath.view(String(data.eventId), format(startDate, 'yyyy-MM-dd')), {
+          replace: true,
+        });
       }
     },
     onError: () => {
@@ -365,7 +320,7 @@ export default function EventEditBottomSheet({
   // 눌러도 서버에 보낼 변경사항이 없으니 버튼을 비활성화한다. description/location처럼
   // 이 화면에 편집 UI가 없는 필드는 애초에 안 바뀌니 비교 대상에서 뺀다.
   //
-  // startTime/endTime은 raw state를 그대로 비교하면 안 된다 — handleToggleAllDay가
+  // startTime/endTime은 raw state를 그대로 비교하면 안 된다 — handleAllDayChange가
   // 하루종일을 끌 때 비어있던 시간을 기본값으로 채워 넣는데, 다시 켜도 그 값이 원복되지
   // 않는다. 어차피 저장 시에도 isAllDay=true면 null로 보내니(아래 updateMutation 참고),
   // 비교도 그 "실제로 저장될 값" 기준(isAllDay일 때는 null)으로 맞춘다.
@@ -386,9 +341,7 @@ export default function EventEditBottomSheet({
     pendingChecklistChanges.newItems.length > 0 ||
     Object.keys(pendingChecklistChanges.labelOverrides).length > 0 ||
     Object.keys(pendingChecklistChanges.dateOverrides).length > 0 ||
-    // 체크박스 토글은 onToggleActionItem으로 즉시 저장되지만(완료 버튼과 무관), 사용자가
-    // 뭔가 건드렸다는 신호로는 봐야 하니 완료 버튼 활성화 여부에는 포함한다.
-    actionItems.some((item) => initialActionItemChecked.get(item.id) !== item.checked);
+    Object.keys(pendingChecklistChanges.checkedOverrides).length > 0;
 
   const handleComplete = () => {
     // 라벨은 PATCH 요청에서 선택 필드(null/생략 시 기존 라벨 유지)라 서버가 필수로
@@ -404,254 +357,174 @@ export default function EventEditBottomSheet({
     setIsScopeModalOpen(true);
   };
 
-  const openSchedule = () => {
-    setIsLabelModalOpen(false);
-    setIsScheduleOpen(true);
-  };
-
   return (
     <>
       <Overlay className="flex items-end justify-center" onClick={onClose}>
-        <Frame className="h-[92dvh] gap-2 overflow-y-auto p-4 scrollbar-none">
-          <Header
-            variant="modal"
-            title="이벤트 수정"
-            leading={{ type: 'icon', onClick: onClose }}
-            trailing={{
-              type: 'text',
-              text: '완료',
-              onClick: handleComplete,
-              disabled: updateMutation.isPending || !hasChanges,
-            }}
-          />
-
-          <div className="w-full rounded-medium bg-background-white p-3 shadow-[0px_4px_8px_rgba(0,0,0,0.04),0px_9.701px_29.104px_rgba(0,0,0,0.1)]">
-            <Input
-              value={title}
-              onChange={setTitle}
-              onClear={() => setTitle('')}
-              ariaLabel="이벤트 제목"
-              placeholder="제목을 입력해주세요"
+        <Frame className="relative h-[92dvh]">
+          {/* 헤더를 스크롤 콘텐츠와 겹치는 absolute 오버레이로 띄운다 — backdrop-blur와
+              반투명 배경이 실제로 "뒤에 있는 것을 흐리게 비추는" 효과를 내려면, 뒤에
+              무언가(스크롤되는 콘텐츠)가 같은 자리에 실제로 렌더링되고 있어야 한다.
+              일반 flex 형제로 두면(이전 방식) 겹치는 대상이 없어 backdrop-blur가
+              아무것도 흐릴 게 없어서 시각적으로 아무 효과가 없다. z-10으로 아래 스크롤
+              wrapper보다 위에 그린다. */}
+          <div className="absolute inset-x-0 top-0 z-10 flex justify-center bg-white/40 px-4 pt-4 backdrop-blur-[3px]">
+            <Header
+              variant="modal"
+              title="이벤트 수정"
+              leading={{ type: 'icon', onClick: onClose }}
+              trailing={{
+                type: 'text',
+                text: '완료',
+                onClick: handleComplete,
+                disabled: updateMutation.isPending || !hasChanges,
+                // 버튼 자신의 배경(bg-grey-opacity-100, 알파 5%)이 낮아서 뒤에 있는
+                // 헤더 오버레이의 블러/틴트가 그대로 비쳐 보이던 문제 — 버그가 아니라
+                // 피그마 BottomSheetHeader의 "완료" 버튼(Button/Medium) 스펙 자체가
+                // backdrop-blur-4px + 반투명 그라디언트를 쓰는 유리 버튼이라, 그 스펙을
+                // 그대로 완성해서 의도적인 모습으로 만든다.
+                className: 'backdrop-blur-[4px]',
+                style: {
+                  backgroundImage:
+                    'linear-gradient(90deg, rgba(28, 22, 48, 0.05) 0%, rgba(28, 22, 48, 0.05) 100%), linear-gradient(90deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.4) 100%)',
+                },
+              }}
             />
           </div>
 
-          <ContentBox title="">
-            {/* 피그마 스펙(행간 12px)은 하루종일/시작/종료 행이 28~36px로 작을 때 기준값이라,
-                지금처럼 각 행이 터치 영역 확보를 위해 h-[52px]로 이미 넉넉한 상태에서 그대로
-                더하면 오히려 피그마보다 넓어진다 — 행 자체의 높이가 여유 공간을 대신하므로
-                별도 gap 없이 붙인다. */}
-            <div className="flex w-full flex-col">
-              {/* 공용 Toggle이 필요한 자리 — ActionRow의 accessory type="toggle"(RowAccessory,
-                  /icon/toggle/on·off.svg)을 그대로 재사용한다. */}
-              <ActionRow
-                leading={{ type: 'text', text: '하루 종일' }}
-                accessory={{
-                  type: 'toggle',
-                  checked: isAllDay,
-                  ariaLabel: '하루 종일',
-                  onClick: handleToggleAllDay,
-                }}
+          {/* 헤더가 이제 겹치는 오버레이라 별도로 스크롤에서 뺄 필요 없이, 콘텐츠 wrapper가
+              Frame 전체 높이(h-full)를 채운다. pt-23(92px)은 헤더 높이(68px)+상단 오프셋
+              (16px)+원래 헤더-콘텐츠 간격(8px)을 더한 값 — 스크롤 안 한 초기 상태에서 첫
+              콘텐츠 박스가 헤더 글자에 가려지지 않게 하는 최소값이고, 스크롤하면 그 위쪽
+              콘텐츠가 반투명+블러 처리된 헤더 뒤로 지나가며 실제로 비쳐 보인다.
+              min-h-0은 flex 자식 기본값(min-height: auto)이 내용 높이만큼 늘어나 버려서
+              overflow-y-auto가 무력화되는 걸 막기 위해 필요하다.
+              p-4(패딩)는 이 div 자신에 직접 줘야 한다 — overflow-y-auto가 걸린 요소는
+              CSS 스펙상 반대 축(overflow-x)도 함께 클리핑되는데, 패딩이 하나도 없으면
+              안쪽 ContentBox들이 이 경계에 딱 붙어 있어 그림자가 사방으로 그대로 잘린다
+              (Frame 자체의 바깥쪽 padding은 이 안쪽 클리핑 경계엔 아무 도움이 안 된다). */}
+          <div className="flex h-full w-full min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4 pt-23 scrollbar-none">
+            <div className="w-full rounded-medium bg-background-white p-3 shadow-[0px_4px_8px_rgba(0,0,0,0.04),0px_9.701px_29.104px_rgba(0,0,0,0.1)]">
+              <Input
+                value={title}
+                onChange={setTitle}
+                onClear={() => setTitle('')}
+                ariaLabel="이벤트 제목"
+                placeholder="제목을 입력해주세요"
               />
-
-              <div className="box-content flex h-[52px] w-full items-center justify-between bg-transparent pl-1">
-                <span className="shrink-0 text-text-default default-body-medium">시작</span>
-                <div className="flex shrink-0 items-center gap-2">
-                  {/* 너비는 피그마(node 3317:38211, 125px)/(node 3317:38212, 87px) 고정폭
-                      버튼 스펙을 따른다 — "MediumDefaultFit"은 텍스트 길이만큼 늘었다 줄었다
-                      해서(px-6 패딩만 고정) 날짜/시간 자릿수가 바뀌면 버튼 폭도 흔들렸다.
-                      시간 버튼은 피그마 예시("9:41 AM", 7자)보다 "12:59 PM"(8자)처럼 시간이
-                      두 자리인 경우가 더 길어질 수 있어 87px에 여유를 더해 90px로 잡는다. */}
-                  <Button variant="MediumDefaultFit" className="w-31.25" onClick={openSchedule}>
-                    {formatDate(startDate)}
-                  </Button>
-                  {!isAllDay && (
-                    <Button variant="MediumDefaultFit" className="w-22.5" onClick={openSchedule}>
-                      {formatTimeDisplay(startTime)}
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              <div className="box-content flex h-[52px] w-full items-center justify-between bg-transparent pl-1">
-                <span className="shrink-0 text-text-default default-body-medium">종료</span>
-                <div className="flex shrink-0 items-center gap-2">
-                  {/* endDate가 null(종료 없음)이면 시작 날짜를 표시용으로만 보여준다 —
-                      실제로 선택하기 전까진 state는 계속 null로 남는다. */}
-                  <Button variant="MediumDefaultFit" className="w-31.25" onClick={openSchedule}>
-                    {formatDate(endDate ?? startDate)}
-                  </Button>
-                  {!isAllDay && (
-                    <Button variant="MediumDefaultFit" className="w-22.5" onClick={openSchedule}>
-                      {formatTimeDisplay(endTime ?? startTime)}
-                    </Button>
-                  )}
-                </div>
-              </div>
             </div>
-          </ContentBox>
 
-          {/* 피그마(node 3303:37852) 기준 반복은 이벤트(하루종일/시작/종료) 박스와 분리된
-              자기 박스를 갖는다. "완료" 시 isRecurring/recurrenceType으로 PATCH에 실어
-              보낸다(08/10 백엔드 EventUpdateRequest 확장분 — ⚠️ 라이브 스웨거엔 미반영,
-              실제 반영 여부는 응답으로 확인 필요). 간격/종료일은 이 화면에 편집 UI가 없어
-              바꿀 수 없다.
-              EventScheduleRow는 안 쓴다 — 내부 폭이 w-[329px]로 고정돼 있어(피그마의
-              393px 프레임 기준) 실제 반응형 레이아웃에서 컨테이너 폭과 어긋나면 버튼이
-              바깥으로 밀려난다. 라벨 행과 동일하게 커스텀 버튼으로 만들어 w-full로
-              맞춘다. */}
-          <ContentBox title="">
-            {/* mt-1: ContentBox가 title 없을 땐 위쪽 패딩이 0이고 바깥 박스 자체엔 pb-1(4px)만
-                있어서, 이 행 하나뿐인 박스는 아래로 살짝 치우쳐 보인다 — 위에도 4px을 맞춰줘서
-                수직 중앙에 오도록 한다. */}
-            <div className="relative mt-1 w-full">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLabelModalOpen(false);
-                  setIsRepeatModalOpen((isOpen) => !isOpen);
-                }}
-                className="flex h-[52px] w-full items-center justify-between border-0 bg-transparent py-0 pl-1 pr-4 text-left"
-              >
-                <span className="text-text-default default-body-medium">반복</span>
+            {/* 하루종일/시작·종료(캘린더 포함)/반복 — 일정 생성 모달(RepeatScheduleBottomSheet)이
+                쓰는 것과 동일한 콘텐츠(ScheduleDateTimeFields)를 시트로 열지 않고 화면에
+                그대로 펼쳐서 쓴다. */}
+            <ScheduleDateTimeFields
+              startDate={startDate}
+              // ScheduleDateTimeFields는 endDate/endTime을 필수(non-null)로 받아서, 아직
+              // 안 정한 상태(null)일 땐 시작값을 임시로 보여준다 — 사용자가 실제로 종료를
+              // 건드려야만 onEndDateChange/onEndTimeChange가 호출돼 state가 null에서 벗어난다.
+              endDate={endDate ?? startDate}
+              startTime={startTime}
+              endTime={endTime ?? startTime}
+              repeat={repeat}
+              isAllDay={isAllDay}
+              onAllDayChange={handleAllDayChange}
+              onStartDateChange={setStartDate}
+              onEndDateChange={setEndDate}
+              onStartTimeChange={(value) => setStartTime(toApiTime(value))}
+              onEndTimeChange={(value) => setEndTime(toApiTime(value))}
+              onRepeatChange={setRepeat}
+              // 반복 박스 뒤에 라벨/체크리스트 박스가 더 이어지므로(RepeatScheduleBottomSheet와
+              // 달리 반복이 시트의 마지막 콘텐츠가 아님) 피그마 실측(node 3303:37943)대로
+              // 그림자 있는 'default'를 써야 한다 — 기본값('bottom', 그림자 없음)은
+              // 반복이 정말 마지막 콘텐츠인 RepeatScheduleBottomSheet 전용.
+              repeatBoxVariant="default"
+            />
 
-                <span className="flex items-center gap-2 text-text-default default-body-medium">
-                  <span>{formatRepeatDisplayText(repeat, startDate)}</span>
+            <ContentBox title="">
+              {/* mt-1: 반복 박스와 동일한 이유(ContentBox의 비대칭 pb-1 상쇄). */}
+              <div className="relative mt-1 w-full">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLabelModalOpen((isOpen) => !isOpen);
+                  }}
+                  className="flex h-[52px] w-full items-center justify-between border-0 bg-transparent py-0 pl-1 pr-4 text-left"
+                >
+                  {/* 피그마 시작/종료/반복 행과 같은 그룹 — Default/Body/Large(17px)로 통일 */}
+                  <span className="text-text-default default-body-large">라벨</span>
 
-                  <span className="flex flex-col items-center" aria-hidden="true">
-                    <img src={CHEVRON_ICON} alt="" className="block size-3 rotate-90 opacity-30" />
-                    <img
-                      src={CHEVRON_ICON}
-                      alt=""
-                      className="-mt-0.5 block size-3 -rotate-90 opacity-30"
-                    />
-                  </span>
-                </span>
-              </button>
+                  <span className="flex items-center gap-2">
+                    {selectedLabel ? (
+                      <span className="flex items-center gap-2 text-text-default default-body-large">
+                        {/* 피그마 Icons/ColorPicker(node 3317:38586) 실측: 24px 프레임 안에
+                            20px 원 — svg 자체가 24px 캔버스에 그 비율로 그려져 있어(w-auto
+                            h-auto로 원본 크기 그대로 씀), ActionRow.tsx의 라벨 색상
+                            아이콘과 동일한 렌더링 방식. 기존 size-5(20px)로 강제 축소하면
+                            캔버스 전체가 줄어들어 원이 실제로는 ~16px로 더 작게 보였다. */}
+                        <img
+                          src={COLOR_ICON[selectedLabel.color]}
+                          alt=""
+                          className="block h-auto w-auto shrink-0"
+                        />
+                        <span className="max-w-30 truncate">{selectedLabel.label}</span>
+                      </span>
+                    ) : (
+                      <span className="text-text-default default-body-large">없음</span>
+                    )}
 
-              {isRepeatModalOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-20"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setIsRepeatModalOpen(false);
-                    }}
-                  />
-                  <div className="absolute right-0 bottom-full z-30">
-                    <LabelModal
-                      type="repeat"
-                      selectedDate={startDate}
-                      onSelectRepeat={(repeatType: RepeatType) => {
-                        setRepeat(REPEAT_OPTION[repeatType]);
-                        setIsRepeatModalOpen(false);
-                      }}
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-          </ContentBox>
-
-          <ContentBox title="">
-            {/* mt-1: 반복 박스와 동일한 이유(ContentBox의 비대칭 pb-1 상쇄). */}
-            <div className="relative mt-1 w-full">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsRepeatModalOpen(false);
-                  setIsLabelModalOpen((isOpen) => !isOpen);
-                }}
-                className="flex h-[52px] w-full items-center justify-between border-0 bg-transparent py-0 pl-1 pr-4 text-left"
-              >
-                <span className="text-text-default default-body-medium">라벨</span>
-
-                <span className="flex items-center gap-2">
-                  {selectedLabel ? (
-                    <span className="flex items-center gap-2 text-text-default default-body-medium">
+                    <span className="flex flex-col items-center" aria-hidden="true">
                       <img
-                        src={COLOR_ICON[selectedLabel.color]}
+                        src={CHEVRON_ICON}
                         alt=""
-                        className="block size-5 shrink-0"
+                        className="block size-3 rotate-90 opacity-30"
                       />
-                      <span className="max-w-30 truncate">{selectedLabel.label}</span>
+                      <img
+                        src={CHEVRON_ICON}
+                        alt=""
+                        className="-mt-0.5 block size-3 -rotate-90 opacity-30"
+                      />
                     </span>
-                  ) : (
-                    <span className="text-text-default default-body-medium">없음</span>
-                  )}
-
-                  <span className="flex flex-col items-center" aria-hidden="true">
-                    <img src={CHEVRON_ICON} alt="" className="block size-3 rotate-90 opacity-30" />
-                    <img
-                      src={CHEVRON_ICON}
-                      alt=""
-                      className="-mt-0.5 block size-3 -rotate-90 opacity-30"
-                    />
                   </span>
-                </span>
-              </button>
+                </button>
 
-              {isLabelModalOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-20"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setIsLabelModalOpen(false);
-                    }}
-                  />
-                  <div className="absolute right-0 bottom-full z-30">
-                    <LabelModal
-                      labels={labels}
-                      onSelectLabel={(id) => {
-                        setLabelId(id);
+                {isLabelModalOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-20"
+                      onClick={(event) => {
+                        event.stopPropagation();
                         setIsLabelModalOpen(false);
                       }}
                     />
-                  </div>
-                </>
-              )}
-            </div>
-          </ContentBox>
+                    <div className="absolute right-0 bottom-full z-30">
+                      <LabelModal
+                        labels={labels}
+                        onSelectLabel={(id) => {
+                          setLabelId(id);
+                          setIsLabelModalOpen(false);
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </ContentBox>
 
-          <ContentBox title="" variant="bottom">
-            {/* ContentBox가 title 없을 땐 위쪽 여백을 전혀 안 주는데(피그마의 반복/라벨
-                박스는 행 자체가 커서 티가 안 났지만), 체크리스트는 목록이라 그대로 두면
-                첫 항목이 박스 위쪽에 바로 붙어버린다 — 피그마 DailyScheduleCard의 내부
-                상단 여백(24px)만큼 직접 채운다. */}
-            <div className="w-full pt-6">
-              <ActionItemChecklistSection
-                eventDate={format(startDate, 'yyyy-MM-dd')}
-                items={actionItems}
-                onToggleItem={onToggleActionItem}
-                onPendingChanges={setPendingChecklistChanges}
-              />
-            </div>
-          </ContentBox>
+            <ContentBox title="" variant="bottom">
+              {/* ContentBox가 title 없을 땐 위쪽 여백을 전혀 안 주는데(피그마의 반복/라벨
+                  박스는 행 자체가 커서 티가 안 났지만), 체크리스트는 목록이라 그대로 두면
+                  첫 항목이 박스 위쪽에 바로 붙어버린다 — 피그마 DailyScheduleCard의 내부
+                  상단 여백(24px)만큼 직접 채운다. */}
+              <div className="w-full pt-6">
+                <ActionItemChecklistSection
+                  eventDate={format(startDate, 'yyyy-MM-dd')}
+                  items={actionItems}
+                  onPendingChanges={setPendingChecklistChanges}
+                />
+              </div>
+            </ContentBox>
+          </div>
         </Frame>
       </Overlay>
-
-      {isScheduleOpen && (
-        <RepeatScheduleBottomSheet
-          startDate={startDate}
-          // RepeatScheduleBottomSheet는 endDate/endTime을 필수(non-null)로 받아서,
-          // 아직 안 정한 상태(null)일 땐 시작값을 임시로 보여준다 — 사용자가 실제로
-          // 종료를 건드려야만 onEndDateChange/onEndTimeChange가 호출돼 state가 null에서
-          // 벗어난다.
-          endDate={endDate ?? startDate}
-          startTime={startTime}
-          endTime={endTime ?? startTime}
-          repeat={repeat}
-          isAllDay={isAllDay}
-          onAllDayChange={setIsAllDay}
-          onStartDateChange={setStartDate}
-          onEndDateChange={setEndDate}
-          onStartTimeChange={(value) => setStartTime(toApiTime(value))}
-          onEndTimeChange={(value) => setEndTime(toApiTime(value))}
-          onRepeatChange={setRepeat}
-          onClose={() => setIsScheduleOpen(false)}
-          showBackgroundVideo={false}
-        />
-      )}
 
       {isUpdateErrorOpen && (
         <ToastPopup
@@ -664,9 +537,15 @@ export default function EventEditBottomSheet({
       {isScopeModalOpen && labelId !== null && (
         <QuickModal
           message="이 변경 사항을 어떻게 저장할까요?"
-          // 라벨("이후 모든 이벤트에 대해 저장")이 기본 폭보다 길어서 이 화면에서만
-          // 더 넓게 표시한다. 버튼 색상은 다른 QuickModal과 동일한 기본값(빨간색) 유지.
-          widthClassName="w-75"
+          // 반복 일정일 때만 버튼 2개("이 이벤트만 저장"/"이후 모든 이벤트에 대해 저장")라
+          // 두 번째 버튼 텍스트가 기본 폭보다 길어서 이 경우에만 넓게 표시한다. 단기
+          // 일정(버튼 1개, "이벤트 수정")은 widthClassName을 안 넘겨 QuickModal 기본값
+          // (w-61.25, 다른 QuickModal들과 동일)을 그대로 쓴다. 버튼 색상은 다른 QuickModal과
+          // 동일한 기본값(빨간색) 유지.
+          widthClassName={isRecurring ? 'w-75' : undefined}
+          // 이 모달은 반복/체크리스트 등으로 콘텐츠가 긴 이벤트 수정 화면에서만 쓰여
+          // 기본 하단 고정 위치가 화면 아래쪽 콘텐츠에 가려지기 쉽다 — 헤더 바로 아래로.
+          position="top"
           primaryAction={{
             text: isRecurring ? '이 이벤트만 저장' : '이벤트 수정',
             onClick: () => {

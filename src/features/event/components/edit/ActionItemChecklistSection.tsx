@@ -7,9 +7,11 @@
  * 복원하면 된다(이전 구현은 git 이력의 ActionItemEditBottomSheet.tsx 참고).
  *
  * 항목 텍스트를 눌러 새로 추가하거나 제목을 고치는 인라인 입력 — 이 컴포넌트 자체는 저장
- * API를 호출하지 않고, 로컬 상태(labelOverrides/localNewItems/dateOverrides)만 들고
- * 있다가 onPendingChanges로 부모(EventEditBottomSheet)에 보고한다. 실제 저장은 "완료"
- * 버튼을 눌렀을 때 부모가 C107 PATCH의 actionItems 필드에 실어서 한 번에 보낸다.
+ * API를 호출하지 않고, 로컬 상태(labelOverrides/checkedOverrides/dateOverrides/
+ * localNewItems)만 들고 있다가 onPendingChanges로 부모(EventEditBottomSheet)에
+ * 보고한다. 완료 체크(예전엔 E106을 즉시 호출했다)도 마찬가지로 로컬에만 반영되고,
+ * "완료" 버튼을 눌러야만 부모가 C107 PATCH의 actionItems 필드에 실어서 한 번에 보낸다
+ * — 신규 항목뿐 아니라 기존 항목의 완료/날짜/제목 수정도 전부 이 규칙을 따른다.
  * 날짜 편집(ChipButton)도 08/13 백엔드 소스(EventUpdateService.syncActionItems →
  * ActionItems.updateDetails)로 displayDate/displayTime/itemType이 실제로 저장됨을
  * 확인해서 dateOverrides로 함께 보고한다.
@@ -43,21 +45,30 @@ export type ActionItemDateOverride = {
 };
 
 // 저장 API를 직접 호출하지 않고 부모에 보고하는 "아직 저장 안 된 변경사항".
-// 부모가 "완료" 시 C107 PATCH의 actionItems에 실어 보낸다.
+// 부모가 "완료" 시 C107 PATCH의 actionItems에 실어 보낸다. 완료 체크를 포함해 이
+// 컴포넌트 안에서 일어나는 모든 편집은 "완료" 버튼을 누르기 전까지 서버에 전혀
+// 반영되지 않는다(신규/기존 항목 공통) — E106(완료 상태 즉시 저장) 실시간 호출은
+// 더 이상 여기서 하지 않는다.
 export type ActionItemPendingChanges = {
   // 기존 항목 id -> 새 제목
   labelOverrides: Record<number, string>;
   // 기존 항목 id -> 새 날짜(및 그에 따른 itemType)
   dateOverrides: Record<number, ActionItemDateOverride>;
-  // 로컬에서만 존재하는 새 항목(아직 actionItemId 없음)
-  newItems: { label: string }[];
+  // 기존 항목 id -> 새 완료 여부
+  checkedOverrides: Record<number, boolean>;
+  // 로컬에서만 존재하는 새 항목(아직 actionItemId 없음) — 현재 시점의 최신 상태 전체
+  newItems: {
+    label: string;
+    checked: boolean;
+    itemType: 'UNTIMED_PREP' | 'TIMED_ACTION';
+    displayDate: string | null;
+  }[];
 };
 
 type ActionItemChecklistSectionProps = {
   // 'YYYY-MM-DD'. "당일" 판정 기준(=부모 일정 날짜)이자 UNTIMED_PREP 항목의 표시 날짜.
   eventDate: string;
   items: ActionItemEditItem[];
-  onToggleItem?: (id: number) => void;
   // labelOverrides/localNewItems가 바뀔 때마다 호출된다 — 안정적인 참조(예: state
   // setter, useCallback)를 넘겨야 불필요한 재호출을 피할 수 있다.
   onPendingChanges?: (pending: ActionItemPendingChanges) => void;
@@ -66,17 +77,20 @@ type ActionItemChecklistSectionProps = {
 export function ActionItemChecklistSection({
   eventDate,
   items,
-  onToggleItem,
   onPendingChanges,
 }: ActionItemChecklistSectionProps) {
   // 체크 상태 등 실제 데이터는 items(부모 prop)를 그대로 신뢰한다 — 예전엔
   // useState(items)로 마운트 시점에 한 번만 복사해서, 바텀시트가 열려있는 동안
   // 부모가 새 데이터를 내려줘도(다른 곳에서 완료 처리 후 리페치된 경우 등) 반영이
-  // 안 되는 문제가 있었다. 서버에 저장할 API가 아직 없는 "날짜 편집"/"제목 편집"만
-  // 이 컴포넌트 안에서 덧입혀서 보여준다.
+  // 안 되는 문제가 있었다. 서버에 저장할 API가 아직 없는 "날짜 편집"/"제목 편집"/
+  // "완료 편집"만 이 컴포넌트 안에서 덧입혀서 보여준다.
   const [dateTextOverrides, setDateTextOverrides] = useState<Record<number, string>>({});
   const [dateOverrides, setDateOverrides] = useState<Record<number, ActionItemDateOverride>>({});
   const [labelOverrides, setLabelOverrides] = useState<Record<number, string>>({});
+  // 기존 항목 id -> 완료 여부. 예전엔 체크 즉시 부모의 E106 mutation을 호출했지만,
+  // "완료" 버튼을 누르기 전엔 아무것도 서버에 반영되면 안 된다는 요구사항에 따라
+  // 신규 항목과 동일하게 로컬 오버라이드로만 들고 있다가 저장 시점에 함께 보낸다.
+  const [checkedOverrides, setCheckedOverrides] = useState<Record<number, boolean>>({});
   // 로컬에서만 존재하는 새 항목(⚠️ API 미연동 — 새로고침하면 사라짐)
   const [localNewItems, setLocalNewItems] = useState<ActionItemEditItem[]>([]);
   const nextLocalIdRef = useRef(-2);
@@ -99,21 +113,37 @@ export function ActionItemChecklistSection({
     }
   }, [inlineMode]);
 
-  // labelOverrides/dateOverrides/localNewItems가 바뀔 때마다 부모에 현재 상태를
-  // 보고한다 — 부모는 "완료" 시점에 이 값을 그대로 PATCH 바디에 실어 보낸다.
+  // labelOverrides/dateOverrides/checkedOverrides/localNewItems가 바뀔 때마다 부모에
+  // 현재 상태를 보고한다 — 부모는 "완료" 시점에 이 값을 그대로 PATCH 바디에 실어 보낸다.
   useEffect(() => {
     onPendingChanges?.({
       labelOverrides,
       dateOverrides,
-      newItems: localNewItems.map((item) => ({ label: item.label })),
-    });
-  }, [labelOverrides, dateOverrides, localNewItems, onPendingChanges]);
+      checkedOverrides,
+      newItems: localNewItems.map((item) => {
+        const dateOverride = dateOverrides[item.id];
 
-  const localItems = items.map((item) => ({
+        return {
+          label: labelOverrides[item.id] ?? item.label,
+          checked: checkedOverrides[item.id] ?? item.checked,
+          itemType: dateOverride?.itemType ?? 'UNTIMED_PREP',
+          displayDate: dateOverride?.displayDate ?? null,
+        };
+      }),
+    });
+  }, [labelOverrides, dateOverrides, checkedOverrides, localNewItems, onPendingChanges]);
+
+  // 기존 항목/신규 항목 공통으로 쓰는 오버라이드 적용 함수 — id 네임스페이스가 겹치지
+  // 않아(기존 항목은 양수, 신규 항목은 음수) 같은 레코드를 그대로 재사용할 수 있다.
+  const applyOverrides = (item: ActionItemEditItem): ActionItemEditItem => ({
     ...item,
     label: labelOverrides[item.id] ?? item.label,
+    checked: checkedOverrides[item.id] ?? item.checked,
     dateText: dateTextOverrides[item.id] !== undefined ? dateTextOverrides[item.id] : item.dateText,
-  }));
+  });
+
+  const localItems = items.map(applyOverrides);
+  const resolvedNewItems = localNewItems.map(applyOverrides);
 
   const handleToggle = (id: number) => {
     if (id === ADD_ITEM_ROW_ID) {
@@ -121,10 +151,17 @@ export function ActionItemChecklistSection({
       return;
     }
 
-    // 완료 토글은 로컬에서 직접 뒤집지 않고 부모(EventViewPage의 E106 mutation)에
-    // 맡긴다 — 그쪽이 이미 낙관적 업데이트로 캐시를 갱신해서, items prop이 곧바로
-    // 갱신된 값으로 다시 내려온다.
-    onToggleItem?.(id);
+    // "완료" 버튼을 누르기 전엔 서버에 아무것도 반영되면 안 되므로, 신규 항목과 동일하게
+    // 로컬 오버라이드만 뒤집는다 — 실제 저장은 부모가 "완료" 시 PATCH로 한 번에 보낸다.
+    const baseChecked =
+      items.find((item) => item.id === id)?.checked ??
+      localNewItems.find((item) => item.id === id)?.checked ??
+      false;
+
+    setCheckedOverrides((prev) => ({
+      ...prev,
+      [id]: !(prev[id] ?? baseChecked),
+    }));
   };
 
   const handlePickItemDate = (itemId: number, pickedDate: Date) => {
@@ -158,7 +195,7 @@ export function ActionItemChecklistSection({
       return;
     }
 
-    const target = localItems.find((item) => item.id === id);
+    const target = [...localItems, ...resolvedNewItems].find((item) => item.id === id);
     setInlineMode({ type: 'edit', itemId: id });
     setInlineValue(target?.label ?? '');
   };
@@ -174,7 +211,13 @@ export function ActionItemChecklistSection({
         // 호출해도 ref가 중복 감소하거나 두 호출이 서로 다른 id를 쓰는 일이 없도록.
         const localId = nextLocalIdRef.current;
         nextLocalIdRef.current -= 1;
-        setLocalNewItems((prev) => [...prev, { id: localId, label: trimmed, checked: false }]);
+        // 날짜 칩이 처음부터 보이도록 기본값(당일/UNTIMED_PREP)을 채운다 — 안 채우면
+        // dateText가 없어 toChecklistItemData가 날짜 칩 자체를 렌더링하지 않아, 방금
+        // 추가한 항목의 날짜를 고칠 진입점이 없어진다.
+        setLocalNewItems((prev) => [
+          ...prev,
+          { id: localId, label: trimmed, checked: false, dateText: UNTIMED_DATE_TEXT },
+        ]);
       }
     } else if (inlineMode?.type === 'edit') {
       if (trimmed) {
@@ -208,7 +251,7 @@ export function ActionItemChecklistSection({
 
   const allEntries: ActionItemEditItem[] = [
     ...localItems,
-    ...localNewItems,
+    ...resolvedNewItems,
     { id: ADD_ITEM_ROW_ID, label: '직접 추가', checked: false },
   ];
 

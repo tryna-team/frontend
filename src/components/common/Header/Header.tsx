@@ -1,4 +1,7 @@
+import type { CSSProperties } from 'react';
+
 import { Button } from '@/components/common/Buttons';
+import { cn } from '@/lib/utils';
 
 type HeaderVariant = 'daily' | 'modal';
 
@@ -27,6 +30,11 @@ type HeaderTrailing =
       // 라벨 수정 바텀시트의 "완료" 버튼처럼, 변경 사항이 있을 때만 활성화해야 하는
       // 경우를 위해 추가. 생략 시(undefined) 기존 동작과 동일하게 항상 활성화됨.
       disabled?: boolean;
+      // 특정 호출부(예: EventEditBottomSheet의 오버레이 헤더)에서만 이 버튼의 배경/블러를
+      // 커스터마이징해야 할 때를 위해 추가. 생략 시 기존 기본 버튼 스타일 그대로 유지되고,
+      // 다른 Header 사용처(SettingsSheet 등)는 영향받지 않는다.
+      className?: string;
+      style?: CSSProperties;
     };
 
 type HeaderProps = {
@@ -72,13 +80,26 @@ const HEADER_STYLE = {
      * Modal 내부 콘텐츠 너비인 353px 사용. 높이는 피그마 BottomSheetHeader(68px) 기준 —
      * 명시하지 않으면 콘텐츠(아이콘/텍스트) 높이만큼만 차지해서, 그 아래 첫 콘텐츠박스와의
      * 간격이 피그마보다 좁아 보인다.
+     * 배경은 피그마 BottomSheetHeader(node 3317:39496) 스펙대로 거의 완전 투명한
+     * 흰색(rgba(255,255,255,0.01))으로 명시한다 — 지금까지는 배경을 아예 지정하지
+     * 않아 부모 Frame의 불투명 흰 배경에 그대로 얹혀 있었다.
+     * ⚠️ 피그마 원본은 이 헤더가 스크롤 콘텐츠 위에 겹치는 absolute 오버레이라 투명도가
+     * 뒤로 비치는 콘텐츠로 눈에 보이지만, 지금 EventEditBottomSheet 구조는 헤더가 스크롤
+     * 영역과 겹치지 않는 별도 flex 형제라 이 값만으로는 시각적 차이가 거의 없다(둘 다
+     * 흰 배경이라 투명해도 흰색으로 보임) — 실제로 비치는 효과를 보려면 헤더를 스크롤
+     * 콘텐츠와 겹치는 오버레이 구조로 바꿔야 한다.
      */
-    container: 'flex h-[68px] w-[353px] items-center justify-between',
+    container:
+      'flex h-[68px] w-[353px] items-center justify-between bg-[rgba(255,255,255,0.01)] backdrop-blur-none',
 
     // leading과 trailing 영역을 각각 74px로 고정해 title을 중앙에 배치
     leadingSlot: 'flex w-[74px] shrink-0 items-center gap-[10px]',
     leadingContent: 'flex items-center gap-[10px]',
-    title: 'min-w-0 flex-1 truncate text-center text-text-default default-heading-small',
+    // 피그마 BottomSheetHeader(예: node 3317:39880 "이벤트 수정")의 타이틀은
+    // Default/Title/Large(20px/500) — tds의 default-title-large. 기존
+    // default-heading-small(22px/600)은 다른 값이라 이 컴포넌트를 쓰는 모든 modal
+    // 헤더(이벤트 수정/라벨 수정/라벨 등)에서 실제보다 크고 굵게 나오고 있었다.
+    title: 'min-w-0 flex-1 truncate text-center text-text-default default-title-large',
     trailingSlot: 'flex w-[74px] shrink-0 items-center justify-end',
   },
 } as const;
@@ -174,7 +195,8 @@ export default function Header({
           variant="Small"
           onClick={trailing.onClick}
           disabled={trailing.disabled} // disabled 전달 추가
-          className="ml-auto justify-end text-right"
+          className={cn('ml-auto justify-end text-right', trailing.className)}
+          style={trailing.style}
         >
           {trailing.text}
         </Button>
@@ -187,6 +209,8 @@ export default function Header({
         variant="MediumDefaultFit"
         onClick={trailing.onClick}
         disabled={trailing.disabled} // disabled 전달 추가
+        className={trailing.className}
+        style={trailing.style}
       >
         {trailing.text}
       </Button>

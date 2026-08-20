@@ -229,6 +229,9 @@
   border-radius: 0;
   background: transparent;
   color: var(--Semantic-Text-Default, #1c1630);
+  /* 피그마 실측(Default/Title/Large: 20px/500/28px/-0.2px, tds .default-title-large와
+     동일) 기준으로 fallback 값을 맞췄다 — --Default-Title-Large-* 커스텀 프로퍼티는
+     프로젝트 어디에도 정의돼 있지 않아 항상 이 fallback 값이 그대로 적용된다. */
   font-family: var(
     --Default-Title-Large-FontFamily,
     "Pretendard Variable",
@@ -236,17 +239,17 @@
   );
   font-size: var(
     --Default-Title-Large-FontSize,
-    22px
+    20px
   );
   font-style: normal;
-  font-weight: 600;
+  font-weight: 500;
   line-height: var(
     --Default-Title-Large-LineHeight,
-    32px
+    28px
   );
   letter-spacing: var(
     --Default-Title-Large-LetterSpacing,
-    -0.22px
+    -0.2px
   );
   cursor: pointer;
 }
