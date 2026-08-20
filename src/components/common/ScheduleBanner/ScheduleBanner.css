@@ -56,7 +56,7 @@
 
 .schedule-banner-title {
   color: var(--Semantic-Text-Default, #1C1630);
-  font-family: var(--Default-Label-Medium-FontFamily, "Pretendard", sans-serif);
+  font-family: var(--Default-Label-Medium-FontFamily, "Pretendard Variable", sans-serif);
   font-size: var(--Default-Label-Medium-FontSize, 12px);
   font-style: normal;
   font-weight: 500;
@@ -65,7 +65,7 @@
 }
 
 .schedule-banner-date {
-  font-family: var(--Default-Label-Medium-FontFamily, "Pretendard", sans-serif);
+  font-family: var(--Default-Label-Medium-FontFamily, "Pretendard Variable", sans-serif);
   font-size: var(--Default-Label-Medium-FontSize, 12px);
   font-style: normal;
   font-weight: 500;
