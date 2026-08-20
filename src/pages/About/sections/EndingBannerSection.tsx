@@ -22,7 +22,7 @@ export default function EndingBannerSection() {
       />
 
       <div className="relative mx-auto flex h-full w-full max-w-[1040px] items-end px-5 pb-[120px] lg:px-0">
-        <div className="flex items-start justify-start gap-[40px]">
+        <div className="flex flex-col items-start gap-8 lg:flex-row lg:gap-[40px]">
           <img
             src="/favicon.svg"
             alt=""
@@ -30,7 +30,7 @@ export default function EndingBannerSection() {
             height={148}
             loading="lazy"
             decoding="async"
-            className="size-[148px] shrink-0"
+            className="size-24 shrink-0 lg:size-[148px]"
           />
 
           <div className="flex flex-col items-start gap-[40px]">

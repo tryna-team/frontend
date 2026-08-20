@@ -49,7 +49,11 @@
 
 .calendar-back-label {
   color: var(--Semantic-Text-Additional, rgba(28, 22, 48, 0.60));
-  font-family: var(--Default-Title-Medium-FontFamily, "Pretendard Variable");
+  font-family: var(
+    --Default-Title-Medium-FontFamily,
+    "Pretendard Variable",
+    sans-serif
+  );
   font-size: var(--Default-Title-Medium-FontSize, 18px);
   font-style: normal;
   font-weight: 500;
