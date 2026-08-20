@@ -141,12 +141,16 @@ function ScheduleCard({
 
       {checklist.length > 0 && (
         <div className="schedule-card-checklist-wrap">
+          {/* radioVariant를 넘겨야 완료 항목이 체크가 들어간 아이콘(done_small_check)으로
+              그려진다. 안 넘기면 기존 Checklist 경로를 타서 체크 없는 빈 원(done_small)이
+              나온다. 아이콘 크기도 variant가 daily에 맞춰 small로 정해주므로 항목마다
+              iconSize를 넘기지 않는다. */}
           <Checklist
+            radioVariant="daily"
             items={checklist.map((item, index) => ({
               id: index,
               label: item.text,
               status: item.checked ? 'done' : 'default',
-              iconSize: 'small',
               trailing: item.dateText
                 ? { type: 'date' as const, text: item.dateText }
                 : { type: 'none' as const },
