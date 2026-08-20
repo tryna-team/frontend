@@ -40,7 +40,7 @@
   color: var(--Semantic-Text-Default, #1c1630);
   font-family: var(
     --Default-Body-Strong-Large-FontFamily,
-    Pretendard
+    "Pretendard Variable"
   );
   font-size: var(
     --Default-Body-Strong-Large-FontSize,
@@ -110,7 +110,7 @@
   width: 100%;
   margin: 0;
   color: var(--Semantic-Text-Default, #1c1630);
-  font-family: Pretendard, sans-serif;
+  font-family: "Pretendard Variable", sans-serif;
 }
 
 .create-date-picker .rdp-months,
@@ -173,7 +173,7 @@
   text-align: center;
   font-family: var(
     --Default-Caption-Large-FontFamily,
-    Pretendard
+    "Pretendard Variable"
   );
   font-size: var(
     --Default-Caption-Large-FontSize,
@@ -229,7 +229,7 @@
   color: var(--Semantic-Text-Default, #1c1630);
   font-family: var(
     --Default-Title-Large-FontFamily,
-    Pretendard
+    "Pretendard Variable"
   );
   font-size: var(
     --Default-Title-Large-FontSize,

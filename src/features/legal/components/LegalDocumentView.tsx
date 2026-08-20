@@ -135,7 +135,7 @@ export default function LegalDocumentView({
       ref={articleRef}
       aria-label={LEGAL_DOCUMENT_TITLE[document]}
       className={cn(
-        "font-['Pretendard'] text-text-default [overflow-wrap:anywhere] [word-break:keep-all]",
+        "font-['Pretendard_Variable'] text-text-default [overflow-wrap:anywhere] [word-break:keep-all]",
         layout === 'sheet' &&
           'min-h-0 w-full flex-1 overflow-y-auto overscroll-contain px-1 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         layout === 'page' && 'w-full',
