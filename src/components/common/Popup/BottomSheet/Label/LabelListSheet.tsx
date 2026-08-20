@@ -320,16 +320,22 @@ export default function LabelListSheet({
             onClick={onCreateLabel}
             className="box-border flex h-[52px] w-full min-w-0 items-center gap-3 self-stretch px-1 text-left"
           >
-            {/* 피그마 "Icons/MainCTAButton"(4463:62573) 실측: 24px 영역 안에 원이 꽉 차지
-                않고 위아래 9.38%씩 여백이 있어 원 지름이 약 20px(size-5) — 다른 행의
-                라벨 색상 아이콘(medium, 20px)과도 크기가 맞음.
+            {/* 피그마 "Icons/MainCTAButton"(4463:62573) 실측: 24px 아이콘 영역 안에 지름
+                ~20px(size-5) 원이 사방 2px 여백을 두고 들어있다 — 다른 행의 라벨 색상
+                아이콘(24px 영역, ActionRow.tsx)과 바깥 박스 크기를 맞춰야 gap-3 뒤 텍스트
+                시작 위치가 일치한다. size-5 원만 단독으로 두면 박스가 20px이 되어 텍스트가
+                4px 더 왼쪽으로 붙는 문제가 있었음.
                 기존 plus_medium.svg는 stroke-opacity 30%짜리 다른 용도 아이콘이라 마스크로
                 덮어써도 흐릿하게 보여 부적합 — Button.tsx의 MainCTAButton variant가 이미
-                같은 "원+흰색 플러스"를 lucide Plus로 그리고 있어 그 방식을 그대로 재사용. */}
-            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-text-default">
-              <Plus className="size-3.5 text-icon-white" strokeWidth={2} />
+                같은 "원+흰색 플러스"를 lucide Plus로 그리는 방식을 그대로 재사용. */}
+            <span className="flex size-6 shrink-0 items-center justify-center">
+              <span className="flex size-5 items-center justify-center rounded-full bg-text-default">
+                <Plus className="size-3.5 text-icon-white" strokeWidth={2} />
+              </span>
             </span>
-            <span className="min-w-0 truncate text-text-default default-body-large">라벨 추가</span>
+            {/* ActionRow.tsx의 라벨명 텍스트(default-body-medium)와 동일 스타일로 맞춤 —
+                기존 default-body-large는 라벨 목록 이름보다 눈에 띄게 커 보이던 원인 */}
+            <span className="min-w-0 truncate text-text-default default-body-medium">라벨 추가</span>
           </button>
         </ContentBox>
       </Frame>
