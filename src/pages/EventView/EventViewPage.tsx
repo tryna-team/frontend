@@ -598,7 +598,6 @@ function EventViewPage() {
           actionItemsFull={actionItemsData?.items ?? []}
           labels={labelItems}
           onClose={() => setIsEditOpen(false)}
-          onToggleActionItem={(id) => handleToggleItem(String(id))}
         />
       )}
     </div>
