@@ -57,11 +57,22 @@ export const useCreateModalLabels = ({
         })),
     [labelData],
   );
+  const defaultLabelId = useMemo(
+    () =>
+      labelData?.labels.find(
+        (label) => label.isVisible && label.labelType !== 'SYSTEM' && label.isDefault,
+      )?.labelId ?? null,
+    [labelData],
+  );
   const selectableLabels = useMemo(
     () => Array.from(new Map([...labels, ...apiLabels].map((label) => [label.id, label])).values()),
     [apiLabels, labels],
   );
-  const selectedLabel = selectableLabels.find((label) => label.id === selectedLabelId);
+  const effectiveSelectedLabelId =
+    labelStatus.type === 'default' && pendingSelectedLabelId == null && selectedLabelId == null
+      ? defaultLabelId
+      : selectedLabelId;
+  const selectedLabel = selectableLabels.find((label) => label.id === effectiveSelectedLabelId);
 
   const handleSelectLabel = useCallback(
     (id: number) => {
@@ -88,7 +99,7 @@ export const useCreateModalLabels = ({
   return {
     isLabelModalOpen,
     setIsLabelModalOpen,
-    selectedLabelId,
+    selectedLabelId: effectiveSelectedLabelId,
     apiLabels,
     selectableLabels,
     selectedLabel,
