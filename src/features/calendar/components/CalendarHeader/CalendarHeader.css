@@ -2,6 +2,12 @@
 .calendar-header-daily {
   position: relative;
   z-index: 2;
+  /* iOS Safari(WebKit)에서 backdrop-filter가 있는 요소가 같은 페이지의 무관한 다른
+     요소(캘린더 하단의 "+"/"오늘" 플로팅 버튼 등)의 border-radius 클리핑까지 깨뜨리는
+     알려진 렌더링 버그 우회 — isolate로 새 stacking context를 명시해 이 요소의
+     컴포지팅 효과가 페이지 다른 곳으로 새어나가지 않게 격리한다. 스펙 보장 해결책은
+     아니고 경험적 우회법이라 모바일 배포에서 재확인 필요. */
+  isolation: isolate;
   background: rgba(255, 255, 255, 0.8);
   box-shadow: 0 2px 4px rgba(28, 22, 48, 0.06);
   -webkit-backdrop-filter: blur(12px);
