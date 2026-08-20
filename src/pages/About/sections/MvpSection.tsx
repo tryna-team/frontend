@@ -3,20 +3,20 @@ import { useEffect, useRef, useState } from 'react';
 
 const MVP_SLIDES = [
   {
-    desktopSrc: '/about/mvp/desktop_carousel1.webp',
-    mobileSrc: '/about/mvp/mobile_carousel1.webp',
+    desktopSrc: '/about/mvp/desktop_carousel1.png',
+    mobileSrc: '/about/mvp/mobile_carousel1.png',
     description:
       '트라이나와 함께라면 따로 정리하지 않아도 일정과 준비물을 하나로 관리할 수 있어요.',
   },
   {
-    desktopSrc: '/about/mvp/desktop_carousel2.webp',
-    mobileSrc: '/about/mvp/mobile_carousel2.webp',
+    desktopSrc: '/about/mvp/desktop_carousel2.png',
+    mobileSrc: '/about/mvp/mobile_carousel2.png',
     description:
       '트라이나와 함께라면 매번 다시 찾지 않아도 필요한 준비와 행동을 일정에 연결해 함께 볼 수 있어요.',
   },
   {
-    desktopSrc: '/about/mvp/desktop_carousel3.webp',
-    mobileSrc: '/about/mvp/mobile_carousel3.webp',
+    desktopSrc: '/about/mvp/desktop_carousel3.png',
+    mobileSrc: '/about/mvp/mobile_carousel3.png',
     description:
       '트라이나와 함께라면 생각나는 대로 말하듯 간편하게 일정을 기록할 수 있어요.',
   },
