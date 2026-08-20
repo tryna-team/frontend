@@ -367,7 +367,7 @@ export default function EventEditBottomSheet({
               일반 flex 형제로 두면(이전 방식) 겹치는 대상이 없어 backdrop-blur가
               아무것도 흐릴 게 없어서 시각적으로 아무 효과가 없다. z-10으로 아래 스크롤
               wrapper보다 위에 그린다. */}
-          <div className="absolute inset-x-0 top-0 z-10 flex justify-center bg-white/1 px-4 pt-4 backdrop-blur-[3px]">
+          <div className="absolute inset-x-0 top-0 z-10 flex justify-center bg-white/40 px-4 pt-4 backdrop-blur-[2px]">
             <Header
               variant="modal"
               title="이벤트 수정"
@@ -377,6 +377,16 @@ export default function EventEditBottomSheet({
                 text: '완료',
                 onClick: handleComplete,
                 disabled: updateMutation.isPending || !hasChanges,
+                // 버튼 자신의 배경(bg-grey-opacity-100, 알파 5%)이 낮아서 뒤에 있는
+                // 헤더 오버레이의 블러/틴트가 그대로 비쳐 보이던 문제 — 버그가 아니라
+                // 피그마 BottomSheetHeader의 "완료" 버튼(Button/Medium) 스펙 자체가
+                // backdrop-blur-4px + 반투명 그라디언트를 쓰는 유리 버튼이라, 그 스펙을
+                // 그대로 완성해서 의도적인 모습으로 만든다.
+                className: 'backdrop-blur-[4px]',
+                style: {
+                  backgroundImage:
+                    'linear-gradient(90deg, rgba(28, 22, 48, 0.05) 0%, rgba(28, 22, 48, 0.05) 100%), linear-gradient(90deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.4) 100%)',
+                },
               }}
             />
           </div>
