@@ -304,10 +304,9 @@ export default function EventEditBottomSheet({
         // 새로 분리된 이벤트의 실제 startDate는 이 PATCH에 실은 startDate와 같다
         // (EventUpdateService.createModifiedEvent의 resolvedStartDate 로직) — 그 값을
         // 그대로 occurrenceDate로 넘긴다.
-        navigate(
-          generateEventPath.view(String(data.eventId), format(startDate, 'yyyy-MM-dd')),
-          { replace: true },
-        );
+        navigate(generateEventPath.view(String(data.eventId), format(startDate, 'yyyy-MM-dd')), {
+          replace: true,
+        });
       }
     },
     onError: () => {
@@ -361,12 +360,14 @@ export default function EventEditBottomSheet({
   return (
     <>
       <Overlay className="flex items-end justify-center" onClick={onClose}>
-        <Frame className="h-[92dvh]">
-          {/* -mb-2: 아래 스크롤 wrapper의 p-4(그림자 보호용 여백)를 그대로 둔 채, 헤더와
-              첫 콘텐츠 박스 사이 화면상 간격만 원래 값(8px, 기존 Frame의 gap-2와 동일)으로
-              당겨온다. 스크롤 wrapper 안쪽 padding-to-content 거리는 이 마진과 무관하게
-              그대로 16px라 그림자 클리핑은 다시 생기지 않는다. */}
-          <div className="-mb-2 flex w-full justify-center px-4 pt-4">
+        <Frame className="relative h-[92dvh]">
+          {/* 헤더를 스크롤 콘텐츠와 겹치는 absolute 오버레이로 띄운다 — backdrop-blur와
+              반투명 배경이 실제로 "뒤에 있는 것을 흐리게 비추는" 효과를 내려면, 뒤에
+              무언가(스크롤되는 콘텐츠)가 같은 자리에 실제로 렌더링되고 있어야 한다.
+              일반 flex 형제로 두면(이전 방식) 겹치는 대상이 없어 backdrop-blur가
+              아무것도 흐릴 게 없어서 시각적으로 아무 효과가 없다. z-10으로 아래 스크롤
+              wrapper보다 위에 그린다. */}
+          <div className="absolute inset-x-0 top-0 z-10 flex justify-center bg-white/40 px-4 pt-4 backdrop-blur-[3px]">
             <Header
               variant="modal"
               title="이벤트 수정"
@@ -376,19 +377,32 @@ export default function EventEditBottomSheet({
                 text: '완료',
                 onClick: handleComplete,
                 disabled: updateMutation.isPending || !hasChanges,
+                // 버튼 자신의 배경(bg-grey-opacity-100, 알파 5%)이 낮아서 뒤에 있는
+                // 헤더 오버레이의 블러/틴트가 그대로 비쳐 보이던 문제 — 버그가 아니라
+                // 피그마 BottomSheetHeader의 "완료" 버튼(Button/Medium) 스펙 자체가
+                // backdrop-blur-4px + 반투명 그라디언트를 쓰는 유리 버튼이라, 그 스펙을
+                // 그대로 완성해서 의도적인 모습으로 만든다.
+                className: 'backdrop-blur-[4px]',
+                style: {
+                  backgroundImage:
+                    'linear-gradient(90deg, rgba(28, 22, 48, 0.05) 0%, rgba(28, 22, 48, 0.05) 100%), linear-gradient(90deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.4) 100%)',
+                },
               }}
             />
           </div>
 
-          {/* 헤더(타이틀/완료 버튼)는 스크롤에서 제외하고 이 아래 콘텐츠만 자체적으로
-              스크롤한다 — Frame 전체에 overflow-y-auto를 걸면 헤더까지 함께 밀려 올라간다.
+          {/* 헤더가 이제 겹치는 오버레이라 별도로 스크롤에서 뺄 필요 없이, 콘텐츠 wrapper가
+              Frame 전체 높이(h-full)를 채운다. pt-23(92px)은 헤더 높이(68px)+상단 오프셋
+              (16px)+원래 헤더-콘텐츠 간격(8px)을 더한 값 — 스크롤 안 한 초기 상태에서 첫
+              콘텐츠 박스가 헤더 글자에 가려지지 않게 하는 최소값이고, 스크롤하면 그 위쪽
+              콘텐츠가 반투명+블러 처리된 헤더 뒤로 지나가며 실제로 비쳐 보인다.
               min-h-0은 flex 자식 기본값(min-height: auto)이 내용 높이만큼 늘어나 버려서
               overflow-y-auto가 무력화되는 걸 막기 위해 필요하다.
               p-4(패딩)는 이 div 자신에 직접 줘야 한다 — overflow-y-auto가 걸린 요소는
               CSS 스펙상 반대 축(overflow-x)도 함께 클리핑되는데, 패딩이 하나도 없으면
               안쪽 ContentBox들이 이 경계에 딱 붙어 있어 그림자가 사방으로 그대로 잘린다
               (Frame 자체의 바깥쪽 padding은 이 안쪽 클리핑 경계엔 아무 도움이 안 된다). */}
-          <div className="flex w-full min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4 scrollbar-none">
+          <div className="flex h-full w-full min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4 pt-23 scrollbar-none">
             <div className="w-full rounded-medium bg-background-white p-3 shadow-[0px_4px_8px_rgba(0,0,0,0.04),0px_9.701px_29.104px_rgba(0,0,0,0.1)]">
               <Input
                 value={title}
@@ -418,6 +432,11 @@ export default function EventEditBottomSheet({
               onStartTimeChange={(value) => setStartTime(toApiTime(value))}
               onEndTimeChange={(value) => setEndTime(toApiTime(value))}
               onRepeatChange={setRepeat}
+              // 반복 박스 뒤에 라벨/체크리스트 박스가 더 이어지므로(RepeatScheduleBottomSheet와
+              // 달리 반복이 시트의 마지막 콘텐츠가 아님) 피그마 실측(node 3303:37943)대로
+              // 그림자 있는 'default'를 써야 한다 — 기본값('bottom', 그림자 없음)은
+              // 반복이 정말 마지막 콘텐츠인 RepeatScheduleBottomSheet 전용.
+              repeatBoxVariant="default"
             />
 
             <ContentBox title="">
@@ -430,24 +449,34 @@ export default function EventEditBottomSheet({
                   }}
                   className="flex h-[52px] w-full items-center justify-between border-0 bg-transparent py-0 pl-1 pr-4 text-left"
                 >
-                  <span className="text-text-default default-body-medium">라벨</span>
+                  {/* 피그마 시작/종료/반복 행과 같은 그룹 — Default/Body/Large(17px)로 통일 */}
+                  <span className="text-text-default default-body-large">라벨</span>
 
                   <span className="flex items-center gap-2">
                     {selectedLabel ? (
-                      <span className="flex items-center gap-2 text-text-default default-body-medium">
+                      <span className="flex items-center gap-2 text-text-default default-body-large">
+                        {/* 피그마 Icons/ColorPicker(node 3317:38586) 실측: 24px 프레임 안에
+                            20px 원 — svg 자체가 24px 캔버스에 그 비율로 그려져 있어(w-auto
+                            h-auto로 원본 크기 그대로 씀), ActionRow.tsx의 라벨 색상
+                            아이콘과 동일한 렌더링 방식. 기존 size-5(20px)로 강제 축소하면
+                            캔버스 전체가 줄어들어 원이 실제로는 ~16px로 더 작게 보였다. */}
                         <img
                           src={COLOR_ICON[selectedLabel.color]}
                           alt=""
-                          className="block size-5 shrink-0"
+                          className="block h-auto w-auto shrink-0"
                         />
                         <span className="max-w-30 truncate">{selectedLabel.label}</span>
                       </span>
                     ) : (
-                      <span className="text-text-default default-body-medium">없음</span>
+                      <span className="text-text-default default-body-large">없음</span>
                     )}
 
                     <span className="flex flex-col items-center" aria-hidden="true">
-                      <img src={CHEVRON_ICON} alt="" className="block size-3 rotate-90 opacity-30" />
+                      <img
+                        src={CHEVRON_ICON}
+                        alt=""
+                        className="block size-3 rotate-90 opacity-30"
+                      />
                       <img
                         src={CHEVRON_ICON}
                         alt=""
@@ -508,9 +537,15 @@ export default function EventEditBottomSheet({
       {isScopeModalOpen && labelId !== null && (
         <QuickModal
           message="이 변경 사항을 어떻게 저장할까요?"
-          // 라벨("이후 모든 이벤트에 대해 저장")이 기본 폭보다 길어서 이 화면에서만
-          // 더 넓게 표시한다. 버튼 색상은 다른 QuickModal과 동일한 기본값(빨간색) 유지.
-          widthClassName="w-75"
+          // 반복 일정일 때만 버튼 2개("이 이벤트만 저장"/"이후 모든 이벤트에 대해 저장")라
+          // 두 번째 버튼 텍스트가 기본 폭보다 길어서 이 경우에만 넓게 표시한다. 단기
+          // 일정(버튼 1개, "이벤트 수정")은 widthClassName을 안 넘겨 QuickModal 기본값
+          // (w-61.25, 다른 QuickModal들과 동일)을 그대로 쓴다. 버튼 색상은 다른 QuickModal과
+          // 동일한 기본값(빨간색) 유지.
+          widthClassName={isRecurring ? 'w-75' : undefined}
+          // 이 모달은 반복/체크리스트 등으로 콘텐츠가 긴 이벤트 수정 화면에서만 쓰여
+          // 기본 하단 고정 위치가 화면 아래쪽 콘텐츠에 가려지기 쉽다 — 헤더 바로 아래로.
+          position="top"
           primaryAction={{
             text: isRecurring ? '이 이벤트만 저장' : '이벤트 수정',
             onClick: () => {
