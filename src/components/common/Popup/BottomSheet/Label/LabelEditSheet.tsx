@@ -193,11 +193,16 @@ export default function LabelEditSheet({
           <ColorPicker selectedColor={color} onSelect={setColor} />
         </ContentBox>
 
-        {/* 외부 라벨은 삭제할 수 없음(위 isExternal 설명 참고) — tryna 라벨에만 노출 */}
+        {/* 외부 라벨은 삭제할 수 없음(위 isExternal 설명 참고) — tryna 라벨에만 노출.
+            Figma(node 2886:20950 FloatingButtons)는 색상 콘텐츠 바로 아래가 아니라 프레임
+            맨 아래에 hug-content 알약형으로 떠 있다 — mt-auto로 flex-col인 Frame 하단에
+            붙이고(Frame이 이미 items-center라 별도 wrapper 없이 가운데 정렬됨), 폭도
+            기존 전체너비(LargeWarningRegular + w-full) 대신 fit-width(LargeWarningFit)로
+            바꿔 텍스트 길이만큼만 차지하게 한다. */}
         {!isExternal && (
           <Button
-            variant="LargeWarningRegular"
-            className="w-full"
+            variant="LargeWarningFit"
+            className="mt-auto"
             onClick={() => setIsDeleteConfirmOpen(true)}
           >
             라벨 삭제
