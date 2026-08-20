@@ -64,6 +64,14 @@ export default function AppRouter() {
         }
       />
       <Route
+        path={PATH.GOOGLE_CALENDAR_POLICY}
+        element={
+          <Suspense fallback={<div className="min-h-[100dvh] bg-background-white" />}>
+            <LegalPage document="google-calendar" />
+          </Suspense>
+        }
+      />
+      <Route
         path="*"
         element={
           <Navigate

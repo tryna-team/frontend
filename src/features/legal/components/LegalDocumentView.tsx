@@ -4,8 +4,10 @@ import remarkGfm from 'remark-gfm';
 
 import privacyDetail from '@/features/legal/content/detail/privacy-policy.ko.md?raw';
 import termsDetail from '@/features/legal/content/detail/terms-of-use.ko.md?raw';
+import googleCalendarDetail from '@/features/legal/content/detail/google-calendar-policy.ko.md?raw';
 import privacySummary from '@/features/legal/content/summary/privacy-policy.ko.md?raw';
 import termsSummary from '@/features/legal/content/summary/terms-of-use.ko.md?raw';
+import googleCalendarSummary from '@/features/legal/content/summary/google-calendar-policy.ko.md?raw';
 import {
   LEGAL_DOCUMENT_TITLE,
   type LegalDocumentType,
@@ -20,10 +22,12 @@ const LEGAL_DOCUMENT_CONTENT: Record<
   detail: {
     terms: termsDetail,
     privacy: privacyDetail,
+    'google-calendar': googleCalendarDetail,
   },
   summary: {
     terms: termsSummary,
     privacy: privacySummary,
+    'google-calendar': googleCalendarSummary,
   },
 };
 

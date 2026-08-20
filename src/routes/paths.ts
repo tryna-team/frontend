@@ -7,9 +7,15 @@ export const PATH = {
   YEAR_CALENDAR: '/calendar/year', // 연간 캘린더
   TERMS: '/terms',
   PRIVACY: '/privacy',
+  GOOGLE_CALENDAR_POLICY: '/google-calendar-policy',
 } as const;
 
-export const PUBLIC_PATHS = [PATH.ABOUT, PATH.TERMS, PATH.PRIVACY] as const;
+export const PUBLIC_PATHS = [
+  PATH.ABOUT,
+  PATH.TERMS,
+  PATH.PRIVACY,
+  PATH.GOOGLE_CALENDAR_POLICY,
+] as const;
 
 export const generateDailyPath = (date: string) => `/daily/${date}`;
 
