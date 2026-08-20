@@ -366,8 +366,15 @@ export default function EventEditBottomSheet({
               무언가(스크롤되는 콘텐츠)가 같은 자리에 실제로 렌더링되고 있어야 한다.
               일반 flex 형제로 두면(이전 방식) 겹치는 대상이 없어 backdrop-blur가
               아무것도 흐릴 게 없어서 시각적으로 아무 효과가 없다. z-10으로 아래 스크롤
-              wrapper보다 위에 그린다. */}
-          <div className="absolute inset-x-0 top-0 z-10 flex justify-center bg-white/40 px-4 pt-4 backdrop-blur-[2px]">
+              wrapper보다 위에 그린다.
+              isolate: iOS Safari에서 backdrop-filter가 있는 요소가 페이지의 다른(전혀
+              무관한) 요소들의 border-radius 클리핑까지 깨뜨리는 알려진 렌더링 버그가
+              있다(모바일 배포에서 MainCTAButton 등 이 화면과 무관한 버튼까지 네모나게
+              보이는 현상으로 확인됨, 데스크탑/dev 서버에서는 재현 안 됨). isolate로 새
+              stacking context를 명시해서 이 요소의 컴포지팅 효과가 페이지 다른 곳으로
+              새어나가지 않게 격리한다 — 스펙 보장 해결책은 아니고 경험적 우회법이라
+              모바일 배포에서 재확인 필요. */}
+          <div className="absolute inset-x-0 top-0 z-10 isolate flex justify-center bg-white/40 px-4 pt-4 backdrop-blur-[3px]">
             <Header
               variant="modal"
               title="이벤트 수정"
@@ -382,7 +389,10 @@ export default function EventEditBottomSheet({
                 // 피그마 BottomSheetHeader의 "완료" 버튼(Button/Medium) 스펙 자체가
                 // backdrop-blur-4px + 반투명 그라디언트를 쓰는 유리 버튼이라, 그 스펙을
                 // 그대로 완성해서 의도적인 모습으로 만든다.
-                className: 'backdrop-blur-[4px]',
+                // isolate: 위 헤더 오버레이 div와 같은 이유(iOS Safari backdrop-filter
+                // 렌더링 버그 우회) — 이 버튼도 backdrop-blur를 새로 갖게 됐으므로 동일하게
+                // 격리한다.
+                className: 'isolate backdrop-blur-[4px]',
                 style: {
                   backgroundImage:
                     'linear-gradient(90deg, rgba(28, 22, 48, 0.05) 0%, rgba(28, 22, 48, 0.05) 100%), linear-gradient(90deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.4) 100%)',
