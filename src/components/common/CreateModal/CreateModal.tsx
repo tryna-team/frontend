@@ -3,7 +3,6 @@ import type { MouseEvent, PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 
 import { format, parseISO } from 'date-fns';
-
 import Button from '@/components/common/Buttons/Button';
 import Checklist from '@/components/common/Checklist/Checklist';
 import LabelModal from '@/components/common/LabelModal/LabelModal';
@@ -43,6 +42,30 @@ const createFallbackTempEventId = () =>
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random()}`
   }`;
+
+type FadingBackgroundVideoProps = {
+  opacity: number;
+};
+
+function FadingBackgroundVideo({ opacity }: FadingBackgroundVideoProps) {
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  return (
+    <video
+      src="/BlendDimVideo.mp4"
+      autoPlay
+      loop
+      muted
+      playsInline
+      onPlaying={() => setIsPlaying(true)}
+      style={{
+        opacity: isPlaying ? opacity : 0,
+        transition: 'opacity 1.2s ease-out',
+      }}
+      className="h-full w-full object-cover"
+    />
+  );
+}
 
 export default function CreateModal({
   mode = 'default',
@@ -432,14 +455,7 @@ export default function CreateModal({
                   bottom: 0,
                 }}
               >
-                <video
-                  src="/BlendDimVideo.mp4"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className={`h-full w-full object-cover ${isRecommendMode ? 'opacity-100' : 'opacity-50'}`}
-                />
+                <FadingBackgroundVideo opacity={isRecommendMode ? 1 : 0.5} />
               </div>
             )}
 
