@@ -3,6 +3,7 @@ import type { MouseEvent, PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 
 import { format, parseISO } from 'date-fns';
+import { motion } from 'framer-motion';
 import Button from '@/components/common/Buttons/Button';
 import Checklist from '@/components/common/Checklist/Checklist';
 import LabelModal from '@/components/common/LabelModal/LabelModal';
@@ -51,16 +52,18 @@ function FadingBackgroundVideo({ opacity }: FadingBackgroundVideoProps) {
   const [isPlaying, setIsPlaying] = useState(false);
 
   return (
-    <video
+    <motion.video
       src="/BlendDimVideo.mp4"
       autoPlay
       loop
       muted
       playsInline
       onPlaying={() => setIsPlaying(true)}
-      style={{
-        opacity: isPlaying ? opacity : 0,
-        transition: 'opacity 1.2s ease-out',
+      initial={{ opacity: 0 }}
+      animate={{ opacity: isPlaying ? opacity : 0 }}
+      transition={{
+        duration: 1.2,
+        ease: 'easeOut',
       }}
       className="h-full w-full object-cover"
     />
