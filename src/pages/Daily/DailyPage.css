@@ -2,13 +2,22 @@
   /* App.tsx가 프레임 크기/배경을 담당 */
   box-sizing: border-box;
   display: flex;
-  min-height: calc(100dvh - 82px);
+  /* min-height(바닥값만 지정)였을 때는 카드가 많은 날 .daily-page가 뷰포트보다
+     커져서 문서(body) 스크롤이 생겼다. body가 스크롤되면 App.tsx의 앱 프레임
+     (transform-gpu)이 함께 밀려 올라가고, 그 프레임 기준으로 fixed된
+     FloatingButtons도 같이 딸려 올라가 화면에 고정되지 않은 것처럼 보였다.
+     height(상한 고정) + overflow: hidden으로 Home/YearCalendar와 같은 패턴을
+     맞추고, 실제 세로 스크롤은 아래 .daily-page-panel이 내부에서 흡수한다. */
+  height: calc(100dvh - 82px);
+  min-height: 0;
+  overflow: hidden;
   flex-direction: column;
 }
 
 .daily-page-pager {
   display: flex;
-  flex: 1 0 auto;
+  flex: 1;
+  min-height: 0;
   flex-direction: column;
   width: 100%;
   overflow: hidden;
@@ -20,6 +29,7 @@
   position: relative;
   flex: 1 0 auto;
   width: 100%;
+  height: 100%;
   transform: translate3d(-100%, 0, 0);
   will-change: transform;
 }
@@ -27,7 +37,9 @@
 .daily-page-panel {
   width: 100%;
   min-width: 0;
-  min-height: 100%;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .daily-page-panel[data-position='previous'],

@@ -539,8 +539,11 @@ function EventViewPage() {
         />
 
         {/* DailyScheduleCard가 남은 세로 공간을 모두 받아 448px를 기준으로 하되
-            모자라면 줄어들 수 있도록, 이 래퍼도 flex-1 + min-h-0로 참여시킨다. */}
-        <div className="flex min-h-0 flex-1 flex-col px-1">
+            모자라면 줄어들 수 있도록, 이 래퍼도 flex-1 + min-h-0로 참여시킨다.
+            pb-6(24px)은 카드가 아무리 줄어들어도 FloatingButtons 영역과 최소
+            24px 간격을 유지하도록 하는 하단 여백이다 — 카드는 flex-basis(448px)에서
+            flex-shrink로 줄어들 뿐 이 padding까지 잠식하지 않는다. */}
+        <div className="flex min-h-0 flex-1 flex-col px-1 pb-6">
           {isActionItemsPending ? (
             <p className="py-6 text-center text-text-additional default-body-medium">
               준비 항목을 불러오는 중이에요.
