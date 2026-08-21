@@ -629,16 +629,18 @@ export default function CreateModal({
           document.body,
         )}
 
-      {recommendationEditDraft && (
-        <ActionItemScheduleBottomSheet
-          title={recommendationEditDraft.title}
-          parentEventStartDate={startDate}
-          parentEventEndDate={endDate}
-          date={recommendationEditDraft.date}
-          onChange={handleChangeRecommendationEdit}
-          onClose={handleSaveRecommendationEdit}
-        />
-      )}
+      {recommendationEditDraft &&
+        createPortal(
+          <ActionItemScheduleBottomSheet
+            title={recommendationEditDraft.title}
+            parentEventStartDate={startDate}
+            parentEventEndDate={endDate}
+            date={recommendationEditDraft.date}
+            onChange={handleChangeRecommendationEdit}
+            onClose={handleSaveRecommendationEdit}
+          />,
+          document.body,
+        )}
 
       {isScheduleOpen &&
         createPortal(
