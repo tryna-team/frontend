@@ -126,7 +126,10 @@ export default function LabelCreateSheet({ onClose, onComplete }: LabelCreateShe
               margin과 무관하게 부모 폭에 고정되고 거기서 padding만 그대로 빠지므로(margin은
               위치만 옮길 뿐 크기를 안 늘려줌), w-[calc(100%+2rem)]로 padding(2rem)만큼 폭도
               같이 넓혀줘야 실제로 margin+padding이 상쇄돼 콘텐츠 폭/위치가 원래와 같아진다. */}
-          <div className="-mx-4 -mt-4 flex w-[calc(100%+2rem)] flex-1 flex-col gap-6 overflow-y-auto px-4 pt-4">
+          <div
+            data-scroll-lock-allow="true"
+            className="-mx-4 -mt-4 flex w-[calc(100%+2rem)] flex-1 flex-col gap-6 overflow-y-auto px-4 pt-4"
+          >
             <div className="w-full rounded-medium bg-background-white p-3 shadow-[0px_4px_8px_rgba(0,0,0,0.04),0px_9.701px_29.104px_rgba(0,0,0,0.1)]">
               <Input
                 value={name}
