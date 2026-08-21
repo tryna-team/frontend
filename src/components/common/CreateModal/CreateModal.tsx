@@ -505,6 +505,7 @@ export default function CreateModal({
                       >
                         <div className="flex min-h-0 w-full flex-col">
                           <div
+                            data-scroll-lock-allow="true"
                             className="min-h-0 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                             style={{ maxHeight: checklistScrollMaxHeight }}
                           >
