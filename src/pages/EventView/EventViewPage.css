@@ -4,6 +4,12 @@
   flex-direction: column;
   /* height는 canModifyEvent(FloatingButtons 노출 여부)에 따라 달라져 EventViewPage.tsx의
      인라인 style로 지정한다 — 여기서 고정값을 쓰면 그 경우를 못 나눔. */
+  /* overflow: hidden으로 콘텐츠가 지정된 height를 넘어도 문서(body) 스크롤이 생기지
+     않게 막는다. body가 스크롤되면 App.tsx의 앱 프레임(transform-gpu)이 함께 밀려
+     올라가면서, 그 프레임을 기준으로 fixed된 FloatingButtons도 같이 딸려 올라가 화면에
+     고정되지 않은 것처럼 보인다. 모달/바텀시트(QuickModal, EventEditBottomSheet 등)는
+     fixed 포지션이라 이 overflow에 영향받지 않는다. */
+  overflow: hidden;
 }
 
 .event-view-page-content {
