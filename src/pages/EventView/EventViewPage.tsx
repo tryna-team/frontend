@@ -69,11 +69,7 @@ function isValidDateParam(value: string | null | undefined): value is string {
   const [year, month, day] = value.split('-').map(Number);
   const date = new Date(`${value}T00:00:00`);
 
-  return (
-    date.getFullYear() === year &&
-    date.getMonth() + 1 === month &&
-    date.getDate() === day
-  );
+  return date.getFullYear() === year && date.getMonth() + 1 === month && date.getDate() === day;
 }
 
 const RECURRENCE_DAY_LABEL: Record<RecurrenceDayOfWeek, string> = {
@@ -451,7 +447,9 @@ function EventViewPage() {
   // endDate.isBefore(startDate)). 원본의 "기간 길이"(종료일-시작일)는 유지한 채, 시작일만
   // 지금 보고 있는 회차 날짜로 옮겨서 보정한다.
   const occurrenceStartDate =
-    eventDetail.isRecurring && isValidDateParam(occurrenceDate) ? occurrenceDate : eventDetail.startDate;
+    eventDetail.isRecurring && isValidDateParam(occurrenceDate)
+      ? occurrenceDate
+      : eventDetail.startDate;
   const occurrenceEndDate = eventDetail.endDate
     ? format(
         addDays(
@@ -543,7 +541,7 @@ function EventViewPage() {
             pb-6(24px)은 카드가 아무리 줄어들어도 FloatingButtons 영역과 최소
             24px 간격을 유지하도록 하는 하단 여백이다 — 카드는 flex-basis(448px)에서
             flex-shrink로 줄어들 뿐 이 padding까지 잠식하지 않는다. */}
-        <div className="flex min-h-0 flex-1 flex-col px-1 pb-6">
+        <div className="flex min-h-0 flex-1 flex-col px-1 pb-10">
           {isActionItemsPending ? (
             <p className="py-6 text-center text-text-additional default-body-medium">
               준비 항목을 불러오는 중이에요.
