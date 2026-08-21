@@ -1,8 +1,22 @@
 import { useEffect, useState } from 'react';
 
+const getVisualViewportHeight = () =>
+  Math.round(window.visualViewport?.height ?? window.innerHeight);
+
+const getKeyboardInset = () => {
+  const viewport = window.visualViewport;
+
+  if (!viewport) {
+    return 0;
+  }
+
+  return Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop));
+};
+
 const getVisualViewportRect = () => ({
-  top: window.visualViewport?.offsetTop ?? 0,
-  height: window.visualViewport?.height ?? window.innerHeight,
+  top: 0,
+  height: getVisualViewportHeight(),
+  keyboardInset: getKeyboardInset(),
 });
 
 const getAppFrameRect = () => {
@@ -16,33 +30,55 @@ export const useCreateModalViewport = () => {
   const [visualViewportRect, setVisualViewportRect] = useState(getVisualViewportRect);
   const [appFrameRect, setAppFrameRect] = useState(getAppFrameRect);
 
-  // 오버레이를 키보드를 제외한 실제 화면 영역에 맞춘다.
+  // Follow keyboard height changes, but ignore iOS visual viewport panning.
   useEffect(() => {
     const viewport = window.visualViewport;
-
-    if (!viewport) {
-      return;
-    }
+    let frameId: number | null = null;
 
     const updateVisualViewport = () => {
-      setVisualViewportRect({
-        top: viewport.offsetTop,
-        height: viewport.height,
+      const nextRect = getVisualViewportRect();
+
+      setVisualViewportRect((currentRect) => {
+        if (
+          currentRect.top === nextRect.top &&
+          currentRect.height === nextRect.height &&
+          currentRect.keyboardInset === nextRect.keyboardInset
+        ) {
+          return currentRect;
+        }
+
+        return nextRect;
       });
     };
 
-    viewport.addEventListener('resize', updateVisualViewport);
-    viewport.addEventListener('scroll', updateVisualViewport);
-    const frameId = window.requestAnimationFrame(updateVisualViewport);
+    const scheduleVisualViewportUpdate = () => {
+      if (frameId !== null) {
+        return;
+      }
+
+      frameId = window.requestAnimationFrame(() => {
+        frameId = null;
+        updateVisualViewport();
+      });
+    };
+
+    viewport?.addEventListener('resize', scheduleVisualViewportUpdate);
+    viewport?.addEventListener('scroll', scheduleVisualViewportUpdate);
+    window.addEventListener('resize', scheduleVisualViewportUpdate);
+    scheduleVisualViewportUpdate();
 
     return () => {
-      window.cancelAnimationFrame(frameId);
-      viewport.removeEventListener('resize', updateVisualViewport);
-      viewport.removeEventListener('scroll', updateVisualViewport);
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+
+      viewport?.removeEventListener('resize', scheduleVisualViewportUpdate);
+      viewport?.removeEventListener('scroll', scheduleVisualViewportUpdate);
+      window.removeEventListener('resize', scheduleVisualViewportUpdate);
     };
   }, []);
 
-  // Portal 내부 콘텐츠를 실제 캘린더 프레임에 맞춘다.
+  // Keep portal content aligned to the app frame width.
   useEffect(() => {
     const appFrame = document.querySelector<HTMLElement>('.transform-gpu');
 

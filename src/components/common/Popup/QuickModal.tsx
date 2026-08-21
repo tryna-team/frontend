@@ -21,10 +21,11 @@ interface QuickModalProps {
   widthClassName?: string;
   // 버튼 색상/스타일. 기본은 삭제류 위험 액션을 나타내는 빨간색(LargeWarningRegular).
   buttonVariant?: TextButtonType;
-  // 기본은 화면 하단 고정('bottom'). 이벤트 수정 모달의 저장 범위 확인처럼 화면 아래쪽
-  // 콘텐츠(반복/체크리스트 등)에 가려지기 쉬운 호출부에서만 'top'을 넘겨 헤더 바로
-  // 아래에 띄운다.
-  position?: 'bottom' | 'top';
+  // 기본은 'default'(화면 하단에서 22.75 여백을 두고 고정). 'bottom'은 바닥에서
+  // 아주 살짝만(safe area 고려) 띄운 위치 — 일정 수정 저장 범위 확인 모달 전용.
+  // 'top'은 반복/체크리스트 등으로 콘텐츠가 길어 하단 고정 위치가 가려지기 쉬운
+  // 호출부에서 헤더 바로 아래에 띄울 때 쓴다.
+  position?: 'default' | 'bottom' | 'top';
 }
 
 export default function QuickModal({
@@ -34,7 +35,7 @@ export default function QuickModal({
   onClose,
   widthClassName = 'w-61.25',
   buttonVariant = 'LargeWarningRegular',
-  position = 'bottom',
+  position = 'default',
 }: QuickModalProps) {
   // 코드래빗 적용_aria-labelledby로 연결할 메시지 id
   const messageId = useId();
@@ -54,25 +55,34 @@ export default function QuickModal({
       <div className="fixed inset-0 z-60" onClick={onClose} />
       {/* 코드래빗 적용_role/aria-modal/aria-labelledby로 다이얼로그임을 스크린 리더에 안내 */}
       {/*
-        위치: position='bottom'(기본)은 모바일 화면(뷰포트) 하단 기준 고정. 기존엔
+        위치: position='default'는 모바일 화면(뷰포트) 하단 기준 고정. 기존엔
         top-144.75(임의의 절대 픽셀 값)라 페이지 레이아웃이 바뀌면 위치가 어긋났음. Figma
         "이벤트 뷰/이벤트 삭제" 프레임(node 1246:16377, 852px 높이) 기준 QuickModal
         인스턴스(node 1296:22740, y=579, h=182) 좌표로 계산한 바닥 여백
         852-(579+182)=91px을 bottom에 적용해 화면 하단(플로팅 삭제 버튼 바로 위)에
         안정적으로 고정.
 
-        position='top'은 이벤트 수정 모달(EventEditBottomSheet) 전용 — 반복/체크리스트
-        등 아래쪽 콘텐츠가 길어 하단 고정 위치가 가려지기 쉬워, 헤더 바로 아래로 옮긴다.
-        오프셋 계산: Overlay가 Frame(h-[92dvh])을 화면 하단에 붙이므로 Frame 상단은
-        뷰포트 위에서 8dvh 지점, 그 안 헤더 wrapper의 pt-4(16px) + Header modal
-        variant 높이(68px, Header.tsx HEADER_STYLE.modal.container)를 더해 헤더 바로
-        아래 지점을 계산한다.
+        position='bottom'은 default보다 더 아래, 바닥에 거의 붙되 살짝만 띄운 위치 —
+        일정 수정(EventEditBottomSheet) 저장 범위 확인 모달 전용. 최소 0.75rem을
+        띄우고, 홈 인디케이터가 있으면 safe-area-inset-bottom만큼 자동으로 더 확보한다.
+
+        position='top'은 반복/체크리스트 등으로 콘텐츠가 길어 하단 고정 위치가
+        가려지기 쉬운 호출부에서 헤더 바로 아래에 띄울 때 쓴다. 오프셋 계산: Overlay가
+        Frame(h-[92dvh])을 화면 하단에 붙이므로 Frame 상단은 뷰포트 위에서 8dvh 지점,
+        그 안 헤더 wrapper의 pt-4(16px) + Header modal variant 높이(68px, Header.tsx
+        HEADER_STYLE.modal.container)를 더해 헤더 바로 아래 지점을 계산한다.
       */}
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={messageId}
-        className={`fixed ${position === 'top' ? 'top-[calc(8dvh+84px)]' : 'bottom-22.75'} left-1/2 z-70 flex ${widthClassName} -translate-x-1/2 flex-col items-center gap-6 rounded-medium bg-white py-4 drop-shadow-[0px_0px_10px_rgba(0,0,0,0.08)]`}
+        className={`fixed ${
+          position === 'top'
+            ? 'top-[calc(8dvh+84px)]'
+            : position === 'bottom'
+              ? 'bottom-[max(2rem,env(safe-area-inset-bottom))]'
+              : 'bottom-22.75'
+        } left-1/2 z-70 flex ${widthClassName} -translate-x-1/2 flex-col items-center gap-6 rounded-medium bg-white py-4 drop-shadow-[0px_0px_10px_rgba(0,0,0,0.08)]`}
       >
         <div className="flex items-center pl-5 pr-3 w-full">
           {/* 코드래빗 적용_위 aria-labelledby가 참조하는 id */}
@@ -88,11 +98,7 @@ export default function QuickModal({
             {primaryAction.text}
           </Button>
           {secondaryAction && (
-            <Button
-              variant={buttonVariant}
-              className="w-full"
-              onClick={secondaryAction.onClick}
-            >
+            <Button variant={buttonVariant} className="w-full" onClick={secondaryAction.onClick}>
               {secondaryAction.text}
             </Button>
           )}

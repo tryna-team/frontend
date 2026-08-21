@@ -536,16 +536,15 @@ export default function EventEditBottomSheet({
 
       {isScopeModalOpen && labelId !== null && (
         <QuickModal
-          message="이 변경 사항을 어떻게 저장할까요?"
+          message={isRecurring ? '이 변경 사항을 어떻게 저장할까요?' : '이 이벤트를 수정할까요?'}
           // 반복 일정일 때만 버튼 2개("이 이벤트만 저장"/"이후 모든 이벤트에 대해 저장")라
           // 두 번째 버튼 텍스트가 기본 폭보다 길어서 이 경우에만 넓게 표시한다. 단기
           // 일정(버튼 1개, "이벤트 수정")은 widthClassName을 안 넘겨 QuickModal 기본값
           // (w-61.25, 다른 QuickModal들과 동일)을 그대로 쓴다. 버튼 색상은 다른 QuickModal과
           // 동일한 기본값(빨간색) 유지.
           widthClassName={isRecurring ? 'w-75' : undefined}
-          // 이 모달은 반복/체크리스트 등으로 콘텐츠가 긴 이벤트 수정 화면에서만 쓰여
-          // 기본 하단 고정 위치가 화면 아래쪽 콘텐츠에 가려지기 쉽다 — 헤더 바로 아래로.
-          position="top"
+          // 다른 QuickModal(기본 'default')보다 더 아래, 바닥에 살짝만 띄운 위치.
+          position="bottom"
           primaryAction={{
             text: isRecurring ? '이 이벤트만 저장' : '이벤트 수정',
             onClick: () => {
