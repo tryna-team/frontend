@@ -462,15 +462,14 @@ export default function CreateModal({
               </div>
             )}
 
-            {/* 키보드를 제외한 화면 영역의 하단에 생성 모달을 맞춘다. */}
+            {/* iOS visualViewport 높이 튐을 피하려고 키보드 높이만 bottom 보정값으로 쓴다. */}
             <div
               ref={dialogRef}
-              className="absolute flex items-end justify-center"
+              className="absolute flex justify-center"
               style={{
                 left: appFrameRect.left,
                 width: appFrameRect.width,
-                top: visualViewportRect.top,
-                height: visualViewportRect.height,
+                bottom: visualViewportRect.keyboardInset,
               }}
             >
               <div className="flex w-full max-w-[385px] flex-col items-center">

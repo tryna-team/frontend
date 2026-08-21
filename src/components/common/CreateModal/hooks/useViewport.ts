@@ -3,9 +3,20 @@ import { useEffect, useState } from 'react';
 const getVisualViewportHeight = () =>
   Math.round(window.visualViewport?.height ?? window.innerHeight);
 
+const getKeyboardInset = () => {
+  const viewport = window.visualViewport;
+
+  if (!viewport) {
+    return 0;
+  }
+
+  return Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop));
+};
+
 const getVisualViewportRect = () => ({
   top: 0,
   height: getVisualViewportHeight(),
+  keyboardInset: getKeyboardInset(),
 });
 
 const getAppFrameRect = () => {
@@ -28,7 +39,11 @@ export const useCreateModalViewport = () => {
       const nextRect = getVisualViewportRect();
 
       setVisualViewportRect((currentRect) => {
-        if (currentRect.top === nextRect.top && currentRect.height === nextRect.height) {
+        if (
+          currentRect.top === nextRect.top &&
+          currentRect.height === nextRect.height &&
+          currentRect.keyboardInset === nextRect.keyboardInset
+        ) {
           return currentRect;
         }
 
@@ -48,6 +63,7 @@ export const useCreateModalViewport = () => {
     };
 
     viewport?.addEventListener('resize', scheduleVisualViewportUpdate);
+    viewport?.addEventListener('scroll', scheduleVisualViewportUpdate);
     window.addEventListener('resize', scheduleVisualViewportUpdate);
     scheduleVisualViewportUpdate();
 
@@ -57,6 +73,7 @@ export const useCreateModalViewport = () => {
       }
 
       viewport?.removeEventListener('resize', scheduleVisualViewportUpdate);
+      viewport?.removeEventListener('scroll', scheduleVisualViewportUpdate);
       window.removeEventListener('resize', scheduleVisualViewportUpdate);
     };
   }, []);
