@@ -37,12 +37,19 @@ export const buildFeedbackLogs = (
   recommendationCandidates: RecommendationCandidate[],
 ): RecommendationFeedback[] =>
   recommendationCandidates
-    .filter((candidate) => candidate.createdBy !== 'USER')
+    .filter((candidate) => candidate.createdBy !== 'USER' || candidate.selected)
     .map((candidate) => ({
-      actionType: candidate.selected ? (candidate.edited ? 'EDITED' : 'SELECTED') : 'REJECTED',
+      actionType:
+        candidate.createdBy === 'USER'
+          ? 'USER_ADDED'
+          : candidate.selected
+            ? candidate.edited
+              ? 'EDITED'
+              : 'SELECTED'
+            : 'REJECTED',
       sourceTemplateId: candidate.sourceTemplateId ?? null,
-      originalTitle: candidate.originalTitle ?? candidate.title,
-      editedTitle: candidate.edited ? candidate.title : null,
+      originalTitle: candidate.createdBy === 'USER' ? null : (candidate.originalTitle ?? candidate.title),
+      editedTitle: candidate.createdBy === 'USER' || candidate.edited ? candidate.title : null,
       reason: null,
     }));
 
