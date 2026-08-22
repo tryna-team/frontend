@@ -402,7 +402,10 @@ export default function EventEditBottomSheet({
               CSS 스펙상 반대 축(overflow-x)도 함께 클리핑되는데, 패딩이 하나도 없으면
               안쪽 ContentBox들이 이 경계에 딱 붙어 있어 그림자가 사방으로 그대로 잘린다
               (Frame 자체의 바깥쪽 padding은 이 안쪽 클리핑 경계엔 아무 도움이 안 된다). */}
-          <div className="flex h-full w-full min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4 pt-23 scrollbar-none">
+          <div
+            data-scroll-lock-allow="true"
+            className="flex h-full w-full min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4 pt-23 scrollbar-none"
+          >
             <div className="w-full rounded-medium bg-background-white p-3 shadow-[0px_4px_8px_rgba(0,0,0,0.04),0px_9.701px_29.104px_rgba(0,0,0,0.1)]">
               <Input
                 value={title}

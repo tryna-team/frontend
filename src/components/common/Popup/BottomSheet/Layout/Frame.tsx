@@ -10,6 +10,7 @@ interface FrameProps {
   style?: CSSProperties;
   'aria-labelledby'?: string;
   'aria-describedby'?: string;
+  'data-scroll-lock-allow'?: string;
 }
 
 // 바텀시트류 모달의 공통 틀(둥근 모서리·배경·그림자·화면 여백)을 관리.
@@ -20,6 +21,7 @@ export default function Frame({
   style,
   'aria-labelledby': ariaLabelledBy,
   'aria-describedby': ariaDescribedBy,
+  'data-scroll-lock-allow': dataScrollLockAllow,
 }: FrameProps) {
   return (
     <div
@@ -27,9 +29,9 @@ export default function Frame({
       aria-modal="true"
       aria-labelledby={ariaLabelledBy}
       aria-describedby={ariaDescribedBy}
+      data-scroll-lock-allow={dataScrollLockAllow}
       style={style}
       className={`flex flex-col items-center w-[calc(100%_-_8px)] bg-background-white rounded-medium shadow-[0px_0px_20px_0px_rgba(0,0,0,0.08)] overflow-clip frame-bottom-spacing frame-slide-up ${className ?? ''}`}
-
       onClick={(e) => e.stopPropagation()}
     >
       {children}

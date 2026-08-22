@@ -1,12 +1,11 @@
 import { useEffect, useId } from 'react';
 
 import Button from '@/components/common/Buttons/Button';
+import { useCreateModalViewport } from '@/components/common/CreateModal/hooks/useViewport';
 import Frame from '@/components/common/Popup/BottomSheet/Layout/Frame';
 import Overlay from '@/components/common/Popup/Overlay';
 
-import ScheduleDateTimeFields, {
-  type ScheduleDateTimeFieldsProps,
-} from './ScheduleDateTimeFields';
+import ScheduleDateTimeFields, { type ScheduleDateTimeFieldsProps } from './ScheduleDateTimeFields';
 
 // 하루종일/시작·종료/반복 필드 자체는 ScheduleDateTimeFields로 옮겼다(EventEditBottomSheet도
 // 동일 컴포넌트를 인라인으로 재사용). 이 컴포넌트는 그 필드들을 바텀시트 껍데기(Overlay/Frame/
@@ -25,6 +24,7 @@ export default function RepeatScheduleBottomSheet({
   ...fieldsProps
 }: RepeatScheduleBottomSheetProps) {
   const titleId = useId();
+  const { appFrameRect } = useCreateModalViewport();
 
   // Escape 입력으로 바텀시트를 닫는다.
   useEffect(() => {
@@ -53,24 +53,35 @@ export default function RepeatScheduleBottomSheet({
         />
       )}
 
-      <Frame
-        // 콘텐츠가 화면 높이를 초과하는 경우에만 세로 스크롤을 허용한다.
-        className="relative z-10 max-h-[calc(100dvh-16px)] overflow-y-auto overscroll-contain gap-2 !bg-white px-4 pt-5 pb-1"
-        aria-labelledby={titleId}
+      <div
+        className="absolute z-10 flex items-end justify-center"
+        style={{
+          left: appFrameRect.left,
+          width: appFrameRect.width,
+          top: 0,
+          bottom: 0,
+        }}
       >
-        <h2 id={titleId} className="sr-only">
-          반복 일정 설정
-        </h2>
+        <Frame
+          data-scroll-lock-allow="true"
+          // 콘텐츠가 화면 높이를 초과하는 경우에만 세로 스크롤을 허용한다.
+          className="max-h-[calc(100dvh-16px)] overflow-y-auto overscroll-contain gap-2 !bg-white px-4 pt-5 pb-1"
+          aria-labelledby={titleId}
+        >
+          <h2 id={titleId} className="sr-only">
+            반복 일정 설정
+          </h2>
 
-        <ScheduleDateTimeFields
-          {...fieldsProps}
-          footer={
-            <Button variant="LargeDefaultFull" onClick={onClose}>
-              닫기
-            </Button>
-          }
-        />
-      </Frame>
+          <ScheduleDateTimeFields
+            {...fieldsProps}
+            footer={
+              <Button variant="LargeDefaultFull" onClick={onClose}>
+                닫기
+              </Button>
+            }
+          />
+        </Frame>
+      </div>
     </Overlay>
   );
 }
