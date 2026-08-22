@@ -164,10 +164,12 @@ const ITEM_STYLE = {
 } as const;
 
 // 새 화면별 ChecklistItem 내부 크기
+// daily는 폭을 고정하지 않는다. 날짜를 ml-auto로 오른쪽에 붙이는데, 폭이 고정돼 있으면
+// 카드 오른쪽 끝이 아니라 그 상자의 끝에 맞아서 날짜만 중간에 떠 보인다.
 const VARIANT_ITEM_LAYOUT: Record<ChecklistRadioVariant, string> = {
   create: 'h-[21px] w-full',
   event: 'w-full',
-  daily: 'h-[21px] w-[299px]',
+  daily: 'h-[21px] w-full',
 };
 
 // 아이콘 크기를 기준으로 텍스트와 간격에 사용할 ChecklistItem 스타일 크기를 결정

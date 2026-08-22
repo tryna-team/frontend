@@ -85,9 +85,11 @@ function getVariantChecklistLayout(radioVariant: ChecklistRadioVariant): Variant
     };
   }
 
+  // daily는 폭을 고정하지 않는다. 카드(ScheduleCard) 안에서 쓰는데 폭을 묶어두면
+  // 항목 날짜가 카드 오른쪽 끝(일정 시간이 붙는 선)까지 가지 못하고 중간에 멈춘다.
   if (radioVariant === 'daily') {
     return {
-      container: 'flex w-[299px] flex-col',
+      container: 'flex w-full flex-col',
       item: 'flex w-full items-center',
     };
   }
