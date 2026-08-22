@@ -65,11 +65,14 @@ export default function EventScheduleRow(props: EventScheduleRowProps) {
         </div>
       ) : (
         // '반복' + chevron
+        // 피그마 실측(node 3303:37943): 트레일링 그룹 자체에 pr-16px가 더 붙어 있어
+        // 시작/종료 버튼보다 16px 더 안쪽에 위치한다 — 이 행의 바깥 컨테이너(다른
+        // 행과 공유)는 그대로 두고, 이 버튼에만 mr-4(16px)를 더해 그 차이만 반영한다.
         <button
           type="button"
           onClick={props.onRepeatClick}
           aria-label={`반복 주기 ${props.repeat}`}
-          className="flex shrink-0 items-center gap-2 border-0 bg-transparent p-0 text-text-default default-body-large"
+          className="mr-4 flex shrink-0 items-center gap-2 border-0 bg-transparent p-0 text-text-default default-body-large"
         >
           <span>{props.repeat}</span>
 
