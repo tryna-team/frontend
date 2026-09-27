@@ -1,1 +1,0 @@
-export type CategoryColor = 'apricot' | 'blue' | 'green' | 'pink' | 'purple' | 'yellow';
