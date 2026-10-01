@@ -3,11 +3,8 @@ import type { TodoVariant, TodoStatus } from './TodoType';
 // # 타입 영역
 // ## common type
 type TodoItemBaseProps = {
-  // trailing?: TodoTrailingType;
   text: string; // middle text content
   onLeadingClick?: () => void;
-  // onMiddleClick?: () => void;
-  // onDateClick?: () => void;
 };
 
 export type TodoItemProps = TodoItemBaseProps &
@@ -27,6 +24,7 @@ export type TodoItemProps = TodoItemBaseProps &
         status: 'selected' | 'unSelected';
         date: string;
         onDateClick: () => void;
+        // onMiddleClick?: () => void;
       }
     | {
         variant: 'eventCreate';
@@ -86,6 +84,7 @@ function getMiddleColor(status: TodoStatus): string {
   return status === 'unDone' || status === 'selected' ? 'text-text-default' : 'text-text-disable';
 }
 
+// TODO: eventModified에서 middle 영역 터치 가능한지 확인 ? text 수정 : 지금 유지
 function Middle(props: TodoItemProps) {
   const typo = getMiddleTypo(props.variant, props.status);
   const color = getMiddleColor(props.status);
