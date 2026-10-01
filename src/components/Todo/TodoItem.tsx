@@ -40,17 +40,17 @@ function getIconSrc(variant: TodoVariant, status: TodoStatus): string {
   if (variant === 'daily') {
     return status === 'done'
       ? '/icon/radio_button/done_small.svg'
-      : '/icon/radio_button/undone_small.svg';
+      : '/icon/radio_button/unDone_small.svg';
   } else if (variant === 'eventView') {
     return status === 'done'
       ? '/icon/radio_button/done_medium.svg'
-      : '/icon/radio_button/undone_medium.svg';
+      : '/icon/radio_button/unDone_medium.svg';
   } else {
     return status === 'plus'
       ? '/icon/icons/plus_small.svg'
       : status === 'selected'
         ? '/icon/radio_button/selected_medium.svg'
-        : '/icon/radio_button/unselected_medium.svg';
+        : '/icon/radio_button/unSelected_medium.svg';
   }
 }
 
@@ -144,9 +144,9 @@ function Trailing(props: TodoItemProps) {
 // TodoItem vertical padding
 function getVerticalPadding(variant: TodoVariant): string {
   if (variant === 'eventView') {
-    return 'spacing-padding-xxsmall';
+    return 'py-padding-xxsmall';
   } else if (variant === 'eventCreate') {
-    return 'spacing-padding-small';
+    return 'py-padding-small';
   } else {
     return '';
   }
