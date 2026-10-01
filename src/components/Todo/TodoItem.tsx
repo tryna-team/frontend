@@ -4,7 +4,7 @@ import type { TodoVariant, TodoStatus } from './TodoType';
 // ## common type
 type TodoItemBaseProps = {
   // trailing?: TodoTrailingType;
-  text: string;    // middle text content
+  text: string; // middle text content
   onLeadingClick?: () => void;
   // onMiddleClick?: () => void;
   // onDateClick?: () => void;
@@ -28,7 +28,7 @@ export type TodoItemProps = TodoItemBaseProps &
         date: string;
         onDateClick: () => void;
       }
-      | {
+    | {
         variant: 'eventCreate';
         status: 'plus';
       }
@@ -64,90 +64,108 @@ function Leading(props: TodoItemProps) {
       aria-pressed="false"
       disabled={props.variant === 'daily'}
       onClick={props.onLeadingClick}
+      className="shrink-0"
     >
       <img src={iconSrc} alt="icon" />
     </button>
   );
 }
 
-
 // ## middle function
 function getMiddleTypo(variant: TodoVariant, status: TodoStatus): string {
   if (variant === 'daily') {
     return 'default-body-small';
-  } 
-  else if (variant === 'eventCreate' && status === 'plus') {
+  } else if (variant === 'eventCreate' && status === 'plus') {
     return 'default-body-medium';
-  } 
-  else {
+  } else {
     return 'default-body-large';
   }
 }
 
 function getMiddleColor(status: TodoStatus): string {
-    return status === 'unDone' || status === 'selected' 
-        ? 'text-text-default'
-        : 'text-text-disable';
+  return status === 'unDone' || status === 'selected' ? 'text-text-default' : 'text-text-disable';
 }
 
 function Middle(props: TodoItemProps) {
-    const typo = getMiddleTypo(props.variant, props.status);
-    const color = getMiddleColor(props.status);
+  const typo = getMiddleTypo(props.variant, props.status);
+  const color = getMiddleColor(props.status);
 
-    return (
-        <span className={`${typo} ${color}`}>
-            {props.text}
-        </span>
-    );
+  // TODO: text가 길어질 때 말줄임 처리 할지 말지 결정 (min-w-0 truncate)
+  return <span className={`${typo} ${color}`}>{props.text}</span>;
 }
 
 // ## trailing function
 function getTrailingColor(status: TodoStatus): string {
-    return status === 'unDone' || status === 'selected'
-        ? 'text-text-additional'
-        : 'text-text-disable';
+  return status === 'unDone' || status === 'selected'
+    ? 'text-text-additional'
+    : 'text-text-disable';
 }
 
 function Trailing(props: TodoItemProps) {
-    // plus: trailing 영역 X
-    if (props.status === 'plus') {
-        return null;
-    }
+  // plus: trailing 영역 X
+  if (props.status === 'plus') {
+    return null;
+  }
 
-    // daily: trailing 영역 선택
-    if (props.variant === 'daily' && !props.date) {
-        return null;
-    }
+  // daily: trailing 영역 선택
+  if (props.variant === 'daily' && !props.date) {
+    return null;
+  }
 
-    const color = getTrailingColor(props.status);
+  const color = getTrailingColor(props.status);
 
-    // eventCreate: trailing == chipButton
-    if (props.variant === 'eventCreate') {
-        return (
-            // TODO: chipButton 컴포넌트로 교체
-            <button
-                type="button"
-                onClick={props.onDateClick}
-                className={`default-label-medium ${color}`}
-            >
-                {props.date}
-            </button>
-        );
-    }
-
-    // daily, eventView: trailing == text(date)
+  // eventCreate: trailing == chipButton
+  if (props.variant === 'eventCreate') {
     return (
-        <span className={`default-label-medium ${color}`}>
-            {props.date}
-        </span>
+      // TODO: chipButton 컴포넌트로 교체
+      <button
+        type="button"
+        onClick={props.onDateClick}
+        className={`ml-auto shrink-0 default-label-medium ${color}`}
+      >
+        {props.date}
+      </button>
     );
+  }
+
+  // daily, eventView: trailing == text(date)
+  return (
+    <span
+      className={`shrink-0
+        ${props.variant === 'daily' ? 'ml-2' : 'ml-auto'}
+        default-label-medium ${color}`}
+    >
+      {props.date}
+    </span>
+  );
+}
+
+// ## layout function
+// TodoItem vertical padding
+function getVerticalPadding(variant: TodoVariant): string {
+  if (variant === 'eventView') {
+    return 'spacing-padding-xxsmall';
+  } else if (variant === 'eventCreate') {
+    return 'spacing-padding-small';
+  } else {
+    return '';
+  }
+}
+
+// leading - middle gap
+function getLeftGap(variant: TodoVariant): string {
+  return variant === 'eventCreate' ? 'gap-small' : 'gap-xsmall';
 }
 
 // # main component
 export default function TodoItem(props: TodoItemProps) {
+  const verticalPadding = getVerticalPadding(props.variant);
+  const leftGap = getLeftGap(props.variant);
+
   return (
-    <div>
-      <div>
+    <div className={`flex w-full items-center ${verticalPadding}`}>
+      {/* TODO: left 영역이 오버되면 어떻게 처리할지 결정 (flex-1: 남는 공간만 사용) */}
+      <div className={`flex min-w-0 items-center ${leftGap}`}>
         {/* leading: icon area */}
         {/* TodoItemProps에서 제한한 타입 관계를 보장하기 위해 props를 그대로 전달 */}
         <Leading {...props} />
@@ -156,7 +174,7 @@ export default function TodoItem(props: TodoItemProps) {
         <Middle {...props} />
       </div>
 
-      {/* trailing: action area */}
+      {/* trailing: date or chipButton area */}
       <Trailing {...props} />
     </div>
   );
