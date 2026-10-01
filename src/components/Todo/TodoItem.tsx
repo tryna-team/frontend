@@ -7,7 +7,7 @@ type TodoItemBaseProps = {
   text: string;    // middle text content
   onLeadingClick?: () => void;
   // onMiddleClick?: () => void;
-  // onTrailingClick?: () => void;
+  // onDateClick?: () => void;
 };
 
 export type TodoItemProps = TodoItemBaseProps &
@@ -15,31 +15,24 @@ export type TodoItemProps = TodoItemBaseProps &
     | {
         variant: 'daily';
         status: 'done' | 'unDone';
+        date?: string;
       }
     | {
         variant: 'eventView';
         status: 'done' | 'unDone';
+        date: string;
       }
     | {
         variant: 'eventCreate';
-        status: 'plus' | 'selected' | 'unSelected';
+        status: 'selected' | 'unSelected';
+        date: string;
+        onDateClick: () => void;
+      }
+      | {
+        variant: 'eventCreate';
+        status: 'plus';
       }
   );
-
-// ## trailing type
-export type TodoTrailingType =
-  | {
-      type: 'none'; // Daily
-    }
-  | {
-      type: 'text'; // EventView / Daily
-      text: string;
-    }
-  | {
-      type: 'button'; // EventCreate
-      text: string;
-      onClick?: () => void;
-    };
 
 // # 함수 영역
 // ## leading function
@@ -109,8 +102,45 @@ function Middle(props: TodoItemProps) {
 }
 
 // ## trailing function
-function Trailing() {
-  return <div>action</div>;
+function getTrailingColor(status: TodoStatus): string {
+    return status === 'unDone' || status === 'selected'
+        ? 'text-text-additional'
+        : 'text-text-disable';
+}
+
+function Trailing(props: TodoItemProps) {
+    // plus: trailing 영역 X
+    if (props.status === 'plus') {
+        return null;
+    }
+
+    // daily: trailing 영역 선택
+    if (props.variant === 'daily' && !props.date) {
+        return null;
+    }
+
+    const color = getTrailingColor(props.status);
+
+    // eventCreate: trailing == chipButton
+    if (props.variant === 'eventCreate') {
+        return (
+            // TODO: chipButton 컴포넌트로 교체
+            <button
+                type="button"
+                onClick={props.onDateClick}
+                className={`default-label-medium ${color}`}
+            >
+                {props.date}
+            </button>
+        );
+    }
+
+    // daily, eventView: trailing == text(date)
+    return (
+        <span className={`default-label-medium ${color}`}>
+            {props.date}
+        </span>
+    );
 }
 
 // # main component
@@ -127,7 +157,7 @@ export default function TodoItem(props: TodoItemProps) {
       </div>
 
       {/* trailing: action area */}
-      <Trailing />
+      <Trailing {...props} />
     </div>
   );
 }
