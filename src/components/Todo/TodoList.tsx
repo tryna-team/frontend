@@ -1,28 +1,7 @@
 import TodoItem from './TodoItem';
+import type { DailyTodoData, EventViewTodoData, EventCreateTodoData } from './TodoType';
 
 // # 타입 영역
-// ## item type
-export type DailyItemData = {
-        id: number;
-        status: 'done' | 'unDone';
-        text: string;
-        date?: string;
-    }
-    
-export type EventViewItemData = {
-        id: number;
-        status: 'done' | 'unDone';  
-        text: string;
-        date: string;
-    }
-
-export type EventCreateItemData = {
-        id: number;
-        status: 'selected' | 'unSelected';
-        text: string;
-        date: string;
-    }
-
 // ## list props
 export type TodoListBaseProps = {
     onLeadingClick?: (id: number) => void;
@@ -31,15 +10,15 @@ export type TodoListBaseProps = {
 export type TodoListProps = TodoListBaseProps & (
     {
         variant: 'daily';
-        items: DailyItemData[];
+        items: DailyTodoData[];
     }
     | {
         variant: 'eventView';
-        items: EventViewItemData[];
+        items: EventViewTodoData[];
     }
     | {
         variant: 'eventCreate';
-        items: EventCreateItemData[];
+        items: EventCreateTodoData[];
         onDateClick: (id: number) => void;
         onAdd: () => void;
     }
