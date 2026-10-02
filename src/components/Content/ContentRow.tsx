@@ -90,7 +90,7 @@ function Trailing(props: ContentProps) {
 }
 
 // # main component
-export default function Content(props: ContentProps) {
+export default function ContentRow(props: ContentProps) {
     return (
         <div className={`group flex w-full items-center ${props.className ?? ''}`}>
             <Leading {...props} />
