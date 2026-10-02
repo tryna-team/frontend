@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { TodoVariant, TodoStatus } from './TodoType';
 
 // # 타입 영역
@@ -24,7 +25,7 @@ export type TodoItemProps = TodoItemBaseProps &
         status: 'selected' | 'unSelected';
         date: string;
         onDateClick: () => void;
-        // onMiddleClick?: () => void;
+        onTextChange: (text: string) => void;
       }
     | {
         variant: 'eventCreate';
@@ -86,10 +87,45 @@ function getMiddleColor(status: TodoStatus): string {
 
 // TODO: eventModified에서 middle 영역 터치 가능한지 확인 ? text 수정 : 지금 유지
 function Middle(props: TodoItemProps) {
+  const [ isEditing, setIsEditing ] = useState(false);
+  
   const typo = getMiddleTypo(props.variant, props.status);
   const color = getMiddleColor(props.status);
 
   // TODO: text가 길어질 때 말줄임 처리 할지 말지 결정 (min-w-0 truncate)
+
+  // eventCreate Todo 입력 중
+  if (props.variant === 'eventCreate' && props.status !== 'plus' && isEditing && props.status === 'selected') {
+    return (
+      <input
+        type="text"
+        value={props.text}
+        autoFocus
+        onChange={(e) => props.onTextChange(e.target.value)}
+        onBlur={() => setIsEditing(false)}
+        className={`min-w-0 flex-1 bg-transparent outline-none ${typo} ${color}`}
+      />
+    );
+  }
+
+  // eventCreate middle
+  if (props.variant === 'eventCreate' && props.status !== 'plus') {
+    const isEmpty = !props.text;
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          if (props.status === 'selected') {
+            setIsEditing(true);
+          }
+        }}
+        className={`min-w-0 text-left ${typo} ${isEmpty ? 'text-text-disable' : color}`}
+      >
+        {props.text || '할 일을 입력해주세요'}
+      </button>
+    );
+  }
+
   return <span className={`${typo} ${color}`}>{props.text}</span>;
 }
 

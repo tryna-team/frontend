@@ -20,6 +20,7 @@ export type TodoListProps = TodoListBaseProps & (
         variant: 'eventCreate';
         items: EventCreateTodoData[];
         onDateClick: (id: number) => void;
+        onTextChange: (id: number, text: string) => void;
         onAdd: () => void;
     }
 );
@@ -75,6 +76,7 @@ export default function TodoList(props: TodoListProps) {
                         date={item.date}
                         onLeadingClick={() => props.onLeadingClick?.(item.id)}
                         onDateClick={() => props.onDateClick(item.id)}
+                        onTextChange={(text) => props.onTextChange(item.id, text)}
                     />
                 ))}
 
