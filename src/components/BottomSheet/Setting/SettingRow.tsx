@@ -1,7 +1,7 @@
-import type { ToggleStatus } from './SettingType';
-
 // # 타입 영역
 // ## common type
+type ToggleStatus = 'on' | 'off';
+
 type SettingRowBaseProps = {
   text: string;
   color?: string;
