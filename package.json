@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "gen:icons": "node scripts/generate-icon-paths.mjs",
+    "prebuild": "npm run gen:icons",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
