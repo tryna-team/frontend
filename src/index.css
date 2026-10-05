@@ -7,6 +7,18 @@
 @import "@fontsource/plus-jakarta-sans/700.css";
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * TODO(tds 수정 필요): @tryna/tds 0.1.1의 tailwind.css는 radius medium·large 값이
+ * tds 토큰 원본(resource/Mode 1.tokens 2.json)·Figma 변수와 다르다.
+ *   - tds 0.1.1 CSS  : medium 1.5rem(24px), large 2rem(32px)
+ *   - 토큰 원본·Figma : medium 1rem(16px),  large 1.5rem(24px)
+ * 프로젝트에서 임시로 토큰 원본 값으로 덮어쓴다. tds가 수정·배포되면 이 블록을 삭제할 것.
+ */
+@theme {
+    --radius-medium: 1rem;
+    --radius-large: 1.5rem;
+}
+
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', sans-serif;
