@@ -12,4 +12,3 @@ export type { MainCTAButtonProps } from './MainCTAButton/MainCTAButtonType';
 export type { CheckCTAButtonProps } from './CheckCTAButton/CheckCTAButtonType';
 export type { ChipButtonProps, ChipButtonDate } from './ChipButton/ChipButtonType';
 export type { HitArea } from './shared/hitArea';
-// 스타일 맵과 공통 스타일은 공개하지 않는다

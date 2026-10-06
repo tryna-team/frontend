@@ -14,7 +14,7 @@ import {
 
 // TODO(레이아웃 구현 후): 지금은 dim과 시트가 브라우저 화면 전체 폭 기준으로 뜬다.
 // 앱 레이아웃(src/layouts)을 만들 때 데스크톱에서 시트를 앱 프레임(가운데 모바일 화면 영역) 폭에 맞출지 정하고,
-// 맞춘다면 프레임의 위치·폭을 구하는 훅(useAppFrameRect, 7_14 CreateModal/hooks/useViewport.ts 참고)을 추가해
+// 맞춘다면 프레임의 위치·폭을 구하는 훅(useAppFrameRect, 기존 프젝 폴더의 CreateModal/hooks/useViewport.ts 참고)을 추가해
 // Overlay·Content의 left/width에 적용한다.
 export function BottomSheet(props: BottomSheetProps) {
   const { open, onClose, title, description, height = 'auto', className, children } = props;

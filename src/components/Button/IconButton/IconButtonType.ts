@@ -13,5 +13,5 @@ export type IconButtonProps = Omit<ButtonBaseProps, 'aria-label'> &
     children?: never;
   };
 
-// img 아이콘은 색을 바꿀 수 없어서 비활성 상태를 투명도로 표현한다 (기존 동작 유지)
+// img 아이콘은 색을 바꿀 수 없어서 비활성 상태를 투명도로 표현한다
 export const iconButtonClassName = 'p-0 disabled:opacity-50';
