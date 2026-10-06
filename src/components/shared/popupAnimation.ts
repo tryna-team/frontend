@@ -19,3 +19,11 @@ export const sheetAnimationClassName = [
   duration,
   'ease-out',
 ].join(' ');
+
+// 토스트: 화면 가운데에서 살짝 커지며 나타나고, 작아지며 사라짐 (95% ↔ 100%)
+export const toastAnimationClassName = [
+  'motion-safe:data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95',
+  'motion-safe:data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95',
+  duration,
+  'ease-out',
+].join(' ');
